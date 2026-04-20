@@ -12,30 +12,11 @@ class TripRequestDTO {
     // Tourist flag (1 = yes, 0 = no)
     this.isTourist = data.isTouristTrip === 1 ? 1 : 0;
 
-<<<<<<< HEAD
-    /* ================= PASSENGERS ================= */
-    this.Passengers = Array.isArray(data.Passengers)
-      ? data.Passengers.map((p) => ({
-          PassengerName: p.PassengerName,
-          FatherName: p.FatherName || null,
-          PhoneNo: p.PhoneNo,
-          Age: p.Age,
-          Gender: p.Gender,
-
-          isForeigner: p.isForeigner === 1 ? 1 : 0,
-
-          docType: p.docType || null,
-          docId: p.docId || null,
-
-          Nationality: p.Nationality || null,
-          VisaNo: p.VisaNo || null,
-          Residence: p.Residence || null,
-        }))
-=======
     this.isReturn = data.isReturn || false;
     this.returnDate = data.returnDate || null;
     this.returnConvoyTime = data.returnConvoyTime || null;
     this.returnType = data.returnType || "same";
+    this.returnTripData = data.returnTripData || {};
 
     /* ================= PASSENGERS ================= */
     this.Passengers = this.normalizePassengers(data.Passengers);
@@ -68,7 +49,6 @@ class TripRequestDTO {
             Residence: p.Residence ?? p.residence ?? null,
           };
         })
->>>>>>> b2b3d2d (20042026 return trip completed)
       : [];
   }
 
@@ -171,23 +151,30 @@ class TripRequestDTO {
         }
       }
     });
-<<<<<<< HEAD
-=======
     // ✅ Return trip validation (ONLY ONCE)
-    if (this.isReturn) {
-      if (!this.returnDate) {
-        errors.push("Return date is required");
-      }
-      if (!this.returnConvoyTime) {
-        errors.push("Return convoy time is required");
-      }
-    }
->>>>>>> b2b3d2d (20042026 return trip completed)
+   // ✅ Return validation
+if (this.isReturn) {
+  if (!this.returnDate) {
+    errors.push("Return date is required");
+  }
+  if (!this.returnConvoyTime) {
+    errors.push("Return convoy time is required");
+  }
 
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
+  // 🔥 FIXED LOCATION
+  if (this.returnType !== "same") {
+    if (!this.returnPassengers.length) {
+      errors.push("Return passengers required for modified return");
+    }
+  }
+}
+
+return {
+  isValid: errors.length === 0,
+  errors,
+};
+
+ 
   }
 }
 

@@ -41,17 +41,26 @@ export default function AddTrip() {
   const [isTouristTrip, setIsTouristTrip] = useState("");
   const [isForeigner, setIsForeigner] = useState("");
   const [isIslander, setIsIslander] = useState("");
-<<<<<<< HEAD
-=======
   const [isReturn, setIsReturn] = useState(false);
   const [returnDate, setReturnDate] = useState("");
   const [returnConvoyTime, setReturnConvoyTime] = useState("");
   const [returnType, setReturnType] = useState("same"); // default same
-  const [returnPassengers, setReturnPassengers] = useState([]);
+  //const [returnPassengers, setReturnPassengers] = useState([]);
   const [returnConveyList, setReturnConveyList] = useState([]);
   const [showReturnModal, setShowReturnModal] = useState(false);
 
->>>>>>> b2b3d2d (20042026 return trip completed)
+  const [mode, setMode] = useState("forward"); // forward | return
+
+  const [returnTripData, setReturnTripData] = useState({
+    vId: "",
+    dId: "",
+    origin: "",
+    destination: "",
+    date: "",
+    convoyTime: "",
+    Passengers: [],
+  });
+
   const [formData, setFormData] = useState({
     vId: "",
     dId: "",
@@ -94,37 +103,31 @@ export default function AddTrip() {
     return passengers.filter((p) => Number(p.age) > 12).length;
   };
 
-<<<<<<< HEAD
-=======
-  const mapPassengerForPayload = (p) => {
-    const isPassengerForeigner = Number(p.isForeigner) === 1;
+const mapPassengerForPayload = (p) => {
+  const isPassengerForeigner = p.isForeigner === 1 || p.isForeigner === "1";
 
-    return {
-      PassengerName: p.PassengerName ?? p.name,
-      FatherName: p.FatherName ?? p.fatherName ?? null,
-      Age: p.Age ?? p.age,
-      Gender: p.Gender ?? p.gender,
-      PhoneNo: p.PhoneNo ?? p.phone,
-      isForeigner: isPassengerForeigner ? 1 : 0,
-      docType:
-        p.docType ??
-        p.documentType ??
-        (isPassengerForeigner ? "PASSPORT" : null),
-      docId: p.docId ?? p.documentId ?? p.passportNo,
-      Nationality: p.Nationality ?? p.nationality ?? null,
-      VisaNo: p.VisaNo ?? p.visaNo ?? null,
-      Residence: p.Residence ?? p.residence,
-    };
+  return {
+    PassengerName: p.PassengerName ?? p.name,
+    FatherName: p.FatherName ?? p.fatherName ?? null,
+    Age: p.Age ?? p.age,
+    Gender: p.Gender ?? p.gender,
+    PhoneNo: p.PhoneNo ?? p.phone,
+
+    isForeigner: isPassengerForeigner ? 1 : 0,
+    isIslander: p.isIslander ?? null, // ✅ ADD THIS
+
+    docType: isPassengerForeigner ? "PASSPORT" : p.documentType || p.docType,
+    docId: isPassengerForeigner
+      ? p.passportNo || p.docId
+      : p.documentId || p.docId,
+
+    Nationality: isPassengerForeigner ? p.nationality || p.Nationality : null,
+    VisaNo: isPassengerForeigner ? p.visaNo || p.VisaNo : null,
+
+    Residence: p.residence || p.Residence,
   };
+};
 
-  const buildPassengerToSave = () => ({
-    ...passenger,
-    isForeigner: isForeigner === "yes" ? 1 : 0,
-    documentType:
-      isForeigner === "yes" ? "PASSPORT" : passenger.documentType,
-  });
-
->>>>>>> b2b3d2d (20042026 return trip completed)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -148,6 +151,28 @@ export default function AddTrip() {
 
     if (accessToken) fetchData();
   }, [accessToken]);
+
+  useEffect(() => {
+    if (isReturn) {
+      setReturnTripData((prev) => ({
+        ...prev,
+        date: returnDate,
+        convoyTime: returnConvoyTime,
+      }));
+    }
+  }, [returnDate, returnConvoyTime]);
+
+  useEffect(() => {
+    if (isReturn) {
+      setReturnTripData((prev) => ({
+        ...prev,
+        vId: formData.vId,
+        dId: formData.dId,
+        origin: formData.destination,
+        destination: formData.origin,
+      }));
+    }
+  }, [formData.vId, formData.dId, formData.origin, formData.destination]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -197,8 +222,6 @@ export default function AddTrip() {
     fetchConveyTimes();
   }, [formData.loc_id, accessToken]);
 
-<<<<<<< HEAD
-=======
   useEffect(() => {
     const fetchReturnConvey = async () => {
       if (!accessToken || !formData.destination) {
@@ -230,7 +253,6 @@ export default function AddTrip() {
     }
   }, [formData.destination, isReturn, accessToken]);
 
->>>>>>> b2b3d2d (20042026 return trip completed)
   // useEffect(() => {
   //   const fetchStoppedConveys = async () => {
   //     if (!accessToken || !formData.loc_id || !formData.date) {
@@ -343,8 +365,20 @@ export default function AddTrip() {
 
     let passengerToSave = {
       ...passenger,
-      isForeigner: isForeigner === "yes" ? 1 : 0, // ✅ PER PASSENGER
+      isForeigner: isForeigner === "yes" ? 1 : 0,
+ isIslander: isForeigner === "no" ? (isIslander === "yes" ? 1 : 0) : null,
+      passportNo: isForeigner === "yes" ? passenger.passportNo : null,
+      nationality: isForeigner === "yes" ? passenger.nationality : null,
+      visaNo: isForeigner === "yes" ? passenger.visaNo : null,
+
+      documentType: isForeigner === "yes" ? "PASSPORT" : passenger.documentType,
+      documentId: isForeigner === "yes" ? null : passenger.documentId,
     };
+    if (isForeigner === "no") {
+      passengerToSave.passportNo = null;
+      passengerToSave.nationality = null;
+      passengerToSave.visaNo = null;
+    }
 
     /* 🔹 FORCE PASSPORT FOR FOREIGNERS */
     if (isForeigner === "yes") {
@@ -428,8 +462,10 @@ export default function AddTrip() {
       return;
     }
 
-    /* 🔹 SEAT VALIDATION */
-    let tempPassengers = [...formData.Passengers];
+    let tempPassengers =
+      mode === "return"
+        ? [...returnTripData.Passengers]
+        : [...formData.Passengers];
 
     if (editIndex !== -1) {
       tempPassengers[editIndex] = passengerToSave;
@@ -450,18 +486,64 @@ export default function AddTrip() {
 
     /* 🔹 SAVE PASSENGER */
     if (editIndex === -1) {
-      setFormData({
-        ...formData,
-        Passengers: [...formData.Passengers, passengerToSave],
-      });
+      if (mode === "return") {
+        setReturnTripData((prev) => ({
+          ...prev,
+          Passengers: [...prev.Passengers, passengerToSave],
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          Passengers: [...prev.Passengers, passengerToSave],
+        }));
+
+        // sync if SAME
+        // if (isReturn && returnType === "same") {
+        //   setReturnTripData((prev) => ({
+        //     ...prev,
+        //     Passengers: [...prev.Passengers, passengerToSave],
+        //   }));
+        // }
+      }
+
+      // ✅ SYNC TO RETURN
+      if (mode === "forward" && isReturn && returnType === "same") {
+        setReturnTripData((prev) => ({
+          ...prev,
+          Passengers: [...prev.Passengers, passengerToSave],
+        }));
+      }
       setPassengerSuccess("Passenger added successfully!");
     } else {
-      const updatedPassengers = [...formData.Passengers];
-      updatedPassengers[editIndex] = passengerToSave;
-      setFormData({
-        ...formData,
-        Passengers: updatedPassengers,
-      });
+      if (mode === "return") {
+        const updated = [...returnTripData.Passengers];
+        updated[editIndex] = passengerToSave;
+
+        setReturnTripData((prev) => ({
+          ...prev,
+          Passengers: updated,
+        }));
+      } else {
+        const updated = [...formData.Passengers];
+        updated[editIndex] = passengerToSave;
+
+        setFormData((prev) => ({
+          ...prev,
+          Passengers: updated,
+        }));
+
+        // sync if SAME
+        if (mode === "forward" && isReturn && returnType === "same") {
+          const updatedReturn = [...returnTripData.Passengers];
+          updatedReturn[editIndex] = passengerToSave;
+
+          setReturnTripData((prev) => ({
+            ...prev,
+            Passengers: updatedReturn,
+          }));
+        }
+      }
+
       setPassengerSuccess("Passenger updated successfully!");
       setEditIndex(-1);
     }
@@ -498,34 +580,50 @@ export default function AddTrip() {
     setTimeout(() => setPassengerSuccess(""), 3000);
   };
   const handleEditPassenger = (index) => {
-    const p = formData.Passengers[index];
+    const source =
+      mode === "return" ? returnTripData.Passengers : formData.Passengers;
 
+    const p = source[index];
     setPassenger({
       ...p,
       documentType: p.documentType || "PASSPORT",
+      passportNo: p.passportNo || "",
+      nationality: p.nationality || "",
+      visaNo: p.visaNo || "",
     });
 
-    // ✅ restore islander dropdown
+    // 🔥 CRITICAL FIX
+    setIsForeigner(p.isForeigner === 1 ? "yes" : "no");
+
+    // Islander only for Indian
     if (p.isForeigner === 0) {
       setIsIslander(p.isIslander === 1 ? "yes" : "no");
+    } else {
+      setIsIslander("");
     }
 
     setEditIndex(index);
   };
 
   const handleRemovePassenger = (index) => {
-    const updatedPassengers = formData.Passengers.filter((_, i) => i !== index);
-    setFormData({ ...formData, Passengers: updatedPassengers });
-    if (editIndex === index) {
-      setEditIndex(-1);
-      setPassenger({
-        name: "",
-        age: "",
-        gender: "",
-        phone: "",
-        documentType: "",
-        documentId: "",
-      });
+    if (mode === "return") {
+      setReturnTripData((prev) => ({
+        ...prev,
+        Passengers: prev.Passengers.filter((_, i) => i !== index),
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        Passengers: prev.Passengers.filter((_, i) => i !== index),
+      }));
+
+      // ✅ sync if SAME
+      if (mode === "forward" && isReturn && returnType === "same") {
+        setReturnTripData((prev) => ({
+          ...prev,
+          Passengers: prev.Passengers.filter((_, i) => i !== index),
+        }));
+      }
     }
   };
 
@@ -612,10 +710,6 @@ export default function AddTrip() {
 
     return result.isConfirmed;
   };
-<<<<<<< HEAD
-
-  const handleSubmit = async () => {
-=======
   // ✅ COMMON FUNCTION TO SUBMIT
   const submitTrip = (type = returnType, accepted = true) => {
     const payload = {
@@ -638,10 +732,14 @@ export default function AddTrip() {
       returnConvoyTime,
       returnType: type,
       returnPassengers:
-        type === "same" ? [] : returnPassengers.map(mapPassengerForPayload),
+        type === "same"
+          ? []
+          : returnTripData.Passengers.map(mapPassengerForPayload),
     };
 
     console.log("FINAL PAYLOAD:", payload);
+    console.log("FORWARD JSON:", formData);
+    console.log("RETURN JSON:", returnTripData);
 
     handleAddTripAPI(payload, accessToken, (response) => {
       if (response?.success && response?.data?.trip?.tId) {
@@ -688,7 +786,6 @@ export default function AddTrip() {
 
   const handleSubmit = async () => {
     // ✅ Basic validation
->>>>>>> b2b3d2d (20042026 return trip completed)
     if (
       !formData.vId ||
       !formData.dId ||
@@ -701,107 +798,6 @@ export default function AddTrip() {
         icon: "error",
         title: "Form Incomplete",
         text: "Please fill all trip details.",
-<<<<<<< HEAD
-        confirmButtonText: "OK",
-      });
-      return;
-    }
-    // if (formData.Passengers.length === 0) {
-    //   MySwal.fire({
-    //     icon: "error",
-    //     title: "No Passengers",
-    //     text: "Please add at least one passenger.",
-    //     confirmButtonText: "OK",
-    //   });
-    //   return;
-    // }
-    //  RULES CHECK (NEW)
-    const accepted = await showTripRulesModal();
-    if (!accepted) return;
-
-    const payload = {
-      vId: formData.vId,
-      dId: formData.dId,
-      origin: formData.origin,
-      destination: formData.destination,
-      date: formData.date,
-      declarationAccepted: accepted === true,
-      isTouristTrip: isTouristTrip === "yes" ? 1 : 0,
-      convoyTime: formData.convoyTime,
-      Passengers: formData.Passengers.map((p) => ({
-        PassengerName: p.name,
-        FatherName: p.fatherName || null,
-        Age: p.age,
-        Gender: p.gender,
-        PhoneNo: p.phone,
-        isForeigner: p.isForeigner,
-        docType: p.documentType,
-        docId: p.documentId || p.passportNo,
-        Nationality: p.nationality || null,
-        VisaNo: p.visaNo || null,
-        Residence: p.residence,
-        PassengerPANId: "ABCDE1234F",
-      })),
-      totalPax: formData.Passengers.length,
-    };
-    console.log("latest", payload);
-    handleAddTripAPI(payload, accessToken, (response) => {
-      console.log("✅ API Response received:", response);
-
-      if (response?.success && response?.data?.trip?.tId) {
-        const tripId = response.data.trip.tId;
-        const tripDate = response.data.trip.date;
-        //console.log("ttatattaa");
-        const formattedDate = formatDateDDMMYY(tripDate);
-        const conveyname = response.data.trip.conveyTimeName;
-        const conveytime = response.data.trip.conveyTimeValue;
-
-        MySwal.fire({
-          icon: "success",
-          title: "Trip Created Successfully!",
-          html: `
-    <div>
-      <p>
-        <strong>Trip ID:</strong> ${tripId} |
-        <strong>Date:</strong> ${formattedDate}
-      </p>
-      <p>
-        <strong>Convey:</strong> ${conveyname} |
-        <strong>Time:</strong> ${conveytime}
-      </p>
-    </div>
-  `,
-          confirmButtonText: "View Application",
-        }).then(() => {
-          navigate(`/ManageTrip/ViewTrip/${tripId}`);
-        });
-      } else {
-        MySwal.fire({
-          icon: "warning",
-          title: "Trip Created, but ID missing",
-          text: "Please check the trip list.",
-          confirmButtonText: "OK",
-        });
-      }
-
-      setFormData({
-        vId: "",
-        dId: "",
-        origin: "",
-        destination: "",
-        loc_id: "",
-        date: "",
-        convoyTime: "",
-        Passengers: [],
-      });
-      setStep(1);
-      setEditIndex(-1);
-      setVehicleSeating(null);
-    });
-  };
-  // Convert server date (e.g., "2025-10-31") to a Date object
-  // ✅ Use serverDate safely without timezone shift
-=======
       });
       return;
     }
@@ -838,6 +834,20 @@ export default function AddTrip() {
 
     // 🔥 STEP 1: Ask return type FIRST
     if (isReturn) {
+      // ✅ FIXED: no need to check mode
+      const isModified =
+        returnTripData.Passengers.length !== formData.Passengers.length ||
+        JSON.stringify(returnTripData.Passengers) !==
+          JSON.stringify(formData.Passengers);
+
+      if (isModified || returnType === "modified") {
+        const accepted = await showTripRulesModal();
+        if (!accepted) return;
+
+        submitTrip("modified", accepted);
+        return;
+      }
+
       const result = await MySwal.fire({
         title: "Return Journey",
         text: "Are same passengers travelling in return?",
@@ -848,7 +858,6 @@ export default function AddTrip() {
       });
 
       if (result.isConfirmed) {
-        // ✅ SAME → go to declaration
         const accepted = await showTripRulesModal();
         if (!accepted) return;
 
@@ -856,10 +865,21 @@ export default function AddTrip() {
       } else {
         setReturnType("modified");
 
-        // ✅ IMPORTANT: copy existing passengers
-        setReturnPassengers([...formData.Passengers]);
+        setReturnTripData((prev) => ({
+          ...prev,
+          Passengers:
+            prev.Passengers.length > 0
+              ? prev.Passengers // ✅ keep existing edited data
+              : [...formData.Passengers], // only first time copy
+        }));
 
-        setShowReturnModal(true);
+        setMode("return");
+
+        MySwal.fire({
+          icon: "info",
+          title: "Modify Return Passengers",
+          text: "You are now editing return passengers",
+        });
       }
     } else {
       // ✅ No return → declaration directly
@@ -948,7 +968,6 @@ export default function AddTrip() {
   // Convert server date (e.g., "2025-10-31") to a Date object
   // ✅ Use serverDate safely without timezone shift
 
->>>>>>> b2b3d2d (20042026 return trip completed)
   let minDate = "";
   let maxDate = "";
 
@@ -1098,7 +1117,11 @@ export default function AddTrip() {
           if (!allowedDocs.includes(documentType))
             errors.push("Invalid DocumentType");
 
-          if (!documentIdRaw) errors.push("DocumentId required");
+          if (!documentIdRaw) {
+            errors.push("DocumentId required");
+          } else if (documentIdRaw.length !== 4) {
+            errors.push("DocumentId must be exactly 4 characters");
+          }
 
           if (!["yes", "no"].includes(isIslanderVal))
             errors.push("IsIslander must be yes or no");
@@ -1191,6 +1214,24 @@ Check console for details.
 
   const getChildCount = (passengers) =>
     passengers.filter((p) => Number(p.age) <= 12).length;
+
+  const currentPassengers =
+    mode === "return" ? returnTripData.Passengers : formData.Passengers;
+
+  const resetPassenger = () => ({
+    title: "",
+    name: "",
+    fatherName: "",
+    age: "",
+    gender: "",
+    phone: "",
+    residence: "",
+    documentType: "",
+    documentId: "",
+    passportNo: "",
+    nationality: "",
+    visaNo: "",
+  });
 
   return (
     <DashboardLayout>
@@ -1403,8 +1444,6 @@ Check console for details.
                     </p>
                   )}
               </div>
-<<<<<<< HEAD
-=======
 
               <div className="space-y-2">
                 <Label>Return Journey</Label>
@@ -1415,11 +1454,29 @@ Check console for details.
                     setIsReturn(value);
 
                     if (!value) {
-                      setReturnDate("");
-                      setReturnConvoyTime("");
-                      setReturnType("same");
-                      setReturnPassengers([]);
-                      setReturnConveyList([]); // 🔥 IMPORTANT
+                      setReturnType("same"); // ✅ FIX
+                    }
+
+                    if (value) {
+                      setReturnTripData({
+                        vId: formData.vId,
+                        dId: formData.dId,
+                        origin: formData.destination,
+                        destination: formData.origin,
+                        date: returnDate,
+                        convoyTime: returnConvoyTime,
+                        Passengers: [...formData.Passengers],
+                      });
+                    } else {
+                      setReturnTripData({
+                        vId: "",
+                        dId: "",
+                        origin: "",
+                        destination: "",
+                        date: "",
+                        convoyTime: "",
+                        Passengers: [],
+                      });
                     }
                   }}
                   className="w-full border rounded px-3 py-2"
@@ -1461,225 +1518,270 @@ Check console for details.
                   </div>
                 </>
               )}
->>>>>>> b2b3d2d (20042026 return trip completed)
             </div>
           )}
+
           {step === 2 && (
             <>
-              {/* Trip summary card */}
-              <Card className="mb-6 bg-gray-50 border border-gray-200 shadow-sm">
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 pt-4">
-                  <div>
-                    <strong>Vehicle No:</strong>{" "}
-                    {selectedVehicle?.vNum ||
-                      `Vehicle ${formData.vId || "N/A"}`}
-                  </div>
-                  <div>
-                    <strong>Route:</strong>{" "}
-                    {locationList.find(
-                      (p) => String(p.id) === String(formData.origin),
-                    )?.location || "N/A"}{" "}
-                    →{" "}
-                    {locationList.find(
-                      (p) => String(p.id) === String(formData.destination),
-                    )?.location || "N/A"}
-                  </div>
+              {isReturn && (
+                <div className="mb-4 flex gap-2">
+                  <Button
+                    variant={mode === "forward" ? "default" : "outline"}
+                    onClick={() => {
+                      setMode("forward");
+                      setEditIndex(-1);
+                      setPassenger(resetPassenger());
+                      setIsForeigner("");
+                      setIsIslander(""); // 🔥 ADD THIS
+                    }}
+                  >
+                    Forward Passengers
+                  </Button>
 
-                  <div>
-                    <strong>Date:</strong> {formData.date}
-                  </div>
-                  <div>
-                    <strong>Convoy Time:</strong>{" "}
-                    {(() => {
-                      const matching = conveyTimeList.find(
-                        (p) => String(p.id) === String(formData.convoyTime),
-                      );
-                      return matching
-                        ? `${matching.convey_time} (${matching.convey_name})`
-                        : "N/A";
-                    })()}
-                  </div>
-                  <div>
-                    <div>
-                      <strong>Total Passengers:</strong>{" "}
-                      {formData.Passengers.length}
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                        Adults: {getAdultCount(formData.Passengers)}
-                      </span>
-                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                        Children: {getChildCount(formData.Passengers)}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <strong>Vehicle Capacity:</strong> {vehicleSeating}{" "}
-                    {/* out of {vehicleSeating || "N/A"} seats filled */}
-                  </div>
-                </CardContent>
-              </Card>
-              <div className="mb-6">
-                <Label>
-                  Are Passengers Foreigners?{" "}
-                  <span className="text-red-600">*</span>
-                </Label>
-                <select
-                  value={isForeigner}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setIsForeigner(value);
-                    setEditIndex(-1);
-                    setIsIslander("");
-
-                    if (value === "yes") {
-                      // ✅ Foreigner → always PASSPORT
-                      setPassenger({
-                        title: "",
-                        name: "",
-                        fatherName: "",
-                        age: "",
-                        gender: "",
-                        phone: "",
-                        residence: "",
-                        documentType: "PASSPORT", // ✅ FIX
-                        documentId: "",
-                        passportNo: "",
-                        nationality: "",
-                        visaNo: "",
-                      });
-                    } else {
-                      // ✅ Indian
-                      setPassenger({
-                        name: "",
-                        fatherName: "",
-                        age: "",
-                        gender: "",
-                        phone: "",
-                        residence: "",
-                        documentType: "",
-                        documentId: "",
-                      });
-                    }
-                  }}
-                  className="border rounded px-3 py-2 w-full sm:w-1/3 text-sm"
-                >
-                  <option value="">Select</option>
-                  <option value="no">No (Indian)</option>
-                  <option value="yes">Yes (Foreigner)</option>
-                </select>
-              </div>
-
-              {/* Passenger entry form */}
-              {/* Passenger Entry (Indian / Foreigner) */}
-              {isForeigner === "no" && (
-                <AddPassengerIndian
-                  passenger={passenger}
-                  setPassenger={setPassenger}
-                  isIslander={isIslander}
-                  setIsIslander={setIsIslander}
-                  onAdd={handleAddPassenger}
-                  editIndex={editIndex}
-                />
-              )}
-
-              {isForeigner === "yes" && (
-                <AddPassengerForeigner
-                  passenger={passenger}
-                  setPassenger={setPassenger}
-                  onAdd={handleAddPassenger}
-                  editIndex={editIndex}
-                />
-              )}
-
-              {/* Excel Upload - only for usertype 2 */}
-              {user?.usertype === 2 && isForeigner === "no" && (
-                <div className="mb-4">
-                  <Label className="font-semibold">
-                    Upload Passengers (Excel)
-                  </Label>
-
-                  <input
-                    type="file"
-                    accept=".xlsx, .xls"
-                    onChange={handleFileUpload}
-                    className="mt-2 block w-full text-sm border rounded p-2 bg-white"
-                  />
-
-                  <p className="text-xs text-gray-500 mt-1">
-                    Upload Excel file with passenger details.
-                  </p>
+                  <Button
+                    variant={mode === "return" ? "default" : "outline"}
+                    onClick={() => {
+                      setMode("return");
+                      setEditIndex(-1);
+                      setPassenger(resetPassenger());
+                      setIsForeigner("");
+                      setIsIslander(""); // 🔥 ADD THIS
+                    }}
+                  >
+                    Return Passengers
+                  </Button>
                 </div>
               )}
 
-              {/* Passenger Table - Responsive */}
-              <div className="border p-2 sm:p-4 rounded-lg bg-gray-50 mt-6 overflow-x-auto">
-                <h3 className="text-lg font-semibold mb-4">Passenger Table</h3>
-                <table className="min-w-full text-xs sm:text-sm bg-white rounded">
-                  <thead className="hidden sm:table-header-group">
-                    {/* Hide headers on mobile, show on desktop */}
-                    <tr>
-                      <th className="p-2 border-b text-left font-semibold">
-                        #
-                      </th>
-                      <th className="p-2 border-b text-left font-semibold">
-                        Name
-                      </th>
-                      <th className="p-2 border-b text-left font-semibold">
-                        Age
-                      </th>
-                      <th className="p-2 border-b text-left font-semibold">
-                        Gender
-                      </th>
-                      <th className="p-2 border-b text-left font-semibold">
-                        Phone
-                      </th>
-                      <th className="p-2 border-b text-left font-semibold">
-                        Doc Type
-                      </th>
-                      <th className="p-2 border-b text-left font-semibold">
-                        Doc ID
-                      </th>
-                      <th className="p-2 border-b text-left font-semibold">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {formData.Passengers.map((p, idx) => (
-                      <tr
-                        key={idx}
-                        className="flex flex-col sm:table-row border-b mb-2 sm:mb-0"
-                      >
-                        <td className="p-2">{idx + 1}</td>
-                        <td className="p-2">{p.name}</td>
-                        <td className="p-2">{p.age}</td>
-                        <td className="p-2">{p.gender}</td>
-                        <td className="p-2">{p.phone}</td>
-                        <td className="p-2">{p.documentType}</td>
-                        <td className="p-2">{p.documentId || p.passportNo}</td>
-                        <td className="p-2 flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditPassenger(idx)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleRemovePassenger(idx)}
-                          >
-                            Remove
-                          </Button>
-                        </td>
+              {/* 🔽 KEEP YOUR EXISTING UI HERE */}
+              <>
+                {/* Trip summary card */}
+                <Card className="mb-6 bg-gray-50 border border-gray-200 shadow-sm">
+                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm text-gray-700 pt-4">
+                    <div>
+                      <strong>Vehicle No:</strong>{" "}
+                      {selectedVehicle?.vNum ||
+                        `Vehicle ${formData.vId || "N/A"}`}
+                    </div>
+                    <div>
+                      <strong>Route:</strong>{" "}
+                      {locationList.find(
+                        (p) => String(p.id) === String(formData.origin),
+                      )?.location || "N/A"}{" "}
+                      →{" "}
+                      {locationList.find(
+                        (p) => String(p.id) === String(formData.destination),
+                      )?.location || "N/A"}
+                    </div>
+
+                    <div>
+                      <strong>Date:</strong> {formData.date}
+                    </div>
+                    <div>
+                      <strong>Convoy Time:</strong>{" "}
+                      {(() => {
+                        const matching = conveyTimeList.find(
+                          (p) => String(p.id) === String(formData.convoyTime),
+                        );
+                        return matching
+                          ? `${matching.convey_time} (${matching.convey_name})`
+                          : "N/A";
+                      })()}
+                    </div>
+                    <div>
+                      <div>
+                        <strong>
+                          {mode === "return" ? "Return" : "Forward"} Passengers:
+                        </strong>{" "}
+                        {currentPassengers.length}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                          Adults: {getAdultCount(currentPassengers)}
+                        </span>
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                          Children: {getChildCount(currentPassengers)}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <strong>Vehicle Capacity:</strong> {vehicleSeating}{" "}
+                      {/* out of {vehicleSeating || "N/A"} seats filled */}
+                    </div>
+                  </CardContent>
+                </Card>
+                <div className="mb-6">
+                  <Label>
+                    Are Passengers Foreigners?{" "}
+                    <span className="text-red-600">*</span>
+                  </Label>
+                  <select
+                    value={isForeigner}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setIsForeigner(value);
+                      setEditIndex(-1);
+                      setIsIslander("");
+
+                      if (value === "yes") {
+                        // ✅ Foreigner → always PASSPORT
+                        setPassenger({
+                          title: "",
+                          name: "",
+                          fatherName: "",
+                          age: "",
+                          gender: "",
+                          phone: "",
+                          residence: "",
+                          documentType: "PASSPORT", // ✅ FIX
+                          documentId: "",
+                          passportNo: "",
+                          nationality: "",
+                          visaNo: "",
+                        });
+                      } else {
+                        // ✅ Indian
+                        setPassenger({
+                          name: "",
+                          fatherName: "",
+                          age: "",
+                          gender: "",
+                          phone: "",
+                          residence: "",
+                          documentType: "",
+                          documentId: "",
+                        });
+                      }
+                    }}
+                    className="border rounded px-3 py-2 w-full sm:w-1/3 text-sm"
+                  >
+                    <option value="">Select</option>
+                    <option value="no">No (Indian)</option>
+                    <option value="yes">Yes (Foreigner)</option>
+                  </select>
+                </div>
+
+                {/* Passenger entry form */}
+                {/* Passenger Entry (Indian / Foreigner) */}
+                {isForeigner === "no" && (
+                  <AddPassengerIndian
+                    passenger={passenger}
+                    setPassenger={setPassenger}
+                    isIslander={isIslander}
+                    setIsIslander={setIsIslander}
+                    onAdd={handleAddPassenger}
+                    editIndex={editIndex}
+                  />
+                )}
+
+                {isForeigner === "yes" && (
+                  <AddPassengerForeigner
+                    passenger={passenger}
+                    setPassenger={setPassenger}
+                    onAdd={handleAddPassenger}
+                    editIndex={editIndex}
+                  />
+                )}
+
+                {/* Excel Upload - only for usertype 2 */}
+                {user?.usertype === 2 && isForeigner === "no" && (
+                  <div className="mb-4">
+                    <Label className="font-semibold">
+                      Upload Passengers (Excel)
+                    </Label>
+
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleFileUpload}
+                      className="mt-2 block w-full text-sm border rounded p-2 bg-white"
+                    />
+
+                    <p className="text-xs text-gray-500 mt-1">
+                      Upload Excel file with passenger details.
+                    </p>
+                  </div>
+                )}
+
+                {/* Passenger Table - Responsive */}
+                <div className="border p-2 sm:p-4 rounded-lg bg-gray-50 mt-6 overflow-x-auto">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Passenger Table
+                  </h3>
+
+                  <h3 className="text-sm font-bold mb-2">
+                    {mode === "return"
+                      ? "Editing Return Passengers"
+                      : "Editing Forward Passengers"}
+                  </h3>
+                  <table className="min-w-full text-xs sm:text-sm bg-white rounded">
+                    <thead className="hidden sm:table-header-group">
+                      {/* Hide headers on mobile, show on desktop */}
+                      <tr>
+                        <th className="p-2 border-b text-left font-semibold">
+                          #
+                        </th>
+                        <th className="p-2 border-b text-left font-semibold">
+                          Name
+                        </th>
+                        <th className="p-2 border-b text-left font-semibold">
+                          Age
+                        </th>
+                        <th className="p-2 border-b text-left font-semibold">
+                          Gender
+                        </th>
+                        <th className="p-2 border-b text-left font-semibold">
+                          Phone
+                        </th>
+                        <th className="p-2 border-b text-left font-semibold">
+                          Doc Type
+                        </th>
+                        <th className="p-2 border-b text-left font-semibold">
+                          Doc ID
+                        </th>
+                        <th className="p-2 border-b text-left font-semibold">
+                          Action
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {currentPassengers.map((p, idx) => (
+                        <tr
+                          key={idx}
+                          className="flex flex-col sm:table-row border-b mb-2 sm:mb-0"
+                        >
+                          <td className="p-2">{idx + 1}</td>
+                          <td className="p-2">{p.name}</td>
+                          <td className="p-2">{p.age}</td>
+                          <td className="p-2">{p.gender}</td>
+                          <td className="p-2">{p.phone}</td>
+                          <td className="p-2">{p.documentType}</td>
+                          <td className="p-2">
+                            {p.documentId || p.passportNo}
+                          </td>
+                          <td className="p-2 flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditPassenger(idx)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRemovePassenger(idx)}
+                            >
+                              Remove
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             </>
           )}
 
@@ -1706,180 +1808,6 @@ Check console for details.
           </div>
         </CardContent>
       </Card>
-<<<<<<< HEAD
-=======
-
-      {showReturnModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-[600px] max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">
-              Modify Return Passengers
-            </h2>
-
-            {/* Passenger Table */}
-            <div className="max-h-60 overflow-y-auto mb-4">
-              <table className="w-full text-sm border rounded">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="p-2">#</th>
-                    <th className="p-2">Name</th>
-                    <th className="p-2">Age</th>
-                    <th className="p-2">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {returnPassengers.map((p, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-2">{i + 1}</td>
-                      <td className="p-2">{p.name}</td>
-                      <td className="p-2">{p.age}</td>
-                      <td className="p-2 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setPassenger(p);
-                            setEditIndex(i);
-                          }}
-                        >
-                          Edit
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() =>
-                            setReturnPassengers((prev) =>
-                              prev.filter((_, idx) => idx !== i),
-                            )
-                          }
-                        >
-                          Remove
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* ➕ Add Passenger Button */}
-            <Button
-              className="mb-4 w-full"
-              onClick={() => {
-                setPassenger({
-                  name: "",
-                  fatherName: "",
-                  age: "",
-                  gender: "",
-                  phone: "",
-                  residence: "",
-                  documentType: "",
-                  documentId: "",
-                });
-                setEditIndex(-1);
-              }}
-            >
-              ➕ Add Passenger
-            </Button>
-
-            {/* Passenger Form */}
-            {isForeigner === "no" && (
-              <AddPassengerIndian
-                passenger={passenger}
-                setPassenger={setPassenger}
-                isIslander={isIslander}
-                setIsIslander={setIsIslander}
-                onAdd={() => {
-                  const passengerToSave = buildPassengerToSave();
-
-                  if (editIndex !== -1) {
-                    const updated = [...returnPassengers];
-                    updated[editIndex] = passengerToSave;
-                    setReturnPassengers(updated);
-                    setEditIndex(-1);
-                  } else {
-                    setReturnPassengers((prev) => [...prev, passengerToSave]);
-                  }
-
-                  setPassenger({
-                    name: "",
-                    fatherName: "",
-                    age: "",
-                    gender: "",
-                    phone: "",
-                    residence: "",
-                    documentType: "",
-                    documentId: "",
-                  });
-                }}
-                editIndex={editIndex}
-              />
-            )}
-
-            {isForeigner === "yes" && (
-              <AddPassengerForeigner
-                passenger={passenger}
-                setPassenger={setPassenger}
-                onAdd={() => {
-                  const passengerToSave = buildPassengerToSave();
-
-                  if (editIndex !== -1) {
-                    const updated = [...returnPassengers];
-                    updated[editIndex] = passengerToSave;
-                    setReturnPassengers(updated);
-                    setEditIndex(-1);
-                  } else {
-                    setReturnPassengers((prev) => [...prev, passengerToSave]);
-                  }
-
-                  setPassenger({
-                    title: "",
-                    name: "",
-                    fatherName: "",
-                    age: "",
-                    gender: "",
-                    phone: "",
-                    residence: "",
-                    documentType: "PASSPORT",
-                    documentId: "",
-                    passportNo: "",
-                    nationality: "",
-                    visaNo: "",
-                  });
-                }}
-                editIndex={editIndex}
-              />
-            )}
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-2 mt-4">
-              <Button
-                onClick={() => {
-                  setShowReturnModal(false);
-                  setReturnType("same");
-                }}
-                variant="outline"
-              >
-                Cancel
-              </Button>
-
-              <Button
-                onClick={async () => {
-                  const accepted = await showTripRulesModal();
-                  if (!accepted) return;
-
-                  setShowReturnModal(false);
-                  submitTrip("modified", accepted);
-                }}
-              >
-                Submit Return
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
->>>>>>> b2b3d2d (20042026 return trip completed)
     </DashboardLayout>
   );
 }

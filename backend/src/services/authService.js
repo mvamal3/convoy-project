@@ -899,19 +899,12 @@ class AuthService {
   // =============create_new_trip========================
   static async newtrip(tripData, id) {
     let createdPassengers;
-<<<<<<< HEAD
-    let tripWithConvey; // ✅ DECLARE HERE
-
-    console.log("Creating new trip with data:", tripData);
-    // 🔐 Declaration enforcement (MANDATORY)
-=======
     let tripWithConvey;
     let returnTrip = null;
 
     console.log("Creating new trip with data:", tripData);
 
     // 🔐 Declaration enforcement
->>>>>>> b2b3d2d (20042026 return trip completed)
     if (tripData.declarationAccepted !== true) {
       throw new Error("Declaration not accepted. Trip submission denied.");
     }
@@ -923,22 +916,14 @@ class AuthService {
       throw new Error(validation.errors.join(", "));
     }
 
-<<<<<<< HEAD
-    // Get registration ID
-=======
     // ===== Get registration ID =====
->>>>>>> b2b3d2d (20042026 return trip completed)
     let regIdObj = await Registration.findOne({
       where: { userId: id },
       attributes: ["reg_id"],
     });
     let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
 
-<<<<<<< HEAD
-    // ===== Generate tId =====
-=======
     // ===== Generate forward tId =====
->>>>>>> b2b3d2d (20042026 return trip completed)
     const today = new Date();
     const day = String(today.getDate()).padStart(2, "0");
     const month = String(today.getMonth() + 1).padStart(2, "0");
@@ -952,11 +937,7 @@ class AuthService {
     const base36Value = BigInt(combined).toString(36).toUpperCase();
     const tId = base36Value;
 
-<<<<<<< HEAD
-    // ===== Create trip =====
-=======
     // ===== Create forward trip =====
->>>>>>> b2b3d2d (20042026 return trip completed)
     const newTrip = await db.Trip.create({
       tId,
       reg_id,
@@ -971,25 +952,6 @@ class AuthService {
       verifiystatus: 0,
     });
 
-<<<<<<< HEAD
-    // ===== Add passengers =====
-    const passengersToCreate = tripDTO.Passengers.map((p) => ({
-      passengerName: p.PassengerName,
-      fatherName: p.FatherName || null,
-
-      isForeigner: p.isForeigner === 1 ? 1 : 0,
-
-      phoneNo: p.PhoneNo,
-      age: p.Age,
-      gender: p.Gender,
-
-      docType: p.docType, // PASSPORT / PAN / AADHAAR
-      docId: p.docId, // passportNo OR last 4 chars
-
-      nationality: p.isForeigner ? p.Nationality : null,
-      visaNumber: p.isForeigner ? p.VisaNo : null,
-
-=======
     // ===== Add forward passengers =====
     const passengersToCreate = tripDTO.Passengers.map((p) => ({
       passengerName: p.PassengerName,
@@ -1002,45 +964,18 @@ class AuthService {
       docId: p.docId,
       nationality: p.isForeigner ? p.Nationality : null,
       visaNumber: p.isForeigner ? p.VisaNo : null,
->>>>>>> b2b3d2d (20042026 return trip completed)
       residence: p.Residence || null,
     }));
 
     createdPassengers = await Passenger.bulkCreate(passengersToCreate);
 
-<<<<<<< HEAD
-    // ===== Trip Relation =====
-=======
     // ===== Create forward trip relation =====
->>>>>>> b2b3d2d (20042026 return trip completed)
     const tripPassengersToCreate = createdPassengers.map((p) => ({
       tId: newTrip.tId,
       pId: p.pId,
       status: 1,
     }));
 
-<<<<<<< HEAD
-    try {
-      await tripRelation.bulkCreate(tripPassengersToCreate);
-
-      // ✅ ASSIGN VALUE (not const)
-      tripWithConvey = await db.Trip.findOne({
-        where: { tId: newTrip.tId },
-        include: [
-          {
-            model: db.TConvey,
-            as: "convey",
-            attributes: ["id", "convey_time", "convey_name"],
-          },
-        ],
-      });
-    } catch (error) {
-      console.error("Failed to insert passengers:", error);
-      throw error;
-    }
-
-    // ✅ RESPONSE UNCHANGED (ONLY VARIABLES ADDED)
-=======
     await tripRelation.bulkCreate(tripPassengersToCreate);
 
     // ===== Fetch forward trip with convey =====
@@ -1073,12 +1008,17 @@ class AuthService {
       let passengersForReturn;
 
       // ✅ SAME passengers
-      if (tripData.returnType === "same") {
+      if (!tripDTO.returnType || tripDTO.returnType === "same") {
         passengersForReturn = createdPassengers;
       } else {
         // 🔁 DIFFERENT passengers
+        const returnPassengersSource =
+          tripDTO.returnPassengers?.length > 0
+            ? tripDTO.returnPassengers
+            : tripDTO.Passengers;
+
         passengersForReturn = await Passenger.bulkCreate(
-          tripDTO.returnPassengers.map((p) => ({
+          returnPassengersSource.map((p) => ({
             passengerName: p.PassengerName,
             fatherName: p.FatherName || null,
             isForeigner: p.isForeigner === 1 ? 1 : 0,
@@ -1098,13 +1038,14 @@ class AuthService {
       returnTrip = await db.Trip.create({
         tId: returnTId,
         reg_id,
-        vId: tripDTO.vId,
-        dId: tripDTO.dId,
-        origin: tripDTO.destination, // reverse
-        destination: tripDTO.origin, // reverse
-        date: tripData.returnDate,
-        convoyTime: tripData.returnConvoyTime,
-        isTourist: tripDTO.isTourist,
+        vId: tripDTO.returnTripData?.vId || tripDTO.vId,
+        dId: tripDTO.returnTripData?.dId || tripDTO.dId,
+        origin: tripDTO.returnTripData?.origin || tripDTO.destination,
+        destination: tripDTO.returnTripData?.destination || tripDTO.origin,
+        date: tripDTO.returnTripData?.date || tripDTO.returnDate,
+        convoyTime:
+          tripDTO.returnTripData?.convoyTime || tripDTO.returnConvoyTime,
+          isTourist: tripDTO.isTourist, 
         status: "1",
         verifiystatus: 0,
       });
@@ -1120,7 +1061,6 @@ class AuthService {
     }
 
     // ===== FINAL RESPONSE =====
->>>>>>> b2b3d2d (20042026 return trip completed)
     return {
       message: "Trip registered successfully",
       trip: {
@@ -1128,10 +1068,7 @@ class AuthService {
         conveyTimeName: tripWithConvey.convey?.convey_name || null,
         conveyTimeValue: tripWithConvey.convey?.convey_time || null,
       },
-<<<<<<< HEAD
-=======
       returnTrip: returnTrip || null,
->>>>>>> b2b3d2d (20042026 return trip completed)
     };
   }
 
