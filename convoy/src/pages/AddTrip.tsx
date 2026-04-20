@@ -79,7 +79,7 @@ export default function AddTrip() {
   //   phone: "",
   //   documentType: "",
   //   documentId: "",
-  //   residence: "", // ✅ NEW
+  //   residence: "", // 
   // });
   console.log("User Type:", user?.usertype);
   const [passenger, setPassenger] = useState({
@@ -114,7 +114,7 @@ const mapPassengerForPayload = (p) => {
     PhoneNo: p.PhoneNo ?? p.phone,
 
     isForeigner: isPassengerForeigner ? 1 : 0,
-    isIslander: p.isIslander ?? null, // ✅ ADD THIS
+    isIslander: p.isIslander ?? null, 
 
     docType: isPassengerForeigner ? "PASSPORT" : p.documentType || p.docType,
     docId: isPassengerForeigner
@@ -1504,7 +1504,7 @@ Check console for details.
                     <Label>Return Convoy Time</Label>
                     <select
                       value={returnConvoyTime}
-                      disabled={!returnDate} // ✅ add this
+                      disabled={!returnDate} 
                       onChange={(e) => setReturnConvoyTime(e.target.value)}
                       className="w-full border rounded px-3 py-2"
                     >
@@ -1532,7 +1532,7 @@ Check console for details.
                       setEditIndex(-1);
                       setPassenger(resetPassenger());
                       setIsForeigner("");
-                      setIsIslander(""); // 🔥 ADD THIS
+                      setIsIslander(""); 
                     }}
                   >
                     Forward Passengers
@@ -1545,7 +1545,7 @@ Check console for details.
                       setEditIndex(-1);
                       setPassenger(resetPassenger());
                       setIsForeigner("");
-                      setIsIslander(""); // 🔥 ADD THIS
+                      setIsIslander(""); 
                     }}
                   >
                     Return Passengers
