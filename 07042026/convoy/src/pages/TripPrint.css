@@ -1,0 +1,73 @@
+/* ---------- A4 Print Layout ---------- */
+@media print {
+  header,
+  aside,
+  nav,
+  .sidebar,
+  .topbar,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    font-family: "Arial", sans-serif;
+    font-size: 12px;
+  }
+
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  .print-page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 10mm;
+    background: #fff;
+  }
+
+  .print-header h2 {
+    font-size: 20px;
+    color: #111;
+  }
+
+  .print-container {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10mm;
+    box-sizing: border-box;
+  }
+
+  .card {
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #ddd !important;
+    padding: 6px !important;
+    text-align: left !important;
+  }
+
+  .qr-section {
+    text-align: center;
+    page-break-inside: avoid;
+  }
+
+  .print-footer {
+    border-top: 1px solid #ccc;
+    margin-top: 10mm;
+    padding-top: 4mm;
+  }
+}

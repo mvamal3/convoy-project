@@ -1,0 +1,14 @@
+1. Get Trip details By Trip ID
+    GET ->  http://localhost:3000/api/auth/get-trip-details-by-tId
+    Body>Raw> :
+    {
+        "tId" : "47"
+    }
+
+
+2. Get Trip Detail by Date
+    GET  ->   http://localhost:3000/api/auth/get-trip-details-by-dt
+    Body>Raw> : 
+     {
+    "ptripdt" : "2025-06-27"
+    }

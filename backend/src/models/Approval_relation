@@ -1,0 +1,48 @@
+module.exports = (sequelize, DataTypes) => {
+  const approvalRelation = sequelize.define(
+    'approvalRelation',
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true
+      },
+      tId: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+      },
+      oId: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+    }
+    },
+    {
+      tableName: 'approval_relation',
+      timestamps: false
+    }
+
+  );
+
+  // Optional: Clean object
+  approvalRelation.prototype.toSafeObject = function () {
+    const { ...safeData } = this.toJSON();
+    return safeData;
+  };
+
+  // Define associations
+  approvalRelation.associate = (models) => {
+    // Reference to Trip model
+    approvalRelation.belongsTo(models.Trip, {
+      foreignKey: 'tId',
+      as: 'trip'
+    });
+
+    // Reference to Officer model
+    approvalRelation.belongsTo(models.Officer, {
+      foreignKey: 'oId',
+      as: 'officer'
+    });
+  };
+
+  return approvalRelation;
+};
