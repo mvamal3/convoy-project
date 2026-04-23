@@ -251,6 +251,28 @@ const TripPrintPreview = () => {
           ))}
         </tbody>
       </table>
+      {/* ================= DECLARATION ================= */}
+      <div style={styles.declarationSection}>
+        <div style={styles.declarationTitle}>📋 DECLARATION</div>
+        <div style={styles.declarationContent}>
+          <p style={styles.declarationItem}>
+            • I hereby declare that the above details are correct and true to
+            the best of my knowledge.
+          </p>
+          <p style={styles.declarationItem}>
+            • I have apprised the passengers of the prosecution to be taken
+            under PAT Regulation.
+          </p>
+          <p style={styles.declarationItem}>
+            • In the event of any information found to be incorrect, fraudulent
+            or untrue, I undertake that I am liable for criminal prosecution.
+          </p>
+          <p style={styles.declarationItem}>
+            • I agree to abide by the governing rules and especially the PAT
+            Regulations.
+          </p>
+        </div>
+      </div>
       <style>
         {`
           @media print {
@@ -261,7 +283,6 @@ const TripPrintPreview = () => {
           }
         `}
       </style>
-      <div style={styles.watermark}>POLICE COPY</div>
     </div>
   );
 };
@@ -281,9 +302,9 @@ const styles = {
   page: {
     width: "210mm",
     minHeight: "297mm",
-    padding: "14mm",
+    padding: "10mm",
     fontFamily: "Arial",
-    fontSize: "11px",
+    fontSize: "10px",
     background: "#fff",
     border: "2px solid #1e3a8a", // ✅ page border
     boxSizing: "border-box", // ✅ keeps border inside page size
@@ -292,17 +313,17 @@ const styles = {
   header: {
     textAlign: "center",
     borderBottom: "2px solid #2563eb",
-    marginBottom: "8px",
+    marginBottom: "6px",
   },
-  title: { margin: 0, color: "#1e40af" },
-  subTitle: { margin: "3px 0" },
+  title: { margin: 0, color: "#1e40af", fontSize: "14px" },
+  subTitle: { margin: "2px 0", fontSize: "10px" },
   tripId: {
     padding: "4px 10px",
     background: "#e0f2fe",
     color: "#0369a1",
     fontWeight: "bold",
   },
-  topGrid: { display: "flex", gap: "10px" },
+  topGrid: { display: "flex", gap: "8px", marginBottom: "4px" },
   infoTable: {
     width: "65%",
     borderCollapse: "collapse",
@@ -320,41 +341,51 @@ const styles = {
   label: {
     background: "#f1f5f9",
     border: "1px solid #cbd5e1", // ✅ cell border
-    padding: "6px",
+    padding: "4px 5px",
     fontWeight: "bold",
+    fontSize: "9px",
   },
-  value: { border: "1px solid #cbd5e1", padding: "6px" },
+  value: { border: "1px solid #cbd5e1", padding: "4px 5px", fontSize: "9px" },
   qrCard: {
     width: "30%",
     border: "1px solid #cbd5e1",
-    padding: "8px",
+    padding: "6px",
     textAlign: "center",
     background: "#f8fafc",
   },
-  qrText: { fontSize: "10px", marginTop: "6px" },
+  qrText: { fontSize: "8px", marginTop: "4px" },
   sectionHeader: {
-    marginTop: "12px",
-    padding: "6px",
+    marginTop: "6px",
+    marginBottom: "4px",
+    padding: "4px 6px",
     background: "#eef2ff",
     borderLeft: "4px solid #6366f1",
     fontWeight: "bold",
+    fontSize: "10px",
   },
-  rowGrid: { display: "flex", gap: "8px", marginTop: "6px" },
+  rowGrid: {
+    display: "flex",
+    gap: "6px",
+    marginTop: "4px",
+    marginBottom: "4px",
+  },
   col6: { width: "50%" },
   subCard: {
     border: "1px solid #cbd5e1",
-    padding: "6px",
+    padding: "4px",
     background: "#f8fafc",
+    fontSize: "9px",
   },
   compactTable: { width: "100%", borderCollapse: "collapse" },
   passengerTable: { width: "100%", borderCollapse: "collapse" },
   th: {
     background: "#6366f1",
     color: "#fff",
-    padding: "5px",
+    padding: "3px 4px",
     border: "1px solid #c7d2fe",
+    fontSize: "9px",
   },
-  td: { border: "1px solid #e5e7eb", padding: "5px" },
+  td: { border: "1px solid #e5e7eb", padding: "3px 4px", fontSize: "9px" },
   footer: { marginTop: "18px", fontSize: "11px" },
   footerNote: { fontSize: "10px", color: "#6b7280" },
 
@@ -366,20 +397,43 @@ const styles = {
   },
 
   tripBadge: {
-    marginTop: "6px",
+    marginTop: "4px",
     display: "inline-block",
-    padding: "4px 12px",
+    padding: "3px 10px",
     border: "1px solid #2563eb",
     borderRadius: "4px",
     background: "#eff6ff",
     color: "#1e40af",
     fontWeight: "bold",
+    fontSize: "9px",
   },
 
   labelFlex: {
     display: "flex",
     alignItems: "center",
     gap: "6px",
+  },
+  declarationSection: {
+    marginTop: "6px",
+    border: "1px solid #cbd5e1",
+    padding: "6px",
+    background: "#fef3c7",
+    borderRadius: "4px",
+  },
+  declarationTitle: {
+    fontWeight: "bold",
+    fontSize: "10px",
+    marginBottom: "4px",
+    color: "#92400e",
+  },
+  declarationContent: {
+    fontSize: "8px",
+    lineHeight: "1.3",
+    color: "#78350f",
+  },
+  declarationItem: {
+    margin: "2px 0",
+    textAlign: "justify",
   },
 };
 

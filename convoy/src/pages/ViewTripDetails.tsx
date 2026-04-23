@@ -116,6 +116,38 @@ const TripViewDetails = () => {
             <PassengerCard passengers={tripDetails.passengers} />
           </CardContent>
         </Card>
+
+        <Card className="shadow-sm border mt-6 bg-gray-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">
+              Declaration
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            <div className="text-xs sm:text-sm text-gray-700 leading-5 max-h-[200px] overflow-y-auto pr-2">
+              <ul className="list-disc pl-5 space-y-1">
+                <li>
+                  I hereby declare that the above details are correct and true
+                  to the best of my knowledge.
+                </li>
+                <li>
+                  I have apprised the passengers of the prosecution to be taken
+                  under PAT Regulation.
+                </li>
+                <li>
+                  In the event of any information found to be incorrect,
+                  fraudulent or untrue, I undertake that I am liable for
+                  criminal prosecution.
+                </li>
+                <li>
+                  I agree to abide by the governing rules and especially the PAT
+                  Regulations.
+                </li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

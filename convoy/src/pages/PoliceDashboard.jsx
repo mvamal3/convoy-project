@@ -441,13 +441,13 @@ const PoliceDashboard = () => {
       <div className="space-y-8 px-4 sm:px-8 lg:px-12 pb-8 max-w-7xl mx-auto">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900">
-            {user?.role === "police"
+            {user?.role === "police" || user?.role === "scs"
               ? `Welcome to ${getCheckpostDisplayName(user)} Checkpost`
               : "Welcome"}
           </h1>
         </div>
 
-        {user?.role === "police" && <PoliceCards />}
+        {(user?.role === "police" || user?.role === "scs") && <PoliceCards />}
       </div>
     </DashboardLayout>
   );

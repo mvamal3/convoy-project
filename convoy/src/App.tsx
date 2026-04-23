@@ -57,6 +57,8 @@ import FreezPolice from "@/pages/FreezPolice"; //
 import SearchTrip from "@/pages/SearchTrip"; //
 import SpDashboard from "@/pages/SpDashboard"; //
 import TodayVehicleReport from "@/pages/TodaysVehicleReport"; //
+import SpecialConvoyDeparture from "@/pages/SpecialConvoyDeparture";
+import specialconvoyarrival from "@/pages/specialconvoyarrival"; //
 
 import GenerateReport1 from "@/pages/GenerateReport"; //
 
@@ -100,6 +102,11 @@ const AppRoutes = () => {
       <Route path="/SearchTrip" element={<SearchTrip />} />
       <Route path="/SpDashboard" element={<SpDashboard />} />
       <Route
+        path="/specialConvoydeparture"
+        element={<SpecialConvoyDeparture />}
+      />
+      <Route path="/specialConvoyarrival" element={<specialconvoyarrival />} />
+      <Route
         path="/generate-checkout-report/:conveyId/:checkpostId"
         element={<GenerateCheckoutReport />}
       />
@@ -116,7 +123,7 @@ const AppRoutes = () => {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute requiredRole="user">
+          <ProtectedRoute requiredRole={["user", "scs"]}>
             <Dashboard />
           </ProtectedRoute>
         }
@@ -125,7 +132,7 @@ const AppRoutes = () => {
       <Route
         path="/PoliceDashboard"
         element={
-          <ProtectedRoute requiredRole="police">
+          <ProtectedRoute requiredRole={["police", "scs"]}>
             <PoliceDashboard />
           </ProtectedRoute>
         }
@@ -150,7 +157,7 @@ const AppRoutes = () => {
       <Route
         path="/Managevehicle"
         element={
-          <ProtectedRoute requiredRole="user">
+          <ProtectedRoute requiredRole={["user", "scs"]}>
             <ManageVehicle />
           </ProtectedRoute>
         }

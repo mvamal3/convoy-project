@@ -182,61 +182,35 @@ const MyTrips = () => {
               />
             </div>
 
+            {/* ================= DESKTOP TABLE ================= */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full min-w-[800px] text-sm text-left text-gray-700 border">
                 <thead className="bg-gray-100 text-xs uppercase">
                   <tr>
-                    <th className="px-4 py-2 border whitespace-nowrap">#</th>
-                    <th className="px-4 py-2 border whitespace-nowrap">
-                      Trip Id
+                    <th className="px-4 py-2 border">#</th>
+                    <th className="px-4 py-2 border">Trip Id</th>
+                    <th className="px-4 py-2 border">Route</th>
+                    <th className="px-4 py-2 border">Date</th>
+                    <th className="px-4 py-2 border">Convoy Time</th>
+                    <th className="px-4 py-2 border">Vehicle</th>
+                    <th className="px-4 py-2 border text-center">Status</th>
+                    <th className="px-4 py-2 border text-center">
+                      View Application
                     </th>
-                    <th className="px-4 py-2 border whitespace-nowrap">
-                      Route
-                    </th>
-                    <th className="px-4 py-2 border whitespace-nowrap">Date</th>
-                    <th className="px-4 py-2 border whitespace-nowrap">
-                      Convoy Time
-                    </th>
-                    <th className="px-4 py-2 border whitespace-nowrap">
-                      Vehicle
-                    </th>
-                    <th className="px-4 py-2 border text-center whitespace-nowrap">
-                      Status
-                    </th>
-
-                    {/* <th className="px-4 py-2 border text-center whitespace-nowrap">
-                      status
-                    </th>
-                    <th className="px-4 py-2 border text-center whitespace-nowrap">
-                      verify
-                    </th> */}
-                    <th className="px-4 py-2 border text-center whitespace-nowrap">
-                      View
-                    </th>
-                    <th className="px-4 py-2 border whitespace-nowrap">
-                      Action
-                    </th>
+                    <th className="px-4 py-2 border text-center">Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {currentTrips.length > 0 ? (
                     currentTrips.map((row, i) => {
                       const tripDate = row.date ? row.date.split("T")[0] : "";
-
-                      // ✅ date conditions
                       const isPastTrip = tripDate < today;
                       const isTodayOrFuture = tripDate >= today;
 
-                      // ✅ pending stage condition
                       const isPending =
                         Number(row.status) === 1 &&
                         Number(row.verifystatus) === 0;
-
-                      const isEditable = tripDate >= today; // today or future
-                      const isCompleted =
-                        row.status === "2" ||
-                        row.status === 2 ||
-                        row.status === "Completed";
 
                       return (
                         <tr
@@ -245,40 +219,25 @@ const MyTrips = () => {
                             isPastTrip ? "bg-gray-50 opacity-70" : ""
                           }`}
                         >
-                          <td className="px-4 py-2 border whitespace-nowrap">
+                          <td className="px-4 py-2 border">
                             {(currentPage - 1) * rowsPerPage + i + 1}
                           </td>
-                          <td className="px-4 py-2 border whitespace-nowrap">
-                            {row.t_id}
-                          </td>
-                          <td className="px-4 py-2 border text-sm font-medium text-gray-700 whitespace-nowrap">
-                            <span className="text-primary">{row.origin}</span>
-                            <span className="mx-1 text-gray-500">→</span>
-                            <span className="text-primary">
-                              {row.destination}
-                            </span>
+                          <td className="px-4 py-2 border">{row.t_id}</td>
+                          <td className="px-4 py-2 border">
+                            {row.origin} → {row.destination}
                           </td>
                           <td className="px-4 py-2 border">
-                            {row.date
-                              ? new Date(row.date).toLocaleDateString("en-GB", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                })
-                              : "-"}
+                            {new Date(row.date).toLocaleDateString("en-GB")}
                           </td>
-
                           <td
-                            className="px-4 py-2 border whitespace-nowrap"
+                            className="px-4 py-2 border"
                             dangerouslySetInnerHTML={{ __html: row.convoyTime }}
                           />
-                          <td className="px-4 py-2 border whitespace-nowrap">
-                            {row.vehicleNo}
-                          </td>
-                          <td className="px-4 py-2 border text-center whitespace-nowrap">
-                            {(Number(row.status) === 1 &&
-                              Number(row.verifystatus) === 0) ||
-                            Number(row.verifystatus) === "NULL" ? (
+                          <td className="px-4 py-2 border">{row.vehicleNo}</td>
+
+                          <td className="px-4 py-2 border text-center">
+                            {Number(row.status) === 1 &&
+                            Number(row.verifystatus) === 0 ? (
                               <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
                                 Pending
                               </span>
@@ -286,29 +245,17 @@ const MyTrips = () => {
                               <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded">
                                 Completed
                               </span>
-                            ) : Number(row.status) === 3 ||
-                              Number(row.verifystatus) === 3 ||
-                              Number(row.verifystatus) === 1 ? (
+                            ) : (
                               <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded">
                                 Rejected
                               </span>
-                            ) : (
-                              <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-                                Unknown
-                              </span>
                             )}
                           </td>
-                          {/* <td className="px-4 py-2 border whitespace-nowrap">
-                            {row.status}
-                          </td>
-                          <td className="px-4 py-2 border whitespace-nowrap">
-                            {row.verifystatus}
-                          </td> */}
 
-                          <td className="px-4 py-2 border text-center whitespace-nowrap">
+                          <td className="px-4 py-2 border text-center">
                             <Button
                               size="sm"
-                              className="bg-blue-500 text-white hover:bg-blue-600"
+                              className="bg-blue-500 text-white"
                               onClick={() =>
                                 navigate(`/ManageTrip/ViewTrip/${row.t_id}`)
                               }
@@ -317,11 +264,9 @@ const MyTrips = () => {
                             </Button>
                           </td>
 
-                          {/* ✅ Disable edit/delete if completed */}
-                          {/* ✅ Disable edit/delete if completed OR status is 0 (soft deleted) */}
-                          <td className="px-4 py-2 border whitespace-nowrap text-center">
+                          <td className="px-4 py-2 border text-center">
                             {isTodayOrFuture && isPending ? (
-                              <div className="flex flex-wrap justify-center gap-2">
+                              <div className="flex gap-2 justify-center">
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -340,12 +285,8 @@ const MyTrips = () => {
                                 </Button>
                               </div>
                             ) : (
-                              <span className="text-xs text-gray-500 italic">
-                                {isPastTrip
-                                  ? "Past trips cannot be modified"
-                                  : !isPending
-                                    ? "Trip already processed"
-                                    : "Editing disabled"}
+                              <span className="text-xs text-gray-500">
+                                Not editable
                               </span>
                             )}
                           </td>
@@ -354,16 +295,61 @@ const MyTrips = () => {
                     })
                   ) : (
                     <tr>
-                      <td
-                        colSpan={10}
-                        className="text-center text-gray-500 py-4"
-                      >
-                        No trips found.
+                      <td colSpan={9} className="text-center py-4">
+                        No trips found
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* ================= MOBILE CARDS ================= */}
+            <div className="block sm:hidden space-y-4">
+              {currentTrips.length > 0 ? (
+                currentTrips.map((row) => (
+                  <div
+                    key={row.t_id}
+                    className="border rounded-lg p-3 shadow-sm bg-white"
+                  >
+                    <p className="font-semibold">Trip ID: {row.t_id}</p>
+                    <p>
+                      {row.origin} → {row.destination}
+                    </p>
+                    <p>Vehicle: {row.vehicleNo}</p>
+
+                    <div className="mt-2">
+                      <Button
+                        size="sm"
+                        className="bg-blue-500 text-white mr-2"
+                        onClick={() =>
+                          navigate(`/ManageTrip/ViewTrip/${row.t_id}`)
+                        }
+                      >
+                        View
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate(`/CitizenEditTrip/${row.t_id}`)}
+                      >
+                        Edit
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(row.t_id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500">No trips found</p>
+              )}
             </div>
 
             {/* Pagination controls */}

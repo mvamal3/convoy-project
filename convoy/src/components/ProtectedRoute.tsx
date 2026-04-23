@@ -1,10 +1,9 @@
-// src/components/ProtectedRoute.tsx
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole: string; // "user", "police", etc.
+  requiredRole: string | string[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -13,13 +12,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) return null; // Or show a spinner
+  if (isLoading) return null;
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== requiredRole) {
+  const hasAccess = Array.isArray(requiredRole)
+    ? requiredRole.includes(user.role)
+    : user.role === requiredRole;
+
+  if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
 

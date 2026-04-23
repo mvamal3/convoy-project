@@ -58,6 +58,8 @@ const PoliceLogin = () => {
       navigate("/SpDashboard");
     } else if (user.role === "admin") {
       navigate("/AdminDashboard");
+    } else if (user.role === "scs") {
+      navigate("/PoliceDashboard");
     } else {
       navigate("/login");
     }
@@ -66,18 +68,18 @@ const PoliceLogin = () => {
   return (
     <div>
       <HomeHeader />
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 flex justify-center p-8">
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 flex justify-center px-3 py-6 md:p-8 overflow-x-hidden">
         <div className="w-full max-w-md">
-          <Card className="shadow-xl rounded-lg border border-gray-100">
-            <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-semibold">
+          <Card className="shadow-xl rounded-lg border border-gray-100 shadow-xl → shadow-lg">
+            <CardHeader className="text-center p-4 md:p-6">
+              <CardTitle className="text-xl md:text-3xl font-semibold">
                 Police Login
               </CardTitle>
               <CardDescription>Sign in to your account</CardDescription>
             </CardHeader>
 
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <CardContent className="p-4 md:p-6">
+              <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
                 {/* Email */}
                 <div>
                   <Label htmlFor="email">
@@ -128,7 +130,11 @@ const PoliceLogin = () => {
                 <Captcha onChange={setCaptcha} />
 
                 {/* Submit */}
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="w-full h-11"
+                  disabled={isLoading}
+                >
                   {isLoading && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
@@ -137,7 +143,7 @@ const PoliceLogin = () => {
               </form>
 
               {/* Links */}
-              <div className="flex justify-between items-center mt-4 text-sm">
+              <div className="flex justify-between items-center mt-4 md:mt-5 text-sm">
                 <button
                   type="button"
                   onClick={() => navigate(-1)}

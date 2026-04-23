@@ -53,6 +53,7 @@ const PoliceManageTrip = () => {
 
             return {
               t_id: trip.tId,
+              conveyId: trip.convey?.id || null,
               origin: trip.originLocation?.location || "N/A",
               destination: trip.destinationLocation?.location || "N/A",
               date: trip.date,
@@ -74,18 +75,34 @@ const PoliceManageTrip = () => {
           })
         : [];
 
+      // tripList.sort((a, b) => {
+      //   if (!a.verifiedtime && !b.verifiedtime) return 0;
+      //   if (!a.verifiedtime) return 1;
+      //   if (!b.verifiedtime) return -1;
+
+      //   // ✅ Compare verifiedtime strings directly (HH:MM:SS)
+      //   return a.verifiedtime.localeCompare(b.verifiedtime);
+      // });
       tripList.sort((a, b) => {
+        // 🔥 Bring running convoy trips to top
+        if (runningConveyId) {
+          if (a.conveyId === runningConveyId && b.conveyId !== runningConveyId)
+            return -1;
+          if (b.conveyId === runningConveyId && a.conveyId !== runningConveyId)
+            return 1;
+        }
+
+        // 👇 existing sorting
         if (!a.verifiedtime && !b.verifiedtime) return 0;
         if (!a.verifiedtime) return 1;
         if (!b.verifiedtime) return -1;
 
-        // ✅ Compare verifiedtime strings directly (HH:MM:SS)
         return a.verifiedtime.localeCompare(b.verifiedtime);
       });
 
       setTrips(tripList);
     }
-  }, [accessToken, user.checkpostid]);
+  }, [accessToken, user.checkpostid, runningConveyId, runningConvey]);
 
   useEffect(() => {
     fetchTripList();
@@ -515,11 +532,12 @@ const PoliceManageTrip = () => {
         {/* Trip Table */}
         <Card className="overflow-x-auto">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span className="font-bold text-lg">Today Trip List</span>
+
               <Button
                 onClick={() => setShowScannerModal(true)}
-                className="bg-black text-white hover:bg-gray-800 ml-4"
+                className="bg-black text-white hover:bg-gray-800"
               >
                 Scan QR
               </Button>
@@ -527,10 +545,12 @@ const PoliceManageTrip = () => {
           </CardHeader>
 
           <CardContent>
+            {/* Search */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <p className="text-sm text-muted-foreground">
                 Showing {filteredTrips.length} trip(s)
               </p>
+
               <input
                 type="text"
                 value={searchTerm}
@@ -543,6 +563,7 @@ const PoliceManageTrip = () => {
               />
             </div>
 
+            {/* ================= DESKTOP TABLE ================= */}
             <div className="hidden sm:block">
               <div className="w-full overflow-x-auto">
                 <table className="min-w-[800px] w-full text-sm text-left text-gray-700 border">
@@ -560,6 +581,7 @@ const PoliceManageTrip = () => {
                       <th className="px-4 py-2 border">Action</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {currentRows.length > 0 ? (
                       currentRows.map((row, i) => (
@@ -588,6 +610,7 @@ const PoliceManageTrip = () => {
                           <td className="px-4 py-2 border">
                             {row.passengerCount}
                           </td>
+
                           <td className="px-4 py-2 border text-center">
                             <Button
                               size="sm"
@@ -599,7 +622,9 @@ const PoliceManageTrip = () => {
                               View Details
                             </Button>
                           </td>
+
                           <td className="px-4 py-2 border">
+                            {/* 🔥 SAME AS YOUR OLD DESIGN */}
                             <div className="flex flex-col sm:flex-row gap-2">
                               <Button
                                 size="sm"
@@ -611,15 +636,6 @@ const PoliceManageTrip = () => {
                               >
                                 Approve Trip
                               </Button>
-                              {/* <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleCancelTrip(row.t_id, 3)}
-                                >
-                                  Cancel Trip
-                                </Button> */}
-
-                              {/* Updated on 30th December 2025 */}
 
                               <Button
                                 variant="destructive"
@@ -642,8 +658,8 @@ const PoliceManageTrip = () => {
                     ) : (
                       <tr>
                         <td
-                          colSpan={9}
-                          className="text-center text-gray-500 py-4"
+                          colSpan={10}
+                          className="text-center py-4 text-gray-500"
                         >
                           {trips.length > 0
                             ? `No data found for "${searchTerm}".`
@@ -654,6 +670,61 @@ const PoliceManageTrip = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* ================= MOBILE CARDS ================= */}
+            <div className="block sm:hidden space-y-4">
+              {currentRows.length > 0 ? (
+                currentRows.map((row) => (
+                  <div
+                    key={row.t_id}
+                    className="border rounded-lg p-3 shadow-sm bg-white"
+                  >
+                    <p className="text-sm font-semibold">Trip ID: {row.t_id}</p>
+                    <p className="text-sm">Vehicle: {row.vehicleNo}</p>
+                    <p className="text-sm">From: {row.origin}</p>
+                    <p className="text-sm">To: {row.destination}</p>
+                    <p className="text-sm">Passengers: {row.passengerCount}</p>
+
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        className="bg-blue-500 text-white"
+                        onClick={() =>
+                          navigate(`/approvals/ApproveTrip/${row.t_id}`)
+                        }
+                      >
+                        View
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        className="bg-green-600 text-white"
+                        onClick={() => handlesapprovetrip(row.t_id, 2)}
+                      >
+                        Approve
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setCancelTripInfo({
+                            tripId: row.t_id,
+                            buttonId: 3,
+                          });
+                          setCancelRemarks("");
+                          setShowCancelModal(true);
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500">No trips found</p>
+              )}
             </div>
           </CardContent>
         </Card>

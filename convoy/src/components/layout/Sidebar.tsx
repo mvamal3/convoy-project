@@ -46,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
   }, []);
 
   // ✅ AUTO COLLAPSE ON MOBILE
-  const finalCollapsed = isMobile ? true : collapsed;
+  const finalCollapsed = isMobile ? collapsed : collapsed;
 
   const toggleSubmenu = (label: string) => {
     setOpenSubmenus((prev) =>
@@ -55,6 +55,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         : [...prev, label],
     );
   };
+  useEffect(() => {
+    if (isMobile) {
+      setOpenSubmenus([]); // optional cleanup
+    }
+  }, [isMobile]);
 
   // ✅ MENUS
   const citizenMenuItems: MenuItem[] = [
@@ -82,6 +87,17 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     { icon: Home, label: "Dashboard", path: "/PoliceDashboard" },
     { icon: CheckSquare, label: "Departure", path: "/approvals" },
     { icon: CheckSquare, label: "Arrival", path: "/checkout" },
+
+    {
+      icon: Route,
+      label: "Special Convoy Service",
+      path: "#",
+      children: [
+        { label: "Departure", path: "/specialConvoydeparture" },
+        { label: "Arrival", path: "/specialConvoyarrival" },
+        { label: "Reports", path: "/ApprovedTrips" }, // or create dedicated page
+      ],
+    },
     { icon: Search, label: "View Trip", path: "/SearchTrip" },
     {
       icon: Route,
@@ -133,14 +149,41 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     { icon: LogOut, label: "Logout", onClick: logout },
   ];
 
+  const scsMenuItems: MenuItem[] = [
+    { icon: Home, label: "Dashboard", path: "/dashboard" },
+    { icon: Car, label: "Vehicles", path: "/Managevehicle" },
+    { icon: Users, label: "Drivers", path: "/ManageDriver" },
+
+    {
+      icon: Route,
+      label: "Special Convoy Service",
+      path: "#",
+      children: [
+        { label: "Departure", path: "/specialConvoydeparture" },
+        { label: "Arrival", path: "/specialConvoyarrival" },
+        { label: "Reports", path: "/ApprovedTrips" },
+      ],
+    },
+
+    { icon: Search, label: "View Trip", path: "/SearchTrip" },
+
+    { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },
+
+    { icon: User, label: "Profile", path: "/PoliceProfile" },
+
+    { icon: LogOut, label: "Logout", onClick: logout },
+  ];
+
   const menuItems =
     user?.role === "admin"
       ? adminMenuItems
       : user?.role === "sp"
         ? spMenuItems
-        : user?.role === "police" || user?.role === "dsp"
-          ? policeMenuItems
-          : citizenMenuItems;
+        : user?.role === "scs"
+          ? scsMenuItems
+          : user?.role === "police" || user?.role === "dsp"
+            ? policeMenuItems
+            : citizenMenuItems;
 
   // ✅ AUTO OPEN SUBMENU
   useEffect(() => {
@@ -223,18 +266,27 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               )}
 
               {/* SUBMENU */}
-              {!finalCollapsed &&
-                hasChildren &&
-                isSubmenuOpen &&
-                item.children?.map((child) => (
-                  <Link
-                    key={child.path}
-                    to={child.path}
-                    className="ml-8 block px-3 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white rounded-md"
-                  >
-                    {child.label}
-                  </Link>
-                ))}
+              {/* SUBMENU */}
+              {hasChildren && isSubmenuOpen && (
+                <div
+                  className={cn(
+                    "bg-gray-800 rounded-md mt-1",
+                    finalCollapsed
+                      ? "absolute left-16 top-auto z-50 w-40 shadow-lg"
+                      : "ml-8",
+                  )}
+                >
+                  {item.children?.map((child) => (
+                    <Link
+                      key={child.path}
+                      to={child.path}
+                      className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

@@ -2,18 +2,16 @@ import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-// import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import * as XLSX from "xlsx";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
-import { formatDateDDMMYY, formatTimeHHMM } from "@/utils/dateUtils";
+import { formatDateDDMMYY } from "@/utils/dateUtils";
 
 import {
   getDriverList,
   getVehicleList,
   getOriginDestinations,
-  getConveyTimeByLocId,
   getCurrentDateTime1,
 } from "@/contexts/GetApi";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,14 +20,15 @@ import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import AddPassengerIndian from "@/components/passengers/AddPassengerIndian";
 import AddPassengerForeigner from "@/components/passengers/AddPassengerForeigner";
+
 const MySwal = withReactContent(Swal);
 
-export default function AddTrip() {
+export default function specialConvoyDeparture() {
   const { user, accessToken } = useAuth();
   const [vehicleList, setVehicleList] = useState([]);
   const [driverList, setDriverList] = useState([]);
   const [locationList, setLocationList] = useState([]);
-  const [conveyTimeList, setConveyTimeList] = useState([]);
+
   const [step, setStep] = useState(1);
   const [passengerSuccess, setPassengerSuccess] = useState("");
   const navigate = useNavigate();
@@ -41,25 +40,6 @@ export default function AddTrip() {
   const [isTouristTrip, setIsTouristTrip] = useState("");
   const [isForeigner, setIsForeigner] = useState("");
   const [isIslander, setIsIslander] = useState("");
-  const [isReturn, setIsReturn] = useState(false);
-  const [returnDate, setReturnDate] = useState("");
-  const [returnConvoyTime, setReturnConvoyTime] = useState("");
-  const [returnType, setReturnType] = useState("same"); // default same
-  //const [returnPassengers, setReturnPassengers] = useState([]);
-  const [returnConveyList, setReturnConveyList] = useState([]);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-
-  const [mode, setMode] = useState("forward"); // forward | return
-
-  const [returnTripData, setReturnTripData] = useState({
-    vId: "",
-    dId: "",
-    origin: "",
-    destination: "",
-    date: "",
-    convoyTime: "",
-    Passengers: [],
-  });
 
   const [formData, setFormData] = useState({
     vId: "",
@@ -69,6 +49,7 @@ export default function AddTrip() {
     loc_id: "",
     date: "",
     convoyTime: "",
+    specialType: "",
     Passengers: [],
   });
 
@@ -152,28 +133,6 @@ export default function AddTrip() {
     if (accessToken) fetchData();
   }, [accessToken]);
 
-  useEffect(() => {
-    if (isReturn) {
-      setReturnTripData((prev) => ({
-        ...prev,
-        date: returnDate,
-        convoyTime: returnConvoyTime,
-      }));
-    }
-  }, [returnDate, returnConvoyTime]);
-
-  useEffect(() => {
-    if (isReturn) {
-      setReturnTripData((prev) => ({
-        ...prev,
-        vId: formData.vId,
-        dId: formData.dId,
-        origin: formData.destination,
-        destination: formData.origin,
-      }));
-    }
-  }, [formData.vId, formData.dId, formData.origin, formData.destination]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -206,53 +165,6 @@ export default function AddTrip() {
     }
   };
 
-  useEffect(() => {
-    const fetchConveyTimes = async () => {
-      if (!accessToken || !formData.loc_id) {
-        setConveyTimeList([]);
-        return;
-      }
-      try {
-        const res = await getConveyTimeByLocId(formData.loc_id, accessToken);
-        setConveyTimeList(Array.isArray(res) ? res : []);
-      } catch (error) {
-        setConveyTimeList([]);
-      }
-    };
-    fetchConveyTimes();
-  }, [formData.loc_id, accessToken]);
-
-  useEffect(() => {
-    const fetchReturnConvey = async () => {
-      if (!accessToken || !formData.destination) {
-        setReturnConveyList([]);
-        return;
-      }
-
-      try {
-        const selectedPlace = locationList.find(
-          (place) => String(place.id) === String(formData.destination),
-        );
-
-        if (!selectedPlace?.loc_id) return;
-
-        const res = await getConveyTimeByLocId(
-          selectedPlace.loc_id,
-          accessToken,
-        );
-
-        setReturnConveyList(Array.isArray(res) ? res : []);
-      } catch {
-        setReturnConveyList([]);
-      }
-    };
-
-    if (isReturn) {
-      setReturnConvoyTime(""); // 🔥 THIS LINE IS MISSING
-      fetchReturnConvey();
-    }
-  }, [formData.destination, isReturn, accessToken]);
-
   // useEffect(() => {
   //   const fetchStoppedConveys = async () => {
   //     if (!accessToken || !formData.loc_id || !formData.date) {
@@ -275,33 +187,6 @@ export default function AddTrip() {
   //   };
   //   fetchStoppedConveys();
   // }, [formData.loc_id, formData.date, accessToken]);
-
-  const getHourFromTimeString = (timeStr) => {
-    if (!timeStr) return null;
-    return parseInt(timeStr.split(":")[0], 10);
-  };
-
-  const getMinutes = (timeStr) => {
-    if (!timeStr) return null;
-    const [hour, minute] = timeStr.split(":").map(Number);
-    return hour * 60 + minute;
-  };
-
-  const serverMinutes = getMinutes(serverTime);
-  const isToday = formData.date === serverDate;
-
-  const availableConveyTimes = conveyTimeList.filter((ct) => {
-    // Allow all until server time loads
-    if (!serverDate || !serverTime) return true;
-
-    // Restrict only for today
-    if (isToday) {
-      return getMinutes(ct.convey_time) > serverMinutes;
-    }
-
-    // Future dates
-    return true;
-  });
 
   useEffect(() => {
     const fetchServerTime = async () => {
@@ -462,10 +347,7 @@ export default function AddTrip() {
       return;
     }
 
-    let tempPassengers =
-      mode === "return"
-        ? [...returnTripData.Passengers]
-        : [...formData.Passengers];
+    let tempPassengers = [...formData.Passengers];
 
     if (editIndex !== -1) {
       tempPassengers[editIndex] = passengerToSave;
@@ -486,63 +368,19 @@ export default function AddTrip() {
 
     /* 🔹 SAVE PASSENGER */
     if (editIndex === -1) {
-      if (mode === "return") {
-        setReturnTripData((prev) => ({
-          ...prev,
-          Passengers: [...prev.Passengers, passengerToSave],
-        }));
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          Passengers: [...prev.Passengers, passengerToSave],
-        }));
-
-        // sync if SAME
-        // if (isReturn && returnType === "same") {
-        //   setReturnTripData((prev) => ({
-        //     ...prev,
-        //     Passengers: [...prev.Passengers, passengerToSave],
-        //   }));
-        // }
-      }
-
-      // ✅ SYNC TO RETURN
-      if (mode === "forward" && isReturn && returnType === "same") {
-        setReturnTripData((prev) => ({
-          ...prev,
-          Passengers: [...prev.Passengers, passengerToSave],
-        }));
-      }
+      setFormData((prev) => ({
+        ...prev,
+        Passengers: [...prev.Passengers, passengerToSave],
+      }));
       setPassengerSuccess("Passenger added successfully!");
     } else {
-      if (mode === "return") {
-        const updated = [...returnTripData.Passengers];
-        updated[editIndex] = passengerToSave;
+      const updated = [...formData.Passengers];
+      updated[editIndex] = passengerToSave;
 
-        setReturnTripData((prev) => ({
-          ...prev,
-          Passengers: updated,
-        }));
-      } else {
-        const updated = [...formData.Passengers];
-        updated[editIndex] = passengerToSave;
-
-        setFormData((prev) => ({
-          ...prev,
-          Passengers: updated,
-        }));
-
-        // sync if SAME
-        if (mode === "forward" && isReturn && returnType === "same") {
-          const updatedReturn = [...returnTripData.Passengers];
-          updatedReturn[editIndex] = passengerToSave;
-
-          setReturnTripData((prev) => ({
-            ...prev,
-            Passengers: updatedReturn,
-          }));
-        }
-      }
+      setFormData((prev) => ({
+        ...prev,
+        Passengers: updated,
+      }));
 
       setPassengerSuccess("Passenger updated successfully!");
       setEditIndex(-1);
@@ -580,10 +418,7 @@ export default function AddTrip() {
     setTimeout(() => setPassengerSuccess(""), 3000);
   };
   const handleEditPassenger = (index) => {
-    const source =
-      mode === "return" ? returnTripData.Passengers : formData.Passengers;
-
-    const p = source[index];
+    const p = formData.Passengers[index];
     setPassenger({
       ...p,
       documentType: p.documentType || "PASSPORT",
@@ -606,25 +441,10 @@ export default function AddTrip() {
   };
 
   const handleRemovePassenger = (index) => {
-    if (mode === "return") {
-      setReturnTripData((prev) => ({
-        ...prev,
-        Passengers: prev.Passengers.filter((_, i) => i !== index),
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        Passengers: prev.Passengers.filter((_, i) => i !== index),
-      }));
-
-      // ✅ sync if SAME
-      if (mode === "forward" && isReturn && returnType === "same") {
-        setReturnTripData((prev) => ({
-          ...prev,
-          Passengers: prev.Passengers.filter((_, i) => i !== index),
-        }));
-      }
-    }
+    setFormData((prev) => ({
+      ...prev,
+      Passengers: prev.Passengers.filter((_, i) => i !== index),
+    }));
   };
 
   const selectedVehicle = vehicleList.find(
@@ -642,7 +462,15 @@ export default function AddTrip() {
     }
     // Check if all mandatory fields in step 1 are filled
     const { vId, dId, origin, destination, date, convoyTime } = formData;
-    if (!vId || !dId || !origin || !destination || !date || !convoyTime) {
+    if (
+      !vId ||
+      !dId ||
+      !origin ||
+      !destination ||
+      !date ||
+      !convoyTime ||
+      !formData.specialType
+    ) {
       MySwal.fire({
         icon: "error",
         title: "Incomplete Trip Details",
@@ -710,42 +538,26 @@ export default function AddTrip() {
 
     return result.isConfirmed;
   };
-  // ✅ COMMON FUNCTION TO SUBMIT
-  const submitTrip = (type = returnType, accepted = true) => {
+  const submitTrip = async () => {
     const payload = {
       vId: formData.vId,
       dId: formData.dId,
       origin: formData.origin,
       destination: formData.destination,
       date: formData.date,
-      declarationAccepted: accepted,
-      isTouristTrip: isTouristTrip === "yes" ? 1 : 0,
       convoyTime: formData.convoyTime,
-
+      specialType: formData.specialType,
+      isTouristTrip: isTouristTrip === "yes" ? 1 : 0,
       Passengers: formData.Passengers.map(mapPassengerForPayload),
-
       totalPax: formData.Passengers.length,
-
-      // 🔁 RETURN PART
-      isReturn,
-      returnDate,
-      returnConvoyTime,
-      returnType: type,
-      returnPassengers:
-        type === "same"
-          ? []
-          : returnTripData.Passengers.map(mapPassengerForPayload),
     };
 
     console.log("FINAL PAYLOAD:", payload);
-    console.log("FORWARD JSON:", formData);
-    console.log("RETURN JSON:", returnTripData);
 
     handleAddTripAPI(payload, accessToken, (response) => {
       if (response?.success && response?.data?.trip?.tId) {
         const tripId = response.data.trip.tId;
         const tripDate = response.data.trip.date;
-
         const formattedDate = formatDateDDMMYY(tripDate);
         const conveyname = response.data.trip.conveyTimeName;
         const conveytime = response.data.trip.conveyTimeValue;
@@ -766,7 +578,7 @@ export default function AddTrip() {
         });
       }
 
-      // ✅ RESET FORM
+      // Reset form
       setFormData({
         vId: "",
         dId: "",
@@ -775,17 +587,20 @@ export default function AddTrip() {
         loc_id: "",
         date: "",
         convoyTime: "",
+        specialType: "",
         Passengers: [],
       });
 
       setStep(1);
       setEditIndex(-1);
       setVehicleSeating(null);
+      setIsTouristTrip("");
+      setIsForeigner("");
+      setIsIslander("");
     });
   };
 
   const handleSubmit = async () => {
-    // ✅ Basic validation
     if (
       !formData.vId ||
       !formData.dId ||
@@ -802,168 +617,11 @@ export default function AddTrip() {
       return;
     }
 
-    // ✅ Return validation
-    if (isReturn) {
-      if (!returnDate || !returnConvoyTime) {
-        MySwal.fire({
-          icon: "error",
-          title: "Return Journey Missing",
-          text: "Please fill return date and convoy time",
-        });
-        return;
-      }
+    const accepted = await showTripRulesModal();
+    if (!accepted) return;
 
-      if (new Date(returnDate) < new Date(serverDate)) {
-        MySwal.fire({
-          icon: "error",
-          title: "Invalid Return Date",
-          text: "Return date cannot be before today",
-        });
-        return;
-      }
-
-      if (new Date(returnDate) < new Date(formData.date)) {
-        MySwal.fire({
-          icon: "error",
-          title: "Invalid Return Date",
-          text: "Return date must be after journey date",
-        });
-        return;
-      }
-    }
-
-    // 🔥 STEP 1: Ask return type FIRST
-    if (isReturn) {
-      // ✅ FIXED: no need to check mode
-      const isModified =
-        returnTripData.Passengers.length !== formData.Passengers.length ||
-        JSON.stringify(returnTripData.Passengers) !==
-          JSON.stringify(formData.Passengers);
-
-      if (isModified || returnType === "modified") {
-        const accepted = await showTripRulesModal();
-        if (!accepted) return;
-
-        submitTrip("modified", accepted);
-        return;
-      }
-
-      const result = await MySwal.fire({
-        title: "Return Journey",
-        text: "Are same passengers travelling in return?",
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Yes (Same)",
-        cancelButtonText: "Modify",
-      });
-
-      if (result.isConfirmed) {
-        const accepted = await showTripRulesModal();
-        if (!accepted) return;
-
-        submitTrip("same", accepted);
-      } else {
-        setReturnType("modified");
-
-        setReturnTripData((prev) => ({
-          ...prev,
-          Passengers:
-            prev.Passengers.length > 0
-              ? prev.Passengers // ✅ keep existing edited data
-              : [...formData.Passengers], // only first time copy
-        }));
-
-        setMode("return");
-
-        MySwal.fire({
-          icon: "info",
-          title: "Modify Return Passengers",
-          text: "You are now editing return passengers",
-        });
-      }
-    } else {
-      // ✅ No return → declaration directly
-      const accepted = await showTripRulesModal();
-      if (!accepted) return;
-
-      submitTrip("same", accepted);
-    }
+    await submitTrip();
   };
-  // const handleSubmit = async () => {
-  //   // ✅ Basic validation
-  //   if (
-  //     !formData.vId ||
-  //     !formData.dId ||
-  //     !formData.origin ||
-  //     !formData.destination ||
-  //     !formData.date ||
-  //     !formData.convoyTime
-  //   ) {
-  //     MySwal.fire({
-  //       icon: "error",
-  //       title: "Form Incomplete",
-  //       text: "Please fill all trip details.",
-  //     });
-  //     return;
-  //   }
-
-  //   // ✅ Return validation
-  //   if (isReturn) {
-  //     if (!returnDate || !returnConvoyTime) {
-  //       MySwal.fire({
-  //         icon: "error",
-  //         title: "Return Journey Missing",
-  //         text: "Please fill return date and convoy time",
-  //       });
-  //       return;
-  //     }
-
-  //     if (new Date(returnDate) < new Date(serverDate)) {
-  //       MySwal.fire({
-  //         icon: "error",
-  //         title: "Invalid Return Date",
-  //         text: "Return date cannot be before today",
-  //       });
-  //       return;
-  //     }
-
-  //     if (new Date(returnDate) < new Date(formData.date)) {
-  //       MySwal.fire({
-  //         icon: "error",
-  //         title: "Invalid Return Date",
-  //         text: "Return date must be after journey date",
-  //       });
-  //       return;
-  //     }
-  //   }
-
-  //   // ✅ RULES ACCEPTANCE FIRST
-  //   const accepted = await showTripRulesModal();
-  //   if (!accepted) return;
-
-  //   // 🔥 RETURN LOGIC
-  //   if (isReturn) {
-  //     const result = await MySwal.fire({
-  //       title: "Return Journey",
-  //       text: "Are same passengers travelling in return?",
-  //       icon: "question",
-  //       showCancelButton: true,
-  //       confirmButtonText: "Yes (Same)",
-  //       cancelButtonText: "Modify",
-  //     });
-
-  //     if (result.isConfirmed) {
-  //       setReturnType("same");
-  //       submitTrip("same", accepted);
-  //     } else {
-  //       setReturnType("modified");
-  //       setShowReturnModal(true);
-  //     }
-  //   } else {
-  //     setReturnType("same");
-  //     submitTrip("same", accepted);
-  //   }
-  // };
 
   // Convert server date (e.g., "2025-10-31") to a Date object
   // ✅ Use serverDate safely without timezone shift
@@ -1215,9 +873,6 @@ Check console for details.
   const getChildCount = (passengers) =>
     passengers.filter((p) => Number(p.age) <= 12).length;
 
-  const currentPassengers =
-    mode === "return" ? returnTripData.Passengers : formData.Passengers;
-
   const resetPassenger = () => ({
     title: "",
     name: "",
@@ -1239,7 +894,7 @@ Check console for details.
         <CardHeader className="p-3 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
             <CardTitle className="text-lg sm:text-xl">
-              {step === 1 ? "Trip Details" : "Passenger Details"}
+              {step === 1 ? "Special Convoy Trip Details" : "Passenger Details"}
             </CardTitle>
             <div className="flex gap-1 sm:gap-2">
               <Button
@@ -1363,30 +1018,6 @@ Check console for details.
                   ))}
                 </select>
                 {/* Info message just below Convey Time */}
-                {formData.origin && (
-                  <p className="text-sky-600 text-xs mt-1 font-semibold italic">
-                    ℹ️{" "}
-                    {(() => {
-                      const originPlace = locationList.find(
-                        (place) => String(place.id) === formData.origin,
-                      );
-                      if (!originPlace) return null;
-                      //console.log("location", originPlace.location);
-                      return originPlace.location.toLowerCase() ===
-                        "jirkatang" ? (
-                        <>
-                          Your first checkpoint will be <b>Jirkatang</b>{" "}
-                          Checkpost.
-                        </>
-                      ) : (
-                        <>
-                          Your first checkpoint will be <b>Middlestreit</b>{" "}
-                          Checkpost.
-                        </>
-                      );
-                    })()}
-                  </p>
-                )}
               </div>
 
               {/* Destination */}
@@ -1418,152 +1049,42 @@ Check console for details.
                 </select>
               </div>
 
-              {/* Convey Time */}
+              {/* Convoy Type */}
               <div className="w-full">
-                <Label htmlFor="convoyTime" className="text-xs sm:text-sm">
-                  Convoy Time <span className="text-red-600">*</span>
+                <Label className="text-xs sm:text-sm">
+                  Convoy Type <span className="text-red-600">*</span>
                 </Label>
                 <select
-                  id="convoyTime"
-                  name="convoyTime"
-                  value={formData.convoyTime}
+                  name="specialType"
+                  value={formData.specialType || ""}
                   onChange={handleChange}
-                  disabled={!formData.origin || !formData.date}
-                  className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm max-w-full"
+                  className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm"
                 >
-                  <option value="">Select Convoy Time</option>
-                  {availableConveyTimes.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.convey_time} ({item.convey_name})
-                    </option>
-                  ))}
-                </select>
-
-                {/* No conveys available message */}
-                {availableConveyTimes.length === 0 &&
-                  formData.origin &&
-                  formData.date && (
-                    <p className="text-red-600 text-xs mt-1">
-                      No active conveys available for this origin and date.
-                    </p>
-                  )}
-              </div>
-
-              <div className="space-y-1 sm:space-y-2">
-                <Label className="text-xs sm:text-sm">Return Journey</Label>
-                <select
-                  value={isReturn ? "yes" : "no"}
-                  onChange={(e) => {
-                    const value = e.target.value === "yes";
-                    setIsReturn(value);
-
-                    if (!value) {
-                      setReturnType("same"); // ✅ FIX
-                    }
-
-                    if (value) {
-                      setReturnTripData({
-                        vId: formData.vId,
-                        dId: formData.dId,
-                        origin: formData.destination,
-                        destination: formData.origin,
-                        date: returnDate,
-                        convoyTime: returnConvoyTime,
-                        Passengers: [...formData.Passengers],
-                      });
-                    } else {
-                      setReturnTripData({
-                        vId: "",
-                        dId: "",
-                        origin: "",
-                        destination: "",
-                        date: "",
-                        convoyTime: "",
-                        Passengers: [],
-                      });
-                    }
-                  }}
-                  className="w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-                >
-                  <option value="no">No</option>
-                  <option value="yes">Yes</option>
+                  <option value="">Select</option>
+                  <option value="100">🚨 Emergency Cases</option>
+                  <option value="200">⭐ VIP Cases</option>
                 </select>
               </div>
 
-              {isReturn && (
-                <>
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">Return Date</Label>
-                    <input
-                      type="date"
-                      value={returnDate}
-                      min={formData.date || minDate} // 🔥 IMPORTANT
-                      max={maxDate}
-                      onChange={(e) => setReturnDate(e.target.value)}
-                      className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm max-w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">
-                      Return Convoy Time
-                    </Label>
-                    <select
-                      value={returnConvoyTime}
-                      disabled={!returnDate}
-                      onChange={(e) => setReturnConvoyTime(e.target.value)}
-                      className="w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-                    >
-                      <option value="">Select</option>
-                      {returnConveyList?.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.convey_time} ({c.convey_name})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
+              {/* Time Input */}
+              <div className="w-full">
+                <Label className="text-xs sm:text-sm">
+                  Time <span className="text-red-600">*</span>
+                </Label>
+                <input
+                  type="time"
+                  name="convoyTime"
+                  value={formData.convoyTime || ""}
+                  onChange={handleChange}
+                  className="border rounded px-2 sm:px-3 py-2 w-full text-sm cursor-pointer"
+                />
+              </div>
             </div>
           )}
 
           {step === 2 && (
             <>
-              {isReturn && (
-                <div className="mb-3 sm:mb-4 flex gap-1 sm:gap-2">
-                  <Button
-                    variant={mode === "forward" ? "default" : "outline"}
-                    onClick={() => {
-                      setMode("forward");
-                      setEditIndex(-1);
-                      setPassenger(resetPassenger());
-                      setIsForeigner("");
-                      setIsIslander("");
-                    }}
-                    size="sm"
-                    className="text-xs sm:text-sm"
-                  >
-                    Forward Passengers
-                  </Button>
-
-                  <Button
-                    variant={mode === "return" ? "default" : "outline"}
-                    onClick={() => {
-                      setMode("return");
-                      setEditIndex(-1);
-                      setPassenger(resetPassenger());
-                      setIsForeigner("");
-                      setIsIslander("");
-                    }}
-                    size="sm"
-                    className="text-xs sm:text-sm"
-                  >
-                    Return Passengers
-                  </Button>
-                </div>
-              )}
-
-              {/* 🔽 KEEP YOUR EXISTING UI HERE */}
+              {/* 🔽 PASSENGER FORM */}
               <>
                 {/* Trip summary card */}
                 <Card className="mb-4 sm:mb-6 bg-gray-50 border border-gray-200 shadow-sm">
@@ -1589,29 +1110,28 @@ Check console for details.
                     </div>
                     <div>
                       <strong>Convoy Time:</strong>{" "}
-                      {(() => {
-                        const matching = conveyTimeList.find(
-                          (p) => String(p.id) === String(formData.convoyTime),
-                        );
-                        return matching
-                          ? `${matching.convey_time} (${matching.convey_name})`
-                          : "N/A";
-                      })()}
+                      {formData.convoyTime || "N/A"}
+                    </div>
+
+                    <div>
+                      <strong>Convoy Type:</strong>{" "}
+                      {formData.specialType === "100"
+                        ? "Emergency"
+                        : formData.specialType === "200"
+                          ? "VIP"
+                          : "N/A"}
                     </div>
                     <div>
                       <div>
-                        <strong>
-                          {mode === "return" ? "Return" : "Forward"} Passengers:
-                        </strong>{" "}
-                        {currentPassengers.length}
+                        <strong>Passengers:</strong>{" "}
+                        {formData.Passengers.length}
                       </div>
-
                       <div className="flex items-center gap-3 text-xs">
                         <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                          Adults: {getAdultCount(currentPassengers)}
+                          Adults: {getAdultCount(formData.Passengers)}
                         </span>
                         <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                          Children: {getChildCount(currentPassengers)}
+                          Children: {getChildCount(formData.Passengers)}
                         </span>
                       </div>
                     </div>
@@ -1721,9 +1241,7 @@ Check console for details.
                   </h3>
 
                   <h3 className="text-xs sm:text-sm font-bold mb-2">
-                    {mode === "return"
-                      ? "Editing Return Passengers"
-                      : "Editing Forward Passengers"}
+                    Passengers
                   </h3>
                   <table className="min-w-full text-xs bg-white rounded">
                     <thead className="hidden sm:table-header-group">
@@ -1756,7 +1274,7 @@ Check console for details.
                       </tr>
                     </thead>
                     <tbody>
-                      {currentPassengers.map((p, idx) => (
+                      {formData.Passengers.map((p, idx) => (
                         <tr
                           key={idx}
                           className="flex flex-col sm:table-row border-b mb-2 sm:mb-0 p-2 sm:p-0 bg-white sm:bg-transparent rounded sm:rounded-none"

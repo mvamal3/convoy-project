@@ -218,7 +218,7 @@ export async function handleAddDriverAPI(
 
 export async function handleAddTripAPI(payload, accessToken, onSuccess) {
   try {
-    const response = await fetch(`${BASE_URL}/trip-new`, {
+    const response = await fetch(`${BASE_URL}/tri-new`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

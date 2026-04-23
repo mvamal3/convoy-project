@@ -63,16 +63,18 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center overflow-y-auto">
-      <div className="bg-white p-6 rounded-lg w-full max-w-4xl">
-        <h2 className="text-lg font-semibold mb-4">Add Driver</h2>
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center overflow-y-auto p-2 sm:p-0">
+      <div className="bg-white p-3 sm:p-6 rounded-lg w-full max-w-4xl mx-auto my-auto max-h-[90vh] overflow-y-auto">
+        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
+          Add Driver
+        </h2>
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
         >
           {/* Title */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2">
+            <Label className="text-xs sm:text-sm">
               Title <span className="text-red-600">*</span>
             </Label>
             <select
@@ -80,7 +82,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
-              className="w-full h-10 rounded-md border border-input bg-background px-2 py-2 text-sm"
+              className="w-full h-9 sm:h-10 rounded-md border border-input bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
             >
               <option value="">Select</option>
               <option value="Mr">Mr</option>
@@ -90,8 +92,8 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           </div>
 
           {/* First Name */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2">
+            <Label className="text-xs sm:text-sm">
               First Name <span className="text-red-600">*</span>
             </Label>
             <Input
@@ -101,12 +103,13 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
                 setFormData({ ...formData, first_name: e.target.value })
               }
               placeholder="Enter First Name"
+              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
             />
           </div>
 
           {/* Last Name */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2">
+            <Label className="text-xs sm:text-sm">
               Last Name <span className="text-red-600">*</span>
             </Label>
             <Input
@@ -116,12 +119,13 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
                 setFormData({ ...formData, last_name: e.target.value })
               }
               placeholder="Enter Last Name"
+              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
             />
           </div>
 
           {/* S/O Son of */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2">
+            <Label className="text-xs sm:text-sm">
               S/O f <span className="text-red-600">*</span>
             </Label>
             <Input
@@ -131,12 +135,13 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
                 setFormData({ ...formData, son_of: e.target.value })
               }
               placeholder="Father / Guardian Name"
+              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
             />
           </div>
 
           {/* Gender */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2">
+            <Label className="text-xs sm:text-sm">
               Gender <span className="text-red-600">*</span>
             </Label>
             <select
@@ -144,7 +149,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
               onChange={(e) =>
                 setFormData({ ...formData, gender: e.target.value })
               }
-              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full h-9 sm:h-10 rounded-md border border-input bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
             >
               <option value="">Select</option>
               <option value="Male">Male</option>
@@ -154,8 +159,8 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           </div>
 
           {/* License No */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2">
+            <Label className="text-xs sm:text-sm">
               License No. <span className="text-red-600">*</span>
             </Label>
             <Input
@@ -166,12 +171,13 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
                   setFormData({ ...formData, license_no: value });
               }}
               placeholder="Enter License Number"
+              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
             />
           </div>
 
           {/* Phone No */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2">
+            <Label className="text-xs sm:text-sm">
               Phone No. <span className="text-red-600">*</span>
             </Label>
             <Input
@@ -182,16 +188,17 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
               }
               maxLength={10}
               placeholder="Enter 10-digit Phone Number"
+              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
             />
           </div>
 
           {/* Residence */}
-          <div className="space-y-2">
-            <Label>
+          <div className="space-y-1 sm:space-y-2 sm:col-span-2 lg:col-span-4">
+            <Label className="text-xs sm:text-sm">
               Residence of Driver <span className="text-red-600">*</span>
             </Label>
             <textarea
-              className="w-full border border-gray-300 rounded px-3 py-2"
+              className="w-full border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
               rows={2}
               value={formData.residence_of}
               onChange={(e) =>
@@ -201,11 +208,19 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
             />
           </div>
 
-          <div className="md:col-span-4 flex justify-end gap-2 mt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="sm:col-span-2 lg:col-span-4 flex justify-end gap-1.5 sm:gap-2 mt-3 sm:mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              size="sm"
+              className="text-xs sm:text-sm"
+            >
               Cancel
             </Button>
-            <Button type="submit">Add Driver</Button>
+            <Button type="submit" size="sm" className="text-xs sm:text-sm">
+              Add Driver
+            </Button>
           </div>
         </form>
       </div>

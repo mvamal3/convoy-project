@@ -110,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const regUser = result.data.user;
+      console.log;
       const tokens = result.data.tokens;
 
       const newUser = {

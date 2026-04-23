@@ -23,6 +23,12 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
       return [{ label: "Commercial (Yellow Board)", value: "Commercial" }];
 
     if (type === 2) return [{ label: "Government", value: "Government" }];
+    if (type === 3)
+      return [
+        { label: "Government", value: "Government" },
+        { label: "Commercial (Yellow Board)", value: "Commercial" },
+        { label: "Private (White Board)", value: "Private" },
+      ];
 
     return [];
   };
@@ -283,32 +289,7 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
                     </>
                   )}
 
-                  {type === 1 && (
-                    <>
-                      <option value="Car">Car (Max. 5 passengers)</option>
-                      <option value="SUV">SUV (Max. 7 passengers)</option>
-
-                      <option value="LMV Cargo">LMV Cargo</option>
-
-                      <option value="Van">Van</option>
-                      <option value="Pickup Truck">Pickup Truck</option>
-
-                      <option value="Truck">Truck (Max. 3 passengers)</option>
-                      <option value="HMV">HMV</option>
-
-                      <option value="Bus">Bus</option>
-                      <option value="Ambulance">Ambulance</option>
-                      <option value="Mortuary Van">Mortuary Van</option>
-
-                      <option value="Water Tanker">Water Tanker</option>
-                      <option value="Oil Tanker">Oil Tanker</option>
-                      <option value="LPG Tanker">LPG Tanker</option>
-
-                      <option value="Other">Other</option>
-                    </>
-                  )}
-
-                  {type === 2 && (
+                  {[1, 2, 3].includes(type) && (
                     <>
                       <option value="Car">Car (Max. 5 passengers)</option>
                       <option value="SUV">SUV (Max. 7 passengers)</option>

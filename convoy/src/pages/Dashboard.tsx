@@ -102,18 +102,18 @@ const Dashboard = () => {
 
         // Filter trips with date >= server date (future and today)
         const filteredTrips = trips.filter(
-          (trip) => trip.date >= serverDateString
+          (trip) => trip.date >= serverDateString,
         );
         setTripList(filteredTrips);
 
         // Count trips for today (date === serverDateString)
         const todaysTripsCount = trips.filter(
-          (trip) => trip.date === serverDateString
+          (trip) => trip.date === serverDateString,
         ).length;
 
         // Count upcoming trips (date > serverDateString)
         const upcomingTripsCount = trips.filter(
-          (trip) => trip.date > serverDateString
+          (trip) => trip.date > serverDateString,
         ).length;
 
         setTodaysTrips(todaysTripsCount);
@@ -299,12 +299,17 @@ const Dashboard = () => {
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome, {user?.name}
+          </h1>
           <p className="text-gray-600 mt-2">
             {user?.role === "police"
               ? "Here's an overview of pending approvals and system activity."
               : "Here's an overview of your convoy management activities."}
           </p>
+          {user?.role === "scs" && (
+            <p className="text-blue-800 font-semibold mt-1">Special Convoy</p>
+          )}
         </div>
 
         {user?.role === "police" ? <PoliceDashboard /> : <CitizenDashboard />}

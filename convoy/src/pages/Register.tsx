@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { getDistricts, getSubDistricts, getVillages } from "@/contexts/GetApi";
+import { getDistricts } from "@/contexts/GetApi";
 import { PostRegister } from "@/contexts/PostApi"; // ✅ use centralized API
 
 const Register = () => {
@@ -34,16 +34,16 @@ const Register = () => {
     district: "",
     govtdeptName: "",
     govtsubcat: "",
-    subdistrict: "",
-    village: "",
+    // subdistrict: "",
+    // village: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
   const [districts, setDistricts] = useState([]);
-  const [subdistricts, setSubdistricts] = useState([]);
-  const [villages, setVillages] = useState([]);
+  // const [subdistricts, setSubdistricts] = useState([]);
+  // const [villages, setVillages] = useState([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -66,21 +66,16 @@ const Register = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleDistrictChange = async (value) => {
+  const handleDistrictChange = (value) => {
     handleChange("district", value);
-    handleChange("subdistrict", "");
-    handleChange("village", "");
-    const subs = await getSubDistricts(value);
-    setSubdistricts(subs);
-    setVillages([]);
   };
 
-  const handleSubdistrictChange = async (value) => {
-    handleChange("subdistrict", value);
-    handleChange("village", "");
-    const vils = await getVillages(value);
-    setVillages(vils);
-  };
+  // const handleSubdistrictChange = async (value) => {
+  //   handleChange("subdistrict", value);
+  //   handleChange("village", "");
+  //   const vils = await getVillages(value);
+  //   setVillages(vils);
+  // };
   const handleBack = () => {
     navigate(-1);
   };
@@ -108,8 +103,8 @@ const Register = () => {
     if (!email) errors.push("Email is required");
     if (!password) errors.push("Password is required");
     if (!formData.district) errors.push("District is required");
-    if (!formData.subdistrict) errors.push("Subdistrict is required");
-    if (!formData.village) errors.push("Village is required");
+    // if (!formData.subdistrict) errors.push("Subdistrict is required");
+    // if (!formData.village) errors.push("Village is required");
 
     // For organization and government types, check orgName or department presence
     if (
@@ -172,8 +167,10 @@ const Register = () => {
       docId: formData.docId,
       docIdtype: formData.docIdtype,
       district_code: parseInt(formData.district),
-      subdistrict_code: parseInt(formData.subdistrict),
-      village_code: parseInt(formData.village),
+      // subdistrict_code: parseInt(formData.subdistrict),
+      // village_code: parseInt(formData.village),
+      subdistrict_code: 1,
+      village_code: 1,
       govtdeptName: formData.govtdeptName,
       govtsubcat: formData.govtsubcat,
     };
@@ -301,11 +298,11 @@ const Register = () => {
     <div>
       <HomeHeader />
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 md:p-6 lg:p-8 ">
         <div className="w-full max-w-4xl">
           <form
             onSubmit={handleSubmit}
-            className="bg-white shadow-xl rounded-xl p-8 space-y-6"
+            className="bg-white shadow-xl rounded-xl p-4 md:p-6 lg:p-8 space-y-6"
           >
             {/* Heading */}
             <div className="text-center mt-6">
@@ -496,33 +493,44 @@ const Register = () => {
             </div>
 
             {/* Location Details */}
-            <div>
-              <h3 className="text-xl font-semibold text-blue-800 mb-2">
-                Location Details
-              </h3>
-              <div className="mt-4">
-                <Label>
-                  Full Address <span className="text-red-600">*</span>
-                </Label>
-                <textarea
-                  className="w-full border rounded-md p-2"
-                  value={formData.ownAddress}
-                  onChange={(e) => handleChange("ownAddress", e.target.value)}
-                />
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm">
+              {/* Header */}
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-blue-800">
+                  📍 Location Details
+                </h3>
               </div>
+
+              {/* Grid (Address bigger than State) */}
               <div className="grid md:grid-cols-3 gap-4">
+                {/* Address - 2 columns */}
+                <div className="md:col-span-2">
+                  <Label className="font-medium">
+                    Full Address <span className="text-red-600">*</span>
+                  </Label>
+                  <textarea
+                    rows={3}
+                    className="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    placeholder="Enter your complete address"
+                    value={formData.ownAddress}
+                    onChange={(e) => handleChange("ownAddress", e.target.value)}
+                  />
+                </div>
+
+                {/* State - 1 column */}
                 <div>
-                  <Label>
-                    District <span className="text-red-600">*</span>
+                  <Label className="font-medium">
+                    State <span className="text-red-600">*</span>
                   </Label>
                   <Select
                     value={formData.district}
                     onValueChange={handleDistrictChange}
                   >
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select district" />
+                    <SelectTrigger className="h-11 mt-1 rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
+                      <SelectValue placeholder="Select state" />
                     </SelectTrigger>
-                    <SelectContent>
+
+                    <SelectContent className="max-h-60">
                       {districts.map((d) => (
                         <SelectItem key={d.code} value={d.code.toString()}>
                           {d.name}
@@ -531,48 +539,7 @@ const Register = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>
-                    Subdistrict <span className="text-red-600">*</span>
-                  </Label>
-                  <Select
-                    value={formData.subdistrict}
-                    onValueChange={handleSubdistrictChange}
-                  >
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select subdistrict" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subdistricts.map((s) => (
-                        <SelectItem key={s.code} value={s.code.toString()}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>
-                    Tehsil <span className="text-red-600">*</span>
-                  </Label>
-                  <Select
-                    value={formData.village}
-                    onValueChange={(val) => handleChange("village", val)}
-                  >
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select Tehsil" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {villages.map((v) => (
-                        <SelectItem key={v.code} value={v.code.toString()}>
-                          {v.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
-              <div className="border-t border-gray-300 my-6" />
             </div>
 
             {/* Password Setup */}

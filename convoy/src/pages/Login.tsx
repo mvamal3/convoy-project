@@ -60,20 +60,20 @@ const Login = () => {
   return (
     <div>
       <HomeHeader />
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 flex justify-center p-8">
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 flex justify-center px-3 py-6 md:p-8 overflow-x-hidden">
         <div className="w-full max-w-md">
           <Card className="shadow-xl rounded-lg border border-gray-100">
-            <CardHeader className="text-center">
-              <CardTitle className="text-3xl font-semibold">
+            <CardHeader className="text-center p-4 md:p-6">
+              <CardTitle className="text-xl md:text-3xl font-semibold">
                 Welcome! Login Your Account
               </CardTitle>
-              <CardDescription className="text-justify leading-relaxed text-gray-700">
+              <CardDescription className="text-xs md:text-sm leading-relaxed text-gray-700">
                 Available for all registered Citizens, Government Agencies, and
                 Private Organizations.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <CardContent className="p-4 md:p-6">
+              <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
                 {/* Email */}
                 <div>
                   <Label htmlFor="email">
@@ -123,7 +123,11 @@ const Login = () => {
                 <Captcha onChange={setCaptcha} />
 
                 {/* Submit */}
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="w-full h-11"
+                  disabled={isLoading}
+                >
                   {isLoading && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
@@ -135,7 +139,7 @@ const Login = () => {
               <div className="mt-4">
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full h-11"
                   onClick={handleBack}
                 >
                   Back
@@ -143,7 +147,7 @@ const Login = () => {
               </div>
 
               {/* Register link */}
-              <div className="mt-6 text-center">
+              <div className="mt-4 md:mt-6 text-center">
                 <p className="text-sm text-gray-600">
                   Don’t have an account?{" "}
                   <Link

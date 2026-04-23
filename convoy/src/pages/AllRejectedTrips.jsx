@@ -152,65 +152,142 @@ const AllRejectedTrips = () => {
 
           <CardContent>
             {/* ✅ Filters */}
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-              {/* Date Filter */}
-              <div className="w-full sm:w-1/3">
-                <label className="block text-sm font-medium mb-1">
-                  Filter by Date
-                </label>
-                <input
-                  type="date"
-                  value={filteredDate}
-                  onChange={(e) => setFilteredDate(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
-                />
-              </div>
-
-              {/* Convoy Time Filter */}
-              <div className="w-full sm:w-1/3">
-                <label className="block text-sm font-medium mb-1">
-                  Filter by Convoy Time
-                </label>
-                <select
-                  value={filteredConvoyTime}
-                  onChange={(e) => setFilteredConvoyTime(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
-                >
-                  <option value="">All Convoy Times</option>
-                  {conveyList.length > 0 ? (
-                    conveyList.map((convey) => (
-                      <option key={convey.id} value={convey.id}>
-                        {convey.convey_name} ({convey.convey_time})
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No conveys available</option>
-                  )}
-                </select>
-              </div>
-
-              {/* Search Field */}
-              <div className="w-full sm:w-1/3">
-                <label className="block text-sm font-medium mb-1">Search</label>
-                <div className="flex gap-2">
+            <div className="flex flex-col gap-3 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Date Filter */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 sm:mb-2">
+                    Filter by Date
+                  </label>
                   <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by origin, destination, driver, or vehicle..."
+                    type="date"
+                    value={filteredDate}
+                    onChange={(e) => setFilteredDate(e.target.value)}
                     className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
                   />
-                  <Button
-                    onClick={handleSearch}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium rounded-md"
+                </div>
+
+                {/* Convoy Time Filter */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 sm:mb-2">
+                    Filter by Convoy Time
+                  </label>
+                  <select
+                    value={filteredConvoyTime}
+                    onChange={(e) => setFilteredConvoyTime(e.target.value)}
+                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
                   >
+                    <option value="">All Convoy Times</option>
+                    {conveyList.length > 0 ? (
+                      conveyList.map((convey) => (
+                        <option key={convey.id} value={convey.id}>
+                          {convey.convey_name} ({convey.convey_time})
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No conveys available</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* Search Field */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 sm:mb-2">
                     Search
-                  </Button>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search by origin, destination, driver, or vehicle..."
+                      className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                    />
+                    <Button
+                      onClick={handleSearch}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap"
+                    >
+                      Search
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* ✅ Table */}
+            {/* ✅ Mobile Card View */}
+            <div className="sm:hidden space-y-2">
+              {currentRows.length > 0 ? (
+                currentRows.map((row, i) => (
+                  <div
+                    key={row.t_id}
+                    className="border rounded-md p-2 bg-white shadow-sm"
+                  >
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-1">
+                      <div>
+                        <p className="text-[10px] text-gray-500">
+                          #{(currentPage - 1) * rowsPerPage + i + 1}
+                        </p>
+                        <p className="text-sm font-semibold">
+                          Trip ID: {row.t_id}
+                        </p>
+                      </div>
+
+                      <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                        {row.rejectedStage}
+                      </span>
+                    </div>
+
+                    {/* Route */}
+                    <p className="text-xs text-gray-700 mb-1 truncate">
+                      {row.origin} → {row.destination}
+                    </p>
+
+                    {/* Info Grid */}
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-gray-600">
+                      <p>
+                        <span className="font-medium">Veh:</span>{" "}
+                        {row.vehicleNo}
+                      </p>
+                      <p>
+                        <span className="font-medium">Type:</span>{" "}
+                        {row.vehicletype}
+                      </p>
+                      <p>
+                        <span className="font-medium">Date:</span>{" "}
+                        {formatDateDDMMYY(row.date)}
+                      </p>
+                      <p>
+                        <span className="font-medium">Pax:</span>{" "}
+                        {row.passengerCount}
+                      </p>
+                    </div>
+
+                    {/* Convoy */}
+                    <p className="text-[10px] text-gray-500 mt-1 truncate">
+                      {row.convoyTime}
+                    </p>
+
+                    {/* Button */}
+                    <Button
+                      size="sm"
+                      className="w-full mt-2 text-xs py-1 bg-blue-600"
+                      onClick={() =>
+                        navigate(`/ManageTrip/PoliceViewTrip/${row.t_id}`)
+                      }
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-6 text-sm">
+                  No trips found
+                </div>
+              )}
+            </div>
+
+            {/* ✅ Desktop Table View */}
             <div className="hidden sm:block">
               <div className="w-full overflow-x-auto">
                 <table className="min-w-[800px] w-full text-sm text-left text-gray-700 border">
@@ -286,7 +363,7 @@ const AllRejectedTrips = () => {
                 </table>
               </div>
 
-              {/* Pagination */}
+              {/* Desktop Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4 text-sm">
                   <Button
