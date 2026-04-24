@@ -218,7 +218,40 @@ export async function handleAddDriverAPI(
 
 export async function handleAddTripAPI(payload, accessToken, onSuccess) {
   try {
-    const response = await fetch(`${BASE_URL}/tri-new`, {
+    const response = await fetch(`${BASE_URL}/trip-new`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json(); // <-- get JSON body
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to add trip");
+    }
+
+    toast({ title: "Trip added successfully" });
+
+    // ✅ Pass data back to callback
+    if (typeof onSuccess === "function") {
+      onSuccess(data);
+    }
+  } catch (error) {
+    toast({
+      title: "Failed to add trip",
+      description: error.message,
+      variant: "destructive",
+    });
+  }
+}
+
+//////////////////add spl trp api
+export async function handleAddSplTripAPI(payload, accessToken, onSuccess) {
+  try {
+    const response = await fetch(`${BASE_URL}/spl-trip-new`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

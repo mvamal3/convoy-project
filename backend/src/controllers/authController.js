@@ -353,6 +353,18 @@ class AuthController {
     }
   }
 
+  //Create spl new Trip
+  static async splnewtrip(req, res) {
+    try {
+      const result = await AuthService.splnewtrip(req.body, req.user.id);
+      res.json(
+        BaseResponseDTO.success(result, "Special Trip Created Successfully"),
+      );
+    } catch (error) {
+      res.status(401).json(BaseResponseDTO.error(error.message));
+    }
+  }
+
   //get nationality
 
   static async getNationality(req, res) {
@@ -1320,6 +1332,24 @@ class AuthController {
       res.status(500).json(BaseResponseDTO.error(error.message));
     }
   }
+
+  static async getspecialConvoyCheckOutTrip(req, res) {
+    try {
+      const { checkpostid } = req.body;
+      const result =
+        await AuthService.getspecialConvoyCheckOutTrip(checkpostid);
+      res.json(
+        BaseResponseDTO.success(
+          result,
+          "Check-out trip details fetched successfully",
+        ),
+      );
+    } catch (error) {
+      console.error("Error fetching check-out trip details:", error);
+      res.status(500).json(BaseResponseDTO.error(error.message));
+    }
+  }
+
   static async updateCheckOutTrip(req, res) {
     try {
       const result = await AuthService.updateCheckOutTrip(req.body);

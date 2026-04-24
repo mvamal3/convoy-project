@@ -15,7 +15,7 @@ import {
   getCurrentDateTime1,
 } from "@/contexts/GetApi";
 import { useAuth } from "@/contexts/AuthContext";
-import { handleAddTripAPI } from "@/contexts/PostApi";
+import { handleAddSplTripAPI } from "@/contexts/PostApi";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import AddPassengerIndian from "@/components/passengers/AddPassengerIndian";
@@ -554,7 +554,7 @@ export default function specialConvoyDeparture() {
 
     console.log("FINAL PAYLOAD:", payload);
 
-    handleAddTripAPI(payload, accessToken, (response) => {
+    handleAddSplTripAPI(payload, accessToken, (response) => {
       if (response?.success && response?.data?.trip?.tId) {
         const tripId = response.data.trip.tId;
         const tripDate = response.data.trip.date;

@@ -8,6 +8,7 @@ class TripRequestDTO {
     this.destination = data.destination;
     this.date = data.date;
     this.convoyTime = data.convoyTime;
+    this.specialType = data.specialType || null;
 
     // Tourist flag (1 = yes, 0 = no)
     this.isTourist = data.isTouristTrip === 1 ? 1 : 0;
@@ -71,6 +72,13 @@ class TripRequestDTO {
 
     if (![0, 1].includes(this.isTourist)) {
       errors.push("isTourist must be 0 or 1");
+    }
+    if (
+      this.specialType !== null &&
+      this.specialType !== "" &&
+      ![100, 200].includes(Number(this.specialType))
+    ) {
+      errors.push("specialType must be 100 (Emergency) or 200 (VIP)");
     }
 
     /* ---------- Passenger validation ---------- */
@@ -152,29 +160,28 @@ class TripRequestDTO {
       }
     });
     // ✅ Return trip validation (ONLY ONCE)
-   // ✅ Return validation
-if (this.isReturn) {
-  if (!this.returnDate) {
-    errors.push("Return date is required");
-  }
-  if (!this.returnConvoyTime) {
-    errors.push("Return convoy time is required");
-  }
+    // ✅ Return validation
 
-  // 🔥 FIXED LOCATION
-  if (this.returnType !== "same") {
-    if (!this.returnPassengers.length) {
-      errors.push("Return passengers required for modified return");
+    if (this.isReturn) {
+      if (!this.returnDate) {
+        errors.push("Return date is required");
+      }
+      if (!this.returnConvoyTime) {
+        errors.push("Return convoy time is required");
+      }
+
+      // 🔥 FIXED LOCATION
+      if (this.returnType !== "same") {
+        if (!this.returnPassengers.length) {
+          errors.push("Return passengers required for modified return");
+        }
+      }
     }
-  }
-}
 
-return {
-  isValid: errors.length === 0,
-  errors,
-};
-
- 
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 }
 

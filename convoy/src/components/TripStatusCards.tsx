@@ -38,14 +38,16 @@ const TripStatusCards: React.FC<TripStatusCardsProps> = ({
           {approveTrip.astatus === 1
             ? "✅ Approved Details"
             : approveTrip.astatus === 2
-            ? "✔️ Approved Details"
-            : "❌ Rejected Trip"}
+              ? "✔️ Approved Details"
+              : "❌ Rejected Trip"}
         </h2>
 
         <p>
           <span className="font-semibold">Convey:</span>{" "}
-          {approveTrip.convey.convey_name}/
-          {approveTrip.convey.convey_time || "N/A"}
+          {approveTrip.convey?.convey_name}/
+          {Number(approveTrip.convey?.id) >= 100
+            ? approveTrip.convey?.actual_start_time || "N/A"
+            : approveTrip.convey?.convey_time || "N/A"}
         </p>
         <p>
           <span className="font-semibold">Checkpoint:</span>{" "}
@@ -94,8 +96,8 @@ const TripStatusCards: React.FC<TripStatusCardsProps> = ({
                 chk.status === 1
                   ? "bg-green-50"
                   : chk.status === 2
-                  ? "bg-orange-50"
-                  : "bg-red-50"
+                    ? "bg-orange-50"
+                    : "bg-red-50"
               }`}
             >
               <p>
@@ -123,15 +125,15 @@ const TripStatusCards: React.FC<TripStatusCardsProps> = ({
                     chk.status === 1
                       ? "text-green-600 font-semibold"
                       : chk.status === 2
-                      ? "text-orange-600 font-semibold"
-                      : "text-red-600 font-semibold"
+                        ? "text-orange-600 font-semibold"
+                        : "text-red-600 font-semibold"
                   }
                 >
                   {chk.status === 1
                     ? "✅ Checked OK"
                     : chk.status === 2
-                    ? "⚠️ Problem"
-                    : "❌ Not Arrived"}
+                      ? "⚠️ Problem"
+                      : "❌ Not Arrived"}
                 </span>
               </p>
             </div>

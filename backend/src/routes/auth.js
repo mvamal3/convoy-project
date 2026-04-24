@@ -73,6 +73,9 @@ router.post("/vehicle-new", authenticateToken, AuthController.registerVehicle); 
 router.post("/delete-vehicle", authenticateToken, AuthController.deleteVehicle); // Assuming this is for vehicle delete
 
 router.post("/trip-new", authenticateToken, AuthController.newtrip);
+
+router.post("/spl-trip-new", authenticateToken, AuthController.splnewtrip);
+
 router.post("/delete-trip", authenticateToken, AuthController.deletetrip); // Assuming this is for vehicle delete
 
 // Apply auth rate limiter to token refresh
@@ -204,6 +207,12 @@ router.post(
   //authenticatePoliceToken,
   AuthController.getCheckOutTrip,
 );
+router.post(
+  "/getSpecialConvoycheckouttrip",
+  //authenticatePoliceToken,
+  AuthController.getspecialConvoyCheckOutTrip,
+);
+
 router.post(
   "/update-checkout-trip",
   authenticatePoliceToken,

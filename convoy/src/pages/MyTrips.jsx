@@ -38,8 +38,14 @@ const MyTrips = () => {
       //console.log("Fetched trip data:", data);
       const tripList = Array.isArray(data?.data?.trips)
         ? data.data.trips.map((trip) => {
-            const conveyTime = trip.convey?.convey_time || "N/A";
+            const isSpecial = Number(trip.convey?.id) >= 100;
+
+            const conveyTime = isSpecial
+              ? trip.convey?.actual_start_time || "N/A" // 🔥 USE START TIME
+              : trip.convey?.convey_time || "N/A";
+
             const conveyName = trip.convey?.convey_name || "";
+
             return {
               t_id: trip.tId,
               origin: trip.originLocation.location,

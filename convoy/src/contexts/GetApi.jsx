@@ -341,6 +341,24 @@ export const getCheckOutTrip = async (accessToken, checkpost_id) => {
   return res.json();
 };
 
+export const getSpecialConvoyCheckOutTrip = async (
+  accessToken,
+  checkpost_id,
+) => {
+  const res = await fetch(
+    `${API_BASE_URL}/api/auth/getSpecialConvoycheckouttrip`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ checkpostid: checkpost_id }),
+    },
+  );
+  return res.json();
+};
+
 export const getCheckoutReports = async (
   accessToken,
   checkpostid,

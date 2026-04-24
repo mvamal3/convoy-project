@@ -58,7 +58,7 @@ import SearchTrip from "@/pages/SearchTrip"; //
 import SpDashboard from "@/pages/SpDashboard"; //
 import TodayVehicleReport from "@/pages/TodaysVehicleReport"; //
 import SpecialConvoyDeparture from "@/pages/SpecialConvoyDeparture";
-import specialconvoyarrival from "@/pages/specialconvoyarrival"; //
+import Specialconvoyarrival from "@/pages/Specialconvoyarrival"; //
 
 import GenerateReport1 from "@/pages/GenerateReport"; //
 
@@ -105,7 +105,7 @@ const AppRoutes = () => {
         path="/specialConvoydeparture"
         element={<SpecialConvoyDeparture />}
       />
-      <Route path="/specialConvoyarrival" element={<specialconvoyarrival />} />
+      <Route path="/Specialconvoyarrival" element={<Specialconvoyarrival />} />
       <Route
         path="/generate-checkout-report/:conveyId/:checkpostId"
         element={<GenerateCheckoutReport />}

@@ -53,10 +53,10 @@ const TripOverviewCard = ({ tripDetails }) => {
     status === 2
       ? 2
       : status === 3 || verifyStatus === 3
-      ? 3
-      : status === 1
-      ? 1
-      : 0;
+        ? 3
+        : status === 1
+          ? 1
+          : 0;
 
   // 🔹 UI CONFIG (LABEL + COLOR ALWAYS MATCH)
   const statusUI = {
@@ -89,6 +89,24 @@ const TripOverviewCard = ({ tripDetails }) => {
               label="Total Passengers"
               value={tripDetails.passengers?.length || 0}
             />
+            {tripDetails.convey?.id >= 100 && (
+              <InfoRow
+                label="Special Convoy"
+                value={
+                  <div className="flex items-center gap-2 justify-end">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-semibold ${
+                        tripDetails.convey?.id >= 200
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {tripDetails.convey?.id >= 200 ? "VIP" : "Emergency"}
+                    </span>
+                  </div>
+                }
+              />
+            )}
 
             {/* Driver Section */}
             <div className="border rounded-lg p-3 bg-gray-50 shadow-sm mt-3">
@@ -136,11 +154,18 @@ const TripOverviewCard = ({ tripDetails }) => {
               value={tripDetails.destinationLocation?.location || "N/A"}
             />
             <InfoRow
-              label="Date & Convoy Time"
-              value={`${new Date(tripDetails.date).toLocaleDateString("en-IN", {
+              label="Date"
+              value={new Date(tripDetails.date).toLocaleDateString("en-IN", {
                 dateStyle: "medium",
-              })} / ${tripDetails.convey?.convey_time || "N/A"}`}
+              })}
             />
+
+            {tripDetails.convey?.id >= 100 && (
+              <InfoRow
+                label=" Time"
+                value={tripDetails.convey?.actual_start_time || "N/A"}
+              />
+            )}
 
             {/* Vehicle Section */}
             <div className="border rounded-lg p-3 bg-gray-50 shadow-sm mt-3">

@@ -1045,7 +1045,7 @@ class AuthService {
         date: tripDTO.returnTripData?.date || tripDTO.returnDate,
         convoyTime:
           tripDTO.returnTripData?.convoyTime || tripDTO.returnConvoyTime,
-          isTourist: tripDTO.isTourist, 
+        isTourist: tripDTO.isTourist,
         status: "1",
         verifiystatus: 0,
       });
@@ -1073,6 +1073,139 @@ class AuthService {
   }
 
   // -------------------
+
+  //--------------special convoy trip----------------
+
+  static async splnewtrip(tripData, id) {
+    console.log("Creating new trip with data:", tripData);
+    console.log("User ID:", id);
+
+    const { Op, fn, col, where } = require("sequelize");
+
+    // ===== DTO VALIDATION =====
+    const tripDTO = new TripRequestDTO(tripData);
+    const validation = tripDTO.validate();
+
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
+    }
+
+    // ===== GET reg_id =====
+    let regIdObj = await Registration.findOne({
+      where: { userId: id },
+      attributes: ["reg_id"],
+    });
+    let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
+
+    // ===== SET RANGE =====
+    let baseStart = 0;
+    let baseEnd = null;
+
+    if (Number(tripDTO.specialType) === 100) {
+      baseStart = 100;
+      baseEnd = 199;
+    } else if (Number(tripDTO.specialType) === 200) {
+      baseStart = 200;
+      baseEnd = null;
+    } else {
+      throw new Error("Invalid specialType");
+    }
+
+    // ===== FIND LAST conveyid =====
+    const lastConvey = await db.ConveyControl.findOne({
+      where: {
+        checkpostid: Number(tripDTO.origin),
+        [Op.and]: [
+          where(fn("DATE", col("date")), tripDTO.date),
+          baseEnd
+            ? { conveyid: { [Op.between]: [baseStart, baseEnd] } }
+            : { conveyid: { [Op.gte]: baseStart } },
+        ],
+      },
+      order: [["conveyid", "DESC"]],
+    });
+
+    // ===== GENERATE conveyid =====
+    let newConveyId = lastConvey ? lastConvey.conveyid + 1 : baseStart;
+
+    console.log("Final Convey ID:", newConveyId);
+
+    // ===== INSERT INTO ConveyControl =====
+    await db.ConveyControl.create({
+      conveyid: newConveyId,
+      checkpostid: Number(tripDTO.origin),
+      date: tripDTO.date,
+      starttime: tripDTO.convoyTime,
+      closetime: tripDTO.convoyTime,
+      status: 0,
+    });
+
+    // ===== GENERATE tId =====
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, "0");
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const year = today.getFullYear();
+    const dateString = `${day}${month}${year}`;
+    const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
+      6,
+      "0",
+    );
+    const combined = dateString + randomNum;
+    const tId = BigInt(combined).toString(36).toUpperCase();
+
+    // ===== INSERT INTO TRIP =====
+    const newTrip = await db.Trip.create({
+      tId,
+      reg_id,
+      vId: tripDTO.vId,
+      dId: tripDTO.dId,
+      origin: tripDTO.origin,
+      destination: tripDTO.destination,
+      date: tripDTO.date,
+
+      // 🔥 IMPORTANT: store conveyid
+      convoyTime: newConveyId,
+
+      isTourist: tripDTO.isTourist,
+      status: "2",
+      verifiystatus: 2,
+    });
+
+    console.log("✅ Trip Created:", newTrip.toJSON());
+
+    // ===== AUTO APPROVAL (Special Convoy) =====
+    await db.ApproveTrip.create({
+      tId: newTrip.tId,
+      convey_id: newConveyId,
+      checkpost_id: Number(tripDTO.origin),
+      remarks: "Auto-approved (Special Convoy)",
+      astatus: 1, // approved
+      arrdate: new Date(),
+      arrtime: new Date(),
+      approveby: reg_id,
+    });
+
+    // ===== UPDATE TRIP STATUS =====
+    await newTrip.update({
+      status: 2, // approved
+      verifiystatus: 2, // verified
+    });
+
+    // ===== AUTO VERIFIED ENTRY =====
+    await db.VerifiedTrip.create({
+      tripId: newTrip.tId,
+      verifiedby: reg_id,
+      remarks: "Auto-verified (Special Convoy)",
+      status: 1,
+    });
+
+    return {
+      message: "Special Trip created successfully",
+      trip: newTrip,
+    };
+  }
+
+  //------------------------------
 
   //---------get_trip_details_by_reg_id--------------
 
@@ -1144,6 +1277,48 @@ class AuthService {
       ],
       order: [["entrydatetime", "DESC"]],
     });
+    const { Op, fn, col, where } = require("sequelize");
+
+    // ===== LOOP ALL TRIPS =====
+    for (let trip of trips) {
+      if (trip.convoyTime !== null) {
+        const convoyVal = Number(trip.convoyTime);
+
+        // ===== FIX TCONVEY (100 / 200) =====
+        if (convoyVal >= 100 && convoyVal <= 199) {
+          const convey = await db.TConvey.findOne({
+            where: { id: 100 },
+            attributes: ["id", "convey_time", "convey_name"],
+          });
+          trip.dataValues.convey = convey;
+        } else if (convoyVal >= 200) {
+          const convey = await db.TConvey.findOne({
+            where: { id: 200 },
+            attributes: ["id", "convey_time", "convey_name"],
+          });
+          trip.dataValues.convey = convey;
+        }
+
+        // ===== GET START TIME =====
+        if (convoyVal >= 100) {
+          const conveyControl = await db.ConveyControl.findOne({
+            where: {
+              conveyid: convoyVal,
+              checkpostid: Number(trip.origin),
+              [Op.and]: [where(fn("DATE", col("date")), trip.date)],
+            },
+            attributes: ["starttime", "closetime"],
+          });
+
+          if (conveyControl && trip.dataValues.convey) {
+            trip.dataValues.convey.dataValues = {
+              ...trip.dataValues.convey.dataValues,
+              actual_start_time: conveyControl.starttime,
+            };
+          }
+        }
+      }
+    }
 
     return {
       message: "Trip details loaded successfully",
@@ -1345,6 +1520,46 @@ class AuthService {
     const approveTrip = approveTripRaw
       ? approveTripRaw
       : { message: "No data found in ApproveTrip" };
+
+    // ===== FIX SPECIAL CONVOY MAPPING =====
+    if (trips && trips.convoyTime !== null) {
+      const convoyVal = Number(trips.convoyTime);
+
+      if (convoyVal >= 100 && convoyVal <= 199) {
+        const convey = await db.TConvey.findOne({
+          where: { id: 100 },
+          attributes: ["id", "convey_time", "convey_name"],
+        });
+
+        trips.dataValues.convey = convey;
+      } else if (convoyVal >= 200) {
+        const convey = await db.TConvey.findOne({
+          where: { id: 200 },
+          attributes: ["id", "convey_time", "convey_name"],
+        });
+
+        trips.dataValues.convey = convey;
+      }
+      // ===== GET REAL START TIME FROM ConveyControl =====
+      if (convoyVal >= 100) {
+        const conveyControl = await db.ConveyControl.findOne({
+          where: {
+            conveyid: convoyVal,
+            checkpostid: Number(trips.origin),
+            [Op.and]: [where(fn("DATE", col("date")), trips.date)],
+          },
+          attributes: ["starttime", "closetime"],
+        });
+
+        if (conveyControl && trips.dataValues.convey) {
+          trips.dataValues.convey.dataValues = {
+            ...trips.dataValues.convey.dataValues,
+            actual_start_time: conveyControl.starttime,
+            actual_close_time: conveyControl.closetime,
+          };
+        }
+      }
+    }
 
     return {
       message: "Trip details loaded successfully",
@@ -3126,6 +3341,9 @@ class AuthService {
           checkpost_id: targetCheckpostId,
           astatus: 1,
           arrdate: today,
+          convey_id: {
+            [Op.lt]: 100,
+          },
           //convey_id: closedConvey.conveyid, // ✅ ONLY CLOSED CONVEY
         },
         include: [
@@ -3251,7 +3469,231 @@ class AuthService {
       };
     }
   }
+  ///////specialconvoy checkout
+  static async getspecialConvoyCheckOutTrip(checkpostId) {
+    try {
+      const { Op, fn, col, where } = require("sequelize");
+      // ================= DATE (IST) =================
+      const kolkata = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+      });
+      const dateObj = new Date(kolkata);
 
+      const today = `${dateObj.getFullYear()}-${String(
+        dateObj.getMonth() + 1,
+      ).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+
+      // ================= FLIP CHECKPOST =================
+      let targetCheckpostId = checkpostId;
+      if (checkpostId == 1) targetCheckpostId = 2;
+      else if (checkpostId == 2) targetCheckpostId = 1;
+
+      // ================= FETCH LATEST CONVEY ENTRY =================
+      const latestConvey = await db.ConveyControl.findOne({
+        where: {
+          checkpostid: targetCheckpostId,
+          date: today,
+        },
+        include: [
+          {
+            model: db.TConvey,
+            as: "tconvey",
+            attributes: ["id", "convey_name", "convey_time"],
+          },
+        ],
+        order: [["id", "DESC"]], // 🔥 latest entry only
+      });
+
+      // ❌ NO CONVEY ENTRY TODAY
+      if (!latestConvey) {
+        return {
+          success: true,
+          closed: false,
+          message: `No convey activity found today for checkpost ${targetCheckpostId}`,
+          data: [],
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      // ❌ LATEST CONVEY IS NOT CLOSED
+      if (latestConvey.status !== 0) {
+        return {
+          success: true,
+          closed: false,
+          message: `Latest convey is not closed for checkpost ${targetCheckpostId}`,
+          data: [],
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      // ✅ LATEST CONVEY IS CLOSED
+      const closedConvey = latestConvey;
+
+      // ================= FETCH APPROVED TRIPS =================
+      const approvedTrips = await db.ApproveTrip.findAll({
+        where: {
+          checkpost_id: targetCheckpostId,
+          astatus: 1,
+          arrdate: today,
+          convey_id: {
+            [Op.gte]: 100,
+          },
+          //convey_id: closedConvey.conveyid, // ✅ ONLY CLOSED CONVEY
+        },
+        include: [
+          {
+            model: db.Trip,
+            as: "trip",
+            include: [
+              {
+                model: db.Driver,
+                as: "driver",
+                attributes: ["dFirstName", "dLastName"],
+              },
+              {
+                model: db.Vehicle,
+                as: "vehicle",
+                attributes: ["vNum"],
+              },
+              {
+                model: db.Passenger,
+                as: "passengers",
+                attributes: ["pId"],
+                through: { attributes: [], where: { status: 1 } },
+              },
+              {
+                model: db.OriginDestination,
+                as: "originLocation",
+                attributes: ["id", "location"],
+              },
+              {
+                model: db.OriginDestination,
+                as: "destinationLocation",
+                attributes: ["id", "location"],
+              },
+            ],
+          },
+          {
+            model: db.TConvey,
+            as: "convey",
+            attributes: ["id", "convey_name", "convey_time"],
+          },
+          {
+            model: db.PoliceRegistration,
+            as: "approverOfficer",
+            attributes: ["title", "firstName", "lastName", "designation"],
+          },
+        ],
+        order: [["id", "ASC"]],
+      });
+
+      // ❌ NO TRIPS FOR CLOSED CONVEY
+      if (!approvedTrips || approvedTrips.length === 0) {
+        return {
+          success: true,
+          closed: true,
+          convey: {
+            conveyid: closedConvey.conveyid,
+            name: closedConvey.tconvey?.convey_name,
+            time: closedConvey.tconvey?.convey_time,
+            starttime: closedConvey.starttime,
+            closetime: closedConvey.closetime,
+          },
+          message: "No approved trips found for closed convey",
+          data: [],
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      // preload convoy master
+      const emergencyConvoy = await db.TConvey.findOne({
+        where: { id: 100 },
+        attributes: ["id", "convey_name", "convey_time"],
+      });
+
+      const vipConvoy = await db.TConvey.findOne({
+        where: { id: 200 },
+        attributes: ["id", "convey_name", "convey_time"],
+      });
+      // ================= FORMAT RESPONSE =================
+      const formattedTrips = await Promise.all(
+        approvedTrips.map(async (trip) => {
+          const convoyVal = Number(trip.convey_id);
+
+          // ✅ ALWAYS keep real id
+          let convey = {
+            id: convoyVal, // 🔥 REAL convoy id (102, 203...)
+            convey_name:
+              convoyVal >= 200
+                ? "Special Convoy (VIP)"
+                : convoyVal >= 100
+                  ? "Special Convoy (Emergency)"
+                  : trip.convey?.convey_name || null,
+
+            convey_time: trip.convey?.convey_time || null,
+          };
+
+          // ✅ NOW await WORKS
+          if (convoyVal >= 100) {
+            const conveyControl = await db.ConveyControl.findOne({
+              where: {
+                conveyid: convoyVal,
+                checkpostid: Number(trip.checkpost_id),
+              },
+              attributes: ["starttime"],
+            });
+
+            if (conveyControl) {
+              convey.actual_start_time = conveyControl.starttime;
+            }
+          }
+
+          return {
+            trip_id: trip.trip?.tId,
+            origin_name: trip.trip?.originLocation?.location || null,
+            destination_name: trip.trip?.destinationLocation?.location || null,
+            vehicle_number: trip.trip?.vehicle?.vNum || null,
+            driver_name: trip.trip?.driver
+              ? `${trip.trip.driver.dFirstName} ${trip.trip.driver.dLastName}`
+              : null,
+            date: trip.trip?.date || null,
+            arr_time: trip.arrtime || null,
+            total_passengers: trip.trip?.passengers?.length || 0,
+            approved_by: trip.approverOfficer
+              ? `${trip.approverOfficer.firstName} ${trip.approverOfficer.lastName}`
+              : null,
+
+            // ✅ FINAL OBJECT
+            convey,
+          };
+        }),
+      );
+
+      // ================= FINAL RESPONSE =================
+      return {
+        success: true,
+        closed: true,
+        convey: {
+          conveyid: closedConvey.conveyid,
+          name: closedConvey.tconvey?.convey_name,
+          time: closedConvey.tconvey?.convey_time,
+          starttime: closedConvey.starttime,
+          closetime: closedConvey.closetime,
+        },
+        message: `Approved trips fetched for closed convey (checkpost ${targetCheckpostId})`,
+        data: formattedTrips,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Error fetching checkout trips:", error);
+      return {
+        success: false,
+        message: "Failed to fetch checkout trips",
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
   ////new fetch checkout trip and update approve trip status
 
   // static async getCheckOutTrip(checkpostId) {
