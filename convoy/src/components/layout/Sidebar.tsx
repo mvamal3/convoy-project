@@ -93,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       label: "Special Convoy Service",
       path: "#",
       children: [
-        { label: "Departure", path: "/specialConvoydeparture" },
+        //{ label: "Departure", path: "/specialConvoydeparture" },
         { label: "Arrival", path: "/specialConvoyarrival" },
         { label: "Reports", path: "/ApprovedTrips" }, // or create dedicated page
       ],
@@ -107,6 +107,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         { label: "Approved", path: "/ApprovedTrips" },
         { label: "Rejected", path: "/RejectedTrips" },
         { label: "Pending", path: "/PendingTrips" },
+        { label: "Verified Trips", path: "/ViewAllVerifiedTrips" },
+        { label: "Generate Report", path: "/generate-report" },
+        { label: "Convoy Wise Report", path: "/ConveyWiseReport" },
+        { label: "Arrival List", path: "/ArrivalList" },
+        { label: "Arrival Reports", path: "/ViewCheckoutReport" },
+        { label: "Today Vehicle Reports", path: "/TodayVehicleReport" },
       ],
     },
     { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },

@@ -221,7 +221,7 @@ router.post(
 
 router.post(
   "/getcheckoutreport",
-  // authenticatePoliceToken,
+  authenticatePoliceToken,
   AuthController.getCheckOutReport,
 );
 

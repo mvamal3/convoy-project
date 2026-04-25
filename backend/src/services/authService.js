@@ -4844,6 +4844,11 @@ class AuthService {
         whereClause.checkoutdate = params.checkoutdate;
       }
 
+      // Only fetch normal convoy (<= 99)
+      whereClause.conveyid = {
+        [Op.lte]: 99,
+      };
+
       const approveWhere = {};
       if (
         params.conveyId !== undefined &&
