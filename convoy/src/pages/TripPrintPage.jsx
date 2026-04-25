@@ -56,6 +56,18 @@ const TripPrintPreview = () => {
       checkoutTrips[0].checkouttime ||
       checkoutTrips[0].remarks);
 
+  const getConvoyTime = (t) => {
+    if (!t?.convey) return "-";
+
+    // ✅ Special convoy → show actual_start_time
+    if (t.convey.convey_time === "00:00:00") {
+      return t.convey.actual_start_time || "-";
+    }
+
+    // ✅ Normal convoy
+    return t.convey.convey_time || "-";
+  };
+
   return (
     <div style={styles.page}>
       {/* ================= HEADER ================= */}
@@ -102,7 +114,7 @@ const TripPrintPreview = () => {
                   <ShieldCheck size={14} /> Convoy
                 </>
               }
-              value={`${t.convey?.convey_name} (${t.convey?.convey_time})`}
+              value={`${t.convey?.convey_name || "-"} (${getConvoyTime(t)})`}
             />
             <Row
               label={
@@ -150,9 +162,7 @@ const TripPrintPreview = () => {
                     <tbody>
                       <Row
                         label="Convey"
-                        value={`${t.convey?.convey_name || "-"} / ${
-                          t.convey?.convey_time || "-"
-                        }`}
+                        value={`${t.convey?.convey_name || "-"} / ${getConvoyTime(t)}`}
                       />
                       <Row
                         label="Checkpoint"
