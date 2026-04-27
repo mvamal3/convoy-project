@@ -569,8 +569,7 @@ export default function specialConvoyDeparture() {
             <div>
               <p><strong>Trip ID:</strong> ${tripId}</p>
               <p><strong>Date:</strong> ${formattedDate}</p>
-              <p><strong>Convey:</strong> ${conveyname}</p>
-              <p><strong>Time:</strong> ${conveytime}</p>
+             
             </div>
           `,
         }).then(() => {

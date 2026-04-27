@@ -97,8 +97,8 @@ const TripOverviewCard = ({ tripDetails }) => {
                     <span
                       className={`px-2 py-1 rounded text-xs font-semibold ${
                         tripDetails.convey?.id >= 200
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700"
+                          ? "bg-purple-100 text-purple-700" // ✅ VIP (changed from yellow → purple)
+                          : "bg-orange-100 text-orange-700"
                       }`}
                     >
                       {tripDetails.convey?.id >= 200 ? "VIP" : "Emergency"}

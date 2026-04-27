@@ -407,7 +407,15 @@ export const stopConveyAPI = async (accessToken, payload) => {
 // PostApi.jsx
 export const updateCheckoutTripAPI = async (
   accessToken,
-  { tId, status, checkpostId, remarks, runningConveyId },
+  {
+    tId,
+    status,
+    checkpostId,
+    remarks,
+    runningConveyId,
+    checkoutDate,
+    checkoutTime,
+  },
 ) => {
   try {
     console.log("Updating checkout trip with:", {
@@ -416,6 +424,8 @@ export const updateCheckoutTripAPI = async (
       checkpostId,
       remarks,
       runningConveyId,
+      checkoutDate,
+      checkoutTime,
     });
     const res = await fetch(`${BASE_URL}/update-checkout-trip`, {
       method: "POST",
@@ -429,6 +439,8 @@ export const updateCheckoutTripAPI = async (
         checkpostId,
         remarks,
         runningConveyId,
+        checkoutDate,
+        checkoutTime,
       }),
     });
 

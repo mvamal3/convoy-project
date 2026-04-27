@@ -1173,6 +1173,34 @@ class AuthService {
 
     console.log("✅ Trip Created:", newTrip.toJSON());
 
+    // ===== ADD PASSENGERS (SPECIAL CONVOY) =====
+    if (tripDTO.Passengers && tripDTO.Passengers.length > 0) {
+      const passengersToCreate = tripDTO.Passengers.map((p) => ({
+        passengerName: p.PassengerName,
+        fatherName: p.FatherName || null,
+        isForeigner: p.isForeigner === 1 ? 1 : 0,
+        phoneNo: p.PhoneNo,
+        age: p.Age,
+        gender: p.Gender,
+        docType: p.docType,
+        docId: p.docId,
+        nationality: p.isForeigner ? p.Nationality : null,
+        visaNumber: p.isForeigner ? p.VisaNo : null,
+        residence: p.Residence || null,
+      }));
+
+      const createdPassengers =
+        await db.Passenger.bulkCreate(passengersToCreate);
+
+      const tripPassengersToCreate = createdPassengers.map((p) => ({
+        tId: newTrip.tId,
+        pId: p.pId,
+        status: 1,
+      }));
+
+      await db.tripRelation.bulkCreate(tripPassengersToCreate);
+    }
+
     // ===== AUTO APPROVAL (Special Convoy) =====
     await db.ApproveTrip.create({
       tId: newTrip.tId,
@@ -2017,7 +2045,14 @@ class AuthService {
         typeof params === "object" ? params?.conveyid?.toString() : null;
 
       const { Op } = require("sequelize");
-      const approveWhere = { astatus: { [Op.ne]: 0 } };
+      const approveWhere = {
+        astatus: { [Op.ne]: 0 },
+
+        // ✅ ADD THIS CONDITION
+        convey_id: {
+          [Op.lt]: 99, // only normal convoy
+        },
+      };
 
       // ✅ SEARCH SUPPORT (Trip ID)
       if (params?.searchTerm && params.searchTerm.trim() !== "") {
@@ -3841,12 +3876,13 @@ class AuthService {
         };
       }
 
-      // 2. Get today's date and current time
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-      const now = new Date();
-      const currentTime = now.toTimeString().split(" ")[0]; // HH:mm:ss
+      // ✅ Use frontend value if present, else fallback
+      const today = data.checkoutDate || new Date().toISOString().split("T")[0];
 
-      // 3. Insert into checkout_trip
+      const currentTime =
+        data.checkoutTime || new Date().toTimeString().split(" ")[0];
+
+      //  3. Insert into checkout_trip
       const newCheckout = await db.CheckoutTrip.create({
         tId: data.tId,
         checkpostid: data.checkpostId,
@@ -5728,7 +5764,7 @@ class AuthService {
         });
       });
 
-      const verification = verificationMap[c.id] || {
+      const verification = verificationMap[c.convey_time?.toString()] || {
         verificationRejectedCount: 0,
         verificationPendingCount: 0,
       };
@@ -5768,9 +5804,103 @@ class AuthService {
       };
     });
 
+    /* =========================
+   🔥 OPTIMIZED SPECIAL TRIPS
+========================= */
+
+    const specialTrips = await db.Trip.findAll({
+      attributes: ["tId", "convoyTime", "isTourist"],
+      where: {
+        date: today,
+        status: 2,
+        origin: checkpostId ? checkpostId : { [Op.in]: [1, 2] },
+        [Op.and]: [
+          Sequelize.where(
+            Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+            { [Op.gte]: 99 },
+          ),
+        ],
+      },
+      raw: true,
+    });
+
+    // 👉 Trip IDs
+    const tripIds = specialTrips.map((t) => t.tId);
+
+    // 👉 Passenger relations (ONLY ONCE)
+    const relations = await db.tripRelation.findAll({
+      attributes: ["tId", "pId"],
+      where: {
+        tId: tripIds,
+        status: 1,
+      },
+      raw: true,
+    });
+
+    // 👉 Passenger data (ONLY ONCE)
+    const passengers = await db.Passenger.findAll({
+      attributes: ["pId", "isForeigner"],
+      where: {
+        pId: relations.map((r) => r.pId),
+      },
+      raw: true,
+    });
+
+    // 👉 Fast lookup
+    const foreignSet = new Set(
+      passengers.filter((p) => p.isForeigner === 1).map((p) => p.pId),
+    );
+
+    // 👉 Trip → passengers map
+    const tripMap = {};
+    relations.forEach((r) => {
+      if (!tripMap[r.tId]) tripMap[r.tId] = [];
+      tripMap[r.tId].push(r.pId);
+    });
+
+    // 👉 FINAL SINGLE LOOP
+    let summary = {
+      emergency: {
+        totalTrips: 0,
+        touristTrips: 0,
+        nonTouristTrips: 0,
+        totalPassengers: 0,
+        totalForeigners: 0,
+      },
+      vip: {
+        totalTrips: 0,
+        touristTrips: 0,
+        nonTouristTrips: 0,
+        totalPassengers: 0,
+        totalForeigners: 0,
+      },
+    };
+
+    specialTrips.forEach((t) => {
+      const id = Number(t.convoyTime);
+      const isVip = id >= 200;
+      const group = isVip ? summary.vip : summary.emergency;
+
+      group.totalTrips++;
+
+      if (Number(t.isTourist) === 1) group.touristTrips++;
+      else group.nonTouristTrips++;
+
+      const pIds = tripMap[t.tId] || [];
+
+      group.totalPassengers += pIds.length;
+
+      pIds.forEach((pid) => {
+        if (foreignSet.has(pid)) {
+          group.totalForeigners++;
+        }
+      });
+    });
+
     return {
       message: "Today's convoy statistics fetched successfully",
       convoys: result,
+      specialSummary: summary,
     };
   }
 

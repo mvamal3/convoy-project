@@ -15,6 +15,10 @@ const Specialconvoyarrival = () => {
   const [trips, setTrips] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [checkoutDate, setCheckoutDate] = useState("");
+  const [checkoutTime, setCheckoutTime] = useState("");
 
   const rowsPerPage = 10;
 
@@ -69,13 +73,22 @@ const Specialconvoyarrival = () => {
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-  const handleAction = async (status, tripId, remarks, runningConveyId) => {
+  const handleAction = async (
+    status,
+    tripId,
+    remarks,
+    runningConveyId,
+    checkoutDate,
+    checkoutTime,
+  ) => {
     try {
       console.log("actiondestials", {
         status,
         tripId,
         remarks,
         runningConveyId,
+        checkoutDate,
+        checkoutTime,
       });
       const data = await updateCheckoutTripAPI(accessToken, {
         tId: tripId,
@@ -83,6 +96,8 @@ const Specialconvoyarrival = () => {
         checkpostId: user.checkpostid,
         remarks, // ✅ include remarks in payload
         runningConveyId, // ✅ include runningConveyId in payload
+        checkoutDate,
+        checkoutTime,
       });
 
       // Show different messages based on status
@@ -250,14 +265,16 @@ const Specialconvoyarrival = () => {
                             <Button
                               size="sm"
                               variant="success"
-                              onClick={() =>
-                                handleAction(
-                                  1,
-                                  row.trip_id,
-                                  "Special Convoy Checked OK",
-                                  row.convoyid,
-                                )
-                              }
+                              onClick={() => {
+                                setSelectedTrip(row);
+                                setCheckoutDate(
+                                  new Date().toISOString().split("T")[0],
+                                );
+                                setCheckoutTime(
+                                  new Date().toTimeString().slice(0, 5),
+                                );
+                                setShowModal(true);
+                              }}
                             >
                               Checked OK
                             </Button>
@@ -275,7 +292,12 @@ const Specialconvoyarrival = () => {
                                   if (!remarks.trim())
                                     alert("Remarks are required!");
                                 }
-                                handleAction(2, row.trip_id, remarks);
+                                handleAction(
+                                  2,
+                                  row.trip_id,
+                                  remarks,
+                                  row.convoyid,
+                                );
                               }}
                             >
                               Check Problem
@@ -285,7 +307,12 @@ const Specialconvoyarrival = () => {
                               size="sm"
                               variant="destructive"
                               onClick={() =>
-                                handleAction(0, row.trip_id, "Trip not arrived")
+                                handleAction(
+                                  0,
+                                  row.trip_id,
+                                  "Trip not arrived",
+                                  row.convoyid,
+                                )
                               }
                             >
                               Non-arrival
@@ -296,6 +323,70 @@ const Specialconvoyarrival = () => {
                     ))}
                   </tbody>
                 </table>
+
+                {showModal && (
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-[350px] shadow-lg">
+                      <h2 className="text-lg font-semibold mb-4">
+                        Checkout Details
+                      </h2>
+
+                      {/* DATE */}
+                      <label className="text-sm font-medium">
+                        Checkout Date
+                      </label>
+                      <input
+                        type="date"
+                        value={checkoutDate}
+                        onChange={(e) => setCheckoutDate(e.target.value)}
+                        className="w-full border rounded px-2 py-1 mb-3"
+                      />
+
+                      {/* TIME */}
+                      <label className="text-sm font-medium">
+                        Checkout Time
+                      </label>
+                      <input
+                        type="time"
+                        value={checkoutTime}
+                        onChange={(e) => setCheckoutTime(e.target.value)}
+                        className="w-full border rounded px-2 py-1 mb-4"
+                      />
+
+                      {/* ACTION BUTTONS */}
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowModal(false)}
+                        >
+                          Cancel
+                        </Button>
+
+                        <Button
+                          onClick={() => {
+                            if (!checkoutDate || !checkoutTime) {
+                              alert("Date and Time are required!");
+                              return;
+                            }
+
+                            handleAction(
+                              1,
+                              selectedTrip.trip_id,
+                              "Special Convoy Checked OK",
+                              selectedTrip.convoyid,
+                              checkoutDate,
+                              checkoutTime,
+                            );
+
+                            setShowModal(false);
+                          }}
+                        >
+                          Submit
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

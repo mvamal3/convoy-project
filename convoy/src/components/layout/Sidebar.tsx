@@ -173,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 
     { icon: Search, label: "View Trip", path: "/SearchTrip" },
 
-    { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },
+    // { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },
 
     { icon: User, label: "Profile", path: "/PoliceProfile" },
 

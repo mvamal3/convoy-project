@@ -35,6 +35,7 @@ const PoliceDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [serverTime, setServerTime] = useState(null);
   const [serverDate, setServerDate] = useState(null);
+  const [specialConvoyCount, setSpecialConvoyCount] = useState(0);
 
   // Fetch server time/date once
   useEffect(() => {
@@ -97,10 +98,13 @@ const PoliceDashboard = () => {
           user.checkpostid,
           serverDate,
         );
-        //console.log("runing stop", stopped  );
+        console.log("runing stop", stopped);
+        const normalStopped = (stopped || []).filter(
+          (c) => Number(c.conveyid) < 99, // ✅ only normal convoy
+        );
 
-        setStoppedConveys(stopped || []);
-        setotalclosedconvey(stopped?.length || 0);
+        setStoppedConveys(normalStopped);
+        setotalclosedconvey(normalStopped.length);
       } catch {
         setStoppedConveys([]);
         setotalclosedconvey(0);
@@ -166,20 +170,36 @@ const PoliceDashboard = () => {
         setTodayPendingCount(
           trips.filter(
             (t) =>
+              Number(t.convoyTime) < 99 && // ✅ NEW CONDITION
               t.status === "1" &&
               t.date === serverDate &&
               (t.verifiystatus === 0 || t.verifiystatus === 2),
           ).length,
         );
+
         setTodayCancelCount(
           trips.filter(
             (t) =>
+              Number(t.convoyTime) < 99 && // ✅ NEW CONDITION
               (t.status === "3" || t.verifiystatus === 3) &&
               t.date === serverDate,
           ).length,
         );
+
         setApprovedCount(
-          trips.filter((t) => t.status === "2" && t.date === serverDate).length,
+          trips.filter(
+            (t) =>
+              Number(t.convoyTime) < 99 && // ✅ NEW CONDITION
+              t.status === "2" &&
+              t.date === serverDate,
+          ).length,
+        );
+        setSpecialConvoyCount(
+          trips.filter(
+            (t) =>
+              Number(t.convoyTime) > 99 && // ✅ SPECIAL CONVOY
+              t.date === serverDate,
+          ).length,
         );
       } catch {
         setTodayPendingCount(0);
@@ -422,14 +442,16 @@ const PoliceDashboard = () => {
         <Card className="border-4 border-blue-600 bg-blue-100 rounded-lg hover:shadow-xl transition-shadow cursor-default p-4 sm:p-6 flex flex-col justify-between">
           <CardHeader className="flex justify-between items-center mb-3">
             <CardTitle className="text-sm font-bold text-blue-700 flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" /> Active Users
+              <Users className="h-5 w-5 text-blue-600" /> Special Convoys
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-extrabold text-blue-700 tabular-nums">
-              0
+              {specialConvoyCount}
             </div>
-            <p className="text-xs text-blue-600 mt-1">Registered citizens</p>
+            <p className="text-xs text-blue-600 mt-1">
+              Special convoys Vehicle
+            </p>
           </CardContent>
         </Card>
       </div>

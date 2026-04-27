@@ -17,6 +17,8 @@ const TodaysTripDetails = () => {
   const [selectedDate, setSelectedDate] = useState(null);
 
   const [convoys, setConvoys] = useState([]);
+  const [specialSummary, setSpecialSummary] = useState({});
+
   const [activeTab, setActiveTab] = useState("count"); // details | count
 
   /* ================= Fetch Today Report ================= */
@@ -35,6 +37,7 @@ const TodaysTripDetails = () => {
 
       const res = await getTodaysReport(accessToken, payload);
       setConvoys(res?.data?.convoys || []);
+      setSpecialSummary(res?.data?.specialSummary || {});
     } catch (error) {
       console.error("Failed to fetch report", error);
     }
@@ -46,9 +49,17 @@ const TodaysTripDetails = () => {
 
   const convoysToShow = !user?.checkpostid
     ? convoys
-    : Number(user?.checkpostid) === 1
-      ? convoys.filter((c) => [1, 2, 3, 4].includes(c.convey_id))
-      : convoys.filter((c) => [5, 6, 7, 8].includes(c.convey_id));
+    : convoys.filter((c) => {
+        const id = Number(c.convey_id);
+
+        if (id >= 100) return true; // ✅ KEEP SPECIAL ALWAYS
+
+        if (Number(user?.checkpostid) === 1) {
+          return [1, 2, 3, 4].includes(id);
+        } else {
+          return [5, 6, 7, 8].includes(id);
+        }
+      });
 
   const handleBack = () => navigate(-1);
 
@@ -194,6 +205,7 @@ const TodaysTripDetails = () => {
                 grandTotal={grandTotal}
                 role={user?.role}
                 checkpostId={user?.checkpostid}
+                specialSummary={specialSummary}
               />
             )}
           </CardContent>
