@@ -87,20 +87,40 @@ export default function CitizenEditTrip() {
 
   // Calculate server minutes for time comparison
   const getMinutes = (timeStr) => {
-    if (!timeStr) return null;
-    const [hour, minute] = timeStr.split(":").map(Number);
+    if (!timeStr || typeof timeStr !== "string") return null;
+
+    const parts = timeStr.split(":").map(Number);
+
+    const hour = parts[0] || 0;
+    const minute = parts[1] || 0;
+
     return hour * 60 + minute;
   };
 
   const serverMinutes = getMinutes(serverTime);
   const isToday = formData.date === serverDate;
 
+  const GRACE_MINUTES = 30;
+
   const availableConveyTimes = conveyTimeList
     .filter((ct) => {
+      // ✅ allow all until server loads
       if (!serverDate || !serverTime) return true;
+
+      const serverMinutes = getMinutes(serverTime);
+
+      // ✅ fallback if invalid server time
+      if (serverMinutes === null || isNaN(serverMinutes)) return true;
+
       if (isToday) {
-        return getMinutes(ct.convey_time) > serverMinutes;
+        const convoyMinutes = getMinutes(ct.convey_time);
+
+        if (convoyMinutes === null || isNaN(convoyMinutes)) return false;
+
+        // ✅ 30 min grace logic
+        return convoyMinutes + GRACE_MINUTES > serverMinutes;
       }
+
       return true;
     })
     .filter((ct) => !stopConveyList.includes(String(ct.id)));

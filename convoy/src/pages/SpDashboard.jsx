@@ -212,6 +212,7 @@ const SPDashboard = () => {
             report: {
               totalConvoys: cp.totalClosedConvoys,
               departureTrips: cp.totalApprovedConvoys, // ✅ Departure
+
               arrivalTrips:
                 cp.totalArrivaltripsjirkatang ??
                 cp.totalArrivaltripsmiddleStrait ??
@@ -221,6 +222,10 @@ const SPDashboard = () => {
               nonArrivalVehicles: cp.totalNonArrivalVehicles,
               issueTrips: cp.totalCheckProblem,
               totalArrivalPassengers: cp.totalArrivalPassengers,
+              specialConvoy: cp.specialConvoy || {
+                emergency: 0,
+                vip: 0,
+              },
             },
           }));
           console.log("Mapped Checkpost Reports:", mappedData);
@@ -558,12 +563,29 @@ const SPDashboard = () => {
               />
 
               <StatCard
-                title="Issues Occurred"
-                value={cp.report.issueTrips}
-                icon={AlertTriangle}
-                color="bg-orange-500"
-                bgColor="bg-gradient-to-br from-orange-50 to-white"
-                onClick={() => openIssueModal(cp.checkpostId)}
+                title="Special Convoy"
+                icon={Shield}
+                color="bg-purple-500"
+                bgColor="bg-gradient-to-br from-purple-50 to-white"
+                value={
+                  <div className="grid grid-cols-2 divide-x divide-gray-300 mt-1">
+                    {/* 🚨 Emergency */}
+                    <div className="text-center px-2 py-1">
+                      <div className="text-xl font-bold text-gray-900">
+                        {cp.report.specialConvoy?.emergency || 0}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Emergency</p>
+                    </div>
+
+                    {/* ⭐ VIP */}
+                    <div className="text-center px-2 py-1">
+                      <div className="text-xl font-bold text-gray-900">
+                        {cp.report.specialConvoy?.vip || 0}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">VIP</p>
+                    </div>
+                  </div>
+                }
               />
             </div>
 

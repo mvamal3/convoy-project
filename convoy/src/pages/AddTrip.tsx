@@ -282,24 +282,33 @@ export default function AddTrip() {
   };
 
   const getMinutes = (timeStr) => {
-    if (!timeStr) return null;
-    const [hour, minute] = timeStr.split(":").map(Number);
+    if (!timeStr || typeof timeStr !== "string") return null;
+
+    const parts = timeStr.split(":").map(Number);
+
+    const hour = parts[0] || 0;
+    const minute = parts[1] || 0;
+
     return hour * 60 + minute;
   };
 
   const serverMinutes = getMinutes(serverTime);
   const isToday = formData.date === serverDate;
 
+  const GRACE_MINUTES = 30;
+
   const availableConveyTimes = conveyTimeList.filter((ct) => {
     // Allow all until server time loads
     if (!serverDate || !serverTime) return true;
 
-    // Restrict only for today
     if (isToday) {
-      return getMinutes(ct.convey_time) > serverMinutes;
+      const convoyMinutes = getMinutes(ct.convey_time);
+
+      // Allow convoy till convoy time + 30 mins
+      return convoyMinutes + GRACE_MINUTES > serverMinutes;
     }
 
-    // Future dates
+    // Future dates → allow all
     return true;
   });
 

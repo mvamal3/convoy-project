@@ -17,9 +17,8 @@ const COLS = [
   { key: "Other", label: "Other" },
 ];
 
+/* ================= COMMON TABLE ================= */
 const TableSection = ({ title, dataKey, convoys }) => {
-  let grandTotal = 0;
-
   return (
     <div className="mb-8">
       <h2 className="font-semibold text-lg mb-2">{title}</h2>
@@ -52,7 +51,11 @@ const TableSection = ({ title, dataKey, convoys }) => {
                   {COLS.map((col) => {
                     const val = stats[col.key] || 0;
                     rowTotal += val;
-                    return <td className="border">{val}</td>;
+                    return (
+                      <td key={col.key} className="border">
+                        {val}
+                      </td>
+                    );
                   })}
 
                   <td className="border font-bold bg-yellow-100">{rowTotal}</td>
@@ -66,7 +69,15 @@ const TableSection = ({ title, dataKey, convoys }) => {
   );
 };
 
-const VehicleReport = ({ convoysToShow }) => {
+/* ================= MAIN COMPONENT ================= */
+const VehicleReport = ({ convoysToShow, specialSummary }) => {
+  const emergencyStats = specialSummary?.emergency?.vehicleStats || {};
+  const vipStats = specialSummary?.vip?.vehicleStats || {};
+
+  const getRowTotal = (stats) =>
+    COLS.reduce((sum, col) => sum + (stats[col.key] || 0), 0);
+
+  /* ================= TOTALS ================= */
   const govtTotal = convoysToShow.reduce(
     (sum, c) => sum + (c.govtVehicleStats?.Total || 0),
     0,
@@ -76,69 +87,97 @@ const VehicleReport = ({ convoysToShow }) => {
     (sum, c) => sum + (c.privateVehicleStats?.Total || 0),
     0,
   );
-  // ✅ Category totals (Govt + Private)
+
   const categoryTotals = convoysToShow.reduce(
     (totals, c) => {
       const g = c.govtVehicleStats || {};
       const p = c.privateVehicleStats || {};
 
-      const add = (key) => (g[key] || 0) + (p[key] || 0);
-
-      totals.Car += add("Car");
-      totals.SUV += add("SUV");
-      totals.LMVCargo += add("LMVCargo");
-      totals.Van += add("Van");
-      totals.PickupTruck += add("PickupTruck");
-      totals.Truck += add("Truck");
-      totals.HMV += add("HMV");
-      totals.Bus += add("Bus");
-      totals.Ambulance += add("Ambulance");
-      totals.MortuaryVan += add("MortuaryVan");
-      totals.WaterTanker += add("WaterTanker");
-      totals.OilTanker += add("OilTanker");
-      totals.LPGTanker += add("LPGTanker");
-      totals.Other += add("Other");
+      COLS.forEach(({ key }) => {
+        totals[key] += (g[key] || 0) + (p[key] || 0);
+      });
 
       return totals;
     },
-    {
-      Car: 0,
-      SUV: 0,
-      LMVCargo: 0,
-      Van: 0,
-      PickupTruck: 0,
-      Truck: 0,
-      HMV: 0,
-      Bus: 0,
-      Ambulance: 0,
-      MortuaryVan: 0,
-      WaterTanker: 0,
-      OilTanker: 0,
-      LPGTanker: 0,
-      Other: 0,
-    },
+    Object.fromEntries(COLS.map((c) => [c.key, 0])),
   );
+
   const grandVehicleTotal = govtTotal + privateTotal;
+
   const totalPassengers = convoysToShow.reduce(
     (sum, c) => sum + (c.totalPassengers || 0),
     0,
   );
 
+  /* ================= UI ================= */
   return (
     <div className="space-y-6">
-      {/* GOVT SECTION */}
+      {/* GOVT */}
       <TableSection
         title="A. Movement of Govt Vehicles"
         dataKey="govtVehicleStats"
         convoys={convoysToShow}
       />
 
-      {/* PRIVATE SECTION */}
+      {/* PRIVATE */}
       <TableSection
         title="B. Movement of Private Vehicles"
         dataKey="privateVehicleStats"
         convoys={convoysToShow}
       />
+
+      {/* 🔥 SPECIAL CONVOY */}
+      {specialSummary && (
+        <div className="mb-8">
+          <h2 className="font-semibold text-lg mb-2">
+            C. Special Convoy Vehicles
+          </h2>
+
+          <div className="overflow-x-auto border rounded">
+            <table className="w-full text-sm text-center border">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border px-3 py-2">Type</th>
+                  {COLS.map((c) => (
+                    <th key={c.key} className="border px-3 py-2">
+                      {c.label}
+                    </th>
+                  ))}
+                  <th className="border px-3 py-2 bg-yellow-200">Total</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {/* Emergency */}
+                <tr className="bg-red-50">
+                  <td className="border px-3 py-2 font-semibold">Emergency</td>
+                  {COLS.map((col) => (
+                    <td key={col.key} className="border">
+                      {emergencyStats[col.key] || 0}
+                    </td>
+                  ))}
+                  <td className="border font-bold bg-yellow-100">
+                    {getRowTotal(emergencyStats)}
+                  </td>
+                </tr>
+
+                {/* VIP */}
+                <tr className="bg-purple-50">
+                  <td className="border px-3 py-2 font-semibold">VIP</td>
+                  {COLS.map((col) => (
+                    <td key={col.key} className="border">
+                      {vipStats[col.key] || 0}
+                    </td>
+                  ))}
+                  <td className="border font-bold bg-yellow-100">
+                    {getRowTotal(vipStats)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* SUMMARY */}
       <div className="border rounded-lg overflow-hidden">
@@ -146,20 +185,11 @@ const VehicleReport = ({ convoysToShow }) => {
           <thead className="bg-gray-200 font-semibold">
             <tr>
               <th className="border px-3 py-2">TOTAL VEHICLES (A+B)</th>
-              <th className="border px-3 py-2">Car</th>
-              <th className="border px-3 py-2">SUV</th>
-              <th className="border px-3 py-2">LMV Cargo</th>
-              <th className="border px-3 py-2">Van</th>
-              <th className="border px-3 py-2">Pickup</th>
-              <th className="border px-3 py-2">Truck</th>
-              <th className="border px-3 py-2">HMV</th>
-              <th className="border px-3 py-2">Bus</th>
-              <th className="border px-3 py-2">Ambulance</th>
-              <th className="border px-3 py-2">Mortuary</th>
-              <th className="border px-3 py-2">Water Tanker</th>
-              <th className="border px-3 py-2">Oil Tanker</th>
-              <th className="border px-3 py-2">LPG Tanker</th>
-              <th className="border px-3 py-2">Other</th>
+              {COLS.map((c) => (
+                <th key={c.key} className="border px-3 py-2">
+                  {c.label}
+                </th>
+              ))}
               <th className="border px-3 py-2 bg-yellow-300">TOTAL</th>
             </tr>
           </thead>
@@ -168,11 +198,10 @@ const VehicleReport = ({ convoysToShow }) => {
             {/* Govt */}
             <tr className="bg-blue-50 font-medium">
               <td className="border px-3 py-2 text-left">Govt Vehicles</td>
-
-              {Object.keys(categoryTotals).map((k) => (
-                <td key={k} className="border">
+              {COLS.map((col) => (
+                <td key={col.key} className="border">
                   {convoysToShow.reduce(
-                    (s, c) => s + (c.govtVehicleStats?.[k] || 0),
+                    (s, c) => s + (c.govtVehicleStats?.[col.key] || 0),
                     0,
                   )}
                 </td>
@@ -183,10 +212,10 @@ const VehicleReport = ({ convoysToShow }) => {
             {/* Private */}
             <tr className="bg-green-50 font-medium">
               <td className="border px-3 py-2 text-left">Private Vehicles</td>
-              {Object.keys(categoryTotals).map((k) => (
-                <td className="border">
+              {COLS.map((col) => (
+                <td key={col.key} className="border">
                   {convoysToShow.reduce(
-                    (s, c) => s + (c.privateVehicleStats?.[k] || 0),
+                    (s, c) => s + (c.privateVehicleStats?.[col.key] || 0),
                     0,
                   )}
                 </td>
@@ -197,9 +226,9 @@ const VehicleReport = ({ convoysToShow }) => {
             {/* Grand */}
             <tr className="bg-gray-100 font-bold text-lg">
               <td className="border px-3 py-2 text-left">GRAND TOTAL</td>
-              {Object.entries(categoryTotals).map(([k, v]) => (
-                <td key={k} className="border">
-                  {v}
+              {COLS.map((col) => (
+                <td key={col.key} className="border">
+                  {categoryTotals[col.key]}
                 </td>
               ))}
               <td className="border bg-yellow-300">{grandVehicleTotal}</td>

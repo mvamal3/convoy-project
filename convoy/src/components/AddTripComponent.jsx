@@ -40,9 +40,13 @@ const AddTripComponent = () => {
   });
 
   const toMinutes = (time) => {
-    if (!time) return 0;
-    const [h, m] = time.split(":").map(Number);
-    return h * 60 + m;
+    if (!time || typeof time !== "string") return null;
+
+    const parts = time.split(":").map(Number);
+    const hour = parts[0] || 0;
+    const minute = parts[1] || 0;
+
+    return hour * 60 + minute;
   };
   // Update vehicleSeating in formData whenever vId changes
   useEffect(() => {
@@ -148,13 +152,19 @@ const AddTripComponent = () => {
         // Filter convey times by current time only if date matches server date
         if (formData.date === serverDate) {
           const serverMinutes = toMinutes(serverTime);
+          const GRACE_MINUTES = 30;
 
-          const filteredTimes = conveyTimes.filter(
-            (ct) => toMinutes(ct.convey_time) > serverMinutes,
-          );
+          const filteredTimes = conveyTimes.filter((ct) => {
+            const convoyMinutes = toMinutes(ct.convey_time);
+
+            // ✅ safety check
+            if (convoyMinutes === null || isNaN(convoyMinutes)) return false;
+
+            // ✅ allow till convoy time + 30 mins
+            return convoyMinutes + GRACE_MINUTES > serverMinutes;
+          });
 
           setConveyTimeList(filteredTimes);
-          console.log("Filtered convey times for today:", filteredTimes);
         } else {
           setConveyTimeList(conveyTimes);
           console.log("All convey times for other date:", conveyTimes);

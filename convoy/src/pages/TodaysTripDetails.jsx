@@ -196,6 +196,7 @@ const TodaysTripDetails = () => {
               <TodaysDetailedReport
                 convoysToShow={convoysToShow}
                 grandTotal={grandTotal}
+                specialSummary={specialSummary}
               />
             )}
 

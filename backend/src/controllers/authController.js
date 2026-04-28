@@ -1523,6 +1523,21 @@ class AuthController {
       });
     }
   }
+
+  //////get spl convoy report
+  static async getSplConvoyTripDetailsbyRegId(req, res) {
+    try {
+      const result = await AuthService.getSplConvoyTripDetailsbyRegId(
+        req.body,
+        req.user.id,
+      );
+      res.json(
+        BaseResponseDTO.success(result, "Trip Details Loaded successfully"),
+      );
+    } catch (error) {
+      res.status(401).json(BaseResponseDTO.error(error.message));
+    }
+  }
 }
 
 module.exports = AuthController;

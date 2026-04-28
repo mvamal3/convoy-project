@@ -14,6 +14,7 @@ const TodaysVehicleReport = () => {
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [convoys, setConvoys] = useState([]);
+  const [specialSummary, setSpecialSummary] = useState(null);
 
   /* ================= Fetch Vehicle Report ================= */
   const fetchVehicleReport = useCallback(async () => {
@@ -30,6 +31,7 @@ const TodaysVehicleReport = () => {
 
       const res = await getTodaysReport(accessToken, payload);
       setConvoys(res?.data?.convoys || []);
+      setSpecialSummary(res?.data?.specialSummary || null);
     } catch (error) {
       console.error("Failed to fetch vehicle report", error);
     }
@@ -128,7 +130,10 @@ const TodaysVehicleReport = () => {
             </div>
 
             {/* ===== VEHICLE REPORT TABLE ===== */}
-            <VehicleReport convoysToShow={convoysToShow} />
+            <VehicleReport
+              convoysToShow={convoysToShow}
+              specialSummary={specialSummary}
+            />
           </CardContent>
         </Card>
       </div>

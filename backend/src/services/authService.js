@@ -5805,7 +5805,7 @@ class AuthService {
     });
 
     /* =========================
-   🔥 OPTIMIZED SPECIAL TRIPS
+🔥 OPTIMIZED SPECIAL TRIPS (WITH VEHICLES FIXED)
 ========================= */
 
     const specialTrips = await db.Trip.findAll({
@@ -5821,13 +5821,21 @@ class AuthService {
           ),
         ],
       },
-      raw: true,
+      include: [
+        {
+          model: db.Vehicle,
+          as: "vehicle", // ⚠️ SAME alias as your normal convoy query
+          attributes: ["ownershipType", "vCat"],
+          required: false,
+        },
+      ],
+      raw: false, // ❗ IMPORTANT (we need object access)
     });
 
     // 👉 Trip IDs
     const tripIds = specialTrips.map((t) => t.tId);
 
-    // 👉 Passenger relations (ONLY ONCE)
+    // 👉 Passenger relations
     const relations = await db.tripRelation.findAll({
       attributes: ["tId", "pId"],
       where: {
@@ -5837,28 +5845,33 @@ class AuthService {
       raw: true,
     });
 
-    // 👉 Passenger data (ONLY ONCE)
+    // 👉 Passenger data
     const passengers = await db.Passenger.findAll({
-      attributes: ["pId", "isForeigner"],
+      attributes: ["pId", "isForeigner", "gender", "age"],
       where: {
         pId: relations.map((r) => r.pId),
       },
       raw: true,
     });
 
-    // 👉 Fast lookup
+    // 👉 Passenger lookup
     const foreignSet = new Set(
       passengers.filter((p) => p.isForeigner === 1).map((p) => p.pId),
     );
 
-    // 👉 Trip → passengers map
+    const passengerMap = {};
+    passengers.forEach((p) => {
+      passengerMap[p.pId] = p;
+    });
+
+    // 👉 Trip → passenger map
     const tripMap = {};
     relations.forEach((r) => {
       if (!tripMap[r.tId]) tripMap[r.tId] = [];
       tripMap[r.tId].push(r.pId);
     });
 
-    // 👉 FINAL SINGLE LOOP
+    // 👉 FINAL SUMMARY
     let summary = {
       emergency: {
         totalTrips: 0,
@@ -5866,16 +5879,56 @@ class AuthService {
         nonTouristTrips: 0,
         totalPassengers: 0,
         totalForeigners: 0,
+        totalMale: 0,
+        totalFemale: 0,
+        totalChild: 0,
+
+        vehicleStats: {
+          LMV: 0,
+          LMVCargo: 0,
+          Truck: 0,
+          WaterTanker: 0,
+          OilTanker: 0,
+          LPGTruck: 0,
+          BusGovernment: 0,
+          BusCommercial: 0,
+          Ambulance: 0,
+          PickupTruck: 0,
+          Government: 0,
+          Commercial: 0,
+          Private: 0,
+        },
       },
+
       vip: {
         totalTrips: 0,
         touristTrips: 0,
         nonTouristTrips: 0,
         totalPassengers: 0,
         totalForeigners: 0,
+        totalMale: 0,
+        totalFemale: 0,
+        totalChild: 0,
+
+        vehicleStats: {
+          LMV: 0,
+          LMVCargo: 0,
+          Truck: 0,
+          WaterTanker: 0,
+          OilTanker: 0,
+          LPGTruck: 0,
+          BusGovernment: 0,
+          BusCommercial: 0,
+          Ambulance: 0,
+          PickupTruck: 0,
+          Government: 0,
+          Commercial: 0,
+          Private: 0,
+        },
       },
     };
 
+    // 👉 SINGLE LOOP (FIXED)
     specialTrips.forEach((t) => {
       const id = Number(t.convoyTime);
       const isVip = id >= 200;
@@ -5888,15 +5941,52 @@ class AuthService {
 
       const pIds = tripMap[t.tId] || [];
 
+      // 👉 PASSENGERS
       group.totalPassengers += pIds.length;
 
       pIds.forEach((pid) => {
-        if (foreignSet.has(pid)) {
-          group.totalForeigners++;
+        const p = passengerMap[pid];
+        if (!p) return;
+
+        if (foreignSet.has(pid)) group.totalForeigners++;
+
+        if (typeof p.age === "number" && p.age <= 12) {
+          group.totalChild++;
+        } else if (p.gender?.toLowerCase() === "male") {
+          group.totalMale++;
+        } else if (p.gender?.toLowerCase() === "female") {
+          group.totalFemale++;
         }
       });
-    });
 
+      // 👉 VEHICLES (FIXED)
+      const vehicle = t.vehicle; // ✅ direct relation
+
+      if (vehicle) {
+        const vCat = vehicle.vCat?.toLowerCase();
+        const ownership = vehicle.ownershipType?.toLowerCase();
+
+        const stats = group.vehicleStats;
+
+        if (vCat === "car") stats.LMV++;
+        else if (vCat === "lmv cargo") stats.LMVCargo++;
+        else if (vCat === "truck") stats.Truck++;
+        else if (vCat === "water tanker") stats.WaterTanker++;
+        else if (vCat === "oil tanker") stats.OilTanker++;
+        else if (vCat === "lpg tanker") stats.LPGTruck++;
+        else if (vCat === "pickup truck") stats.PickupTruck++;
+        else if (vCat === "ambulance") stats.Ambulance++;
+        else if (vCat === "bus") {
+          if (ownership === "government") stats.BusGovernment++;
+          else stats.BusCommercial++;
+        }
+
+        // ownership
+        if (ownership === "government") stats.Government++;
+        else if (ownership === "commercial") stats.Commercial++;
+        else if (ownership === "private") stats.Private++;
+      }
+    });
     return {
       message: "Today's convoy statistics fetched successfully",
       convoys: result,
@@ -6555,6 +6645,12 @@ class AuthService {
               where(fn("DATE", col("date")), reportDate),
               { status: 0 },
               { checkpostid },
+
+              {
+                conveyid: {
+                  [Op.lt]: 99,
+                },
+              },
             ],
           },
         });
@@ -6577,6 +6673,9 @@ class AuthService {
           where: {
             arrdate: reportDate,
             astatus: { [Op.ne]: 0 },
+            convey_id: {
+              [Op.lt]: 99,
+            },
           },
         });
       };
@@ -6592,6 +6691,14 @@ class AuthService {
               where: {
                 date: reportDate,
                 ...getOriginCondition(checkpostid),
+
+                // ✅ ADD THIS
+                [Op.and]: [
+                  Sequelize.where(
+                    Sequelize.cast(Sequelize.col("trip.convoyTime"), "SIGNED"),
+                    { [Op.lt]: 99 },
+                  ),
+                ],
               },
               include: [
                 {
@@ -6619,6 +6726,12 @@ class AuthService {
               {
                 [Op.or]: [{ status: 3 }, { verifiystatus: 3 }],
               },
+
+              // ✅ ADD THIS
+              Sequelize.where(
+                Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+                { [Op.lt]: 99 },
+              ),
             ],
           },
         });
@@ -6637,10 +6750,25 @@ class AuthService {
             status: 0,
             ...checkpostCondition,
           },
+          include: [
+            {
+              model: db.Trip,
+              as: "trip",
+              required: true,
+
+              where: {
+                [Op.and]: [
+                  Sequelize.where(
+                    Sequelize.cast(Sequelize.col("trip.convoyTime"), "SIGNED"),
+                    { [Op.lt]: 99 },
+                  ),
+                ],
+              },
+            },
+          ],
         });
       };
 
-      // 🔹 Check problem count
       const getCheckProblemcount = async (checkpostid) => {
         const checkpostCondition =
           checkpostid === 1
@@ -6653,6 +6781,22 @@ class AuthService {
             status: 2,
             ...checkpostCondition,
           },
+          include: [
+            {
+              model: db.Trip,
+              as: "trip",
+              required: true,
+
+              where: {
+                [Op.and]: [
+                  Sequelize.where(
+                    Sequelize.cast(Sequelize.col("trip.convoyTime"), "SIGNED"),
+                    { [Op.lt]: 99 },
+                  ),
+                ],
+              },
+            },
+          ],
         });
       };
 
@@ -6669,6 +6813,22 @@ class AuthService {
             status: { [Op.ne]: 0 },
             ...checkpostCondition,
           },
+          include: [
+            {
+              model: db.Trip,
+              as: "trip",
+              required: true,
+
+              where: {
+                [Op.and]: [
+                  Sequelize.where(
+                    Sequelize.cast(Sequelize.col("trip.convoyTime"), "SIGNED"),
+                    { [Op.lt]: 99 },
+                  ),
+                ],
+              },
+            },
+          ],
         });
       };
 
@@ -6684,15 +6844,28 @@ class AuthService {
             status: { [Op.ne]: 0 },
             ...checkpostCondition,
           },
-          attributes: ["tId"], // ✅ ONLY trip id
+          include: [
+            {
+              model: db.Trip,
+              as: "trip",
+              required: true,
+              attributes: [],
+
+              where: {
+                [Op.and]: [
+                  Sequelize.where(
+                    Sequelize.cast(Sequelize.col("trip.convoyTime"), "SIGNED"),
+                    { [Op.lt]: 99 },
+                  ),
+                ],
+              },
+            },
+          ],
+          attributes: ["tId"],
           raw: true,
         });
 
-        const tripIds = rows.map((r) => r.tId);
-
-        console.log("🆔 Arrived Trip IDs:", tripIds);
-
-        return tripIds;
+        return rows.map((r) => r.tId);
       };
 
       // 🔹 Arrival passenger total from trip_relation_tbl
@@ -6761,6 +6934,82 @@ class AuthService {
       const middleStraitArrivalPassengers =
         await getArrivalPassengerTotal(middleStraitTripIds);
 
+      // =========================
+      // 🔥 SPECIAL CONVOY (CHECKPOST-WISE)
+      // =========================
+
+      // 🚨 Emergency (100–199)
+
+      // 👉 JIRKATANG (checkpost = 1)
+      const jirkatangEmergency = await db.Trip.count({
+        where: {
+          date: reportDate,
+          status: 2,
+          origin: 1, // ✅ JIRKATANG
+          [Op.and]: [
+            Sequelize.where(
+              Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+              { [Op.gte]: 100 },
+            ),
+            Sequelize.where(
+              Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+              { [Op.lt]: 200 },
+            ),
+          ],
+        },
+      });
+
+      // 👉 MIDDLE STRAIT (checkpost ≠ 1)
+      const middleStraitEmergency = await db.Trip.count({
+        where: {
+          date: reportDate,
+          status: 2,
+          origin: { [Op.ne]: 1 }, // ✅ MIDDLE STRAIT
+          [Op.and]: [
+            Sequelize.where(
+              Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+              { [Op.gte]: 100 },
+            ),
+            Sequelize.where(
+              Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+              { [Op.lt]: 200 },
+            ),
+          ],
+        },
+      });
+
+      // ⭐ VIP (>=200)
+
+      // 👉 JIRKATANG
+      const jirkatangVIP = await db.Trip.count({
+        where: {
+          date: reportDate,
+          status: 2,
+          origin: 1,
+          [Op.and]: [
+            Sequelize.where(
+              Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+              { [Op.gte]: 200 },
+            ),
+          ],
+        },
+      });
+
+      // 👉 MIDDLE STRAIT
+      const middleStraitVIP = await db.Trip.count({
+        where: {
+          date: reportDate,
+          status: 2,
+          origin: { [Op.ne]: 1 },
+          [Op.and]: [
+            Sequelize.where(
+              Sequelize.cast(Sequelize.col("convoyTime"), "SIGNED"),
+              { [Op.gte]: 200 },
+            ),
+          ],
+        },
+      });
+
       // ✅ FINAL RESPONSE
       return {
         success: true,
@@ -6778,6 +7027,10 @@ class AuthService {
             totalCheckProblem: jirkatangCheckProblem,
             totalArrivaltripsjirkatang: jirkatangArrival,
             totalArrivalPassengers: jirkatangArrivalPassengers,
+            specialConvoy: {
+              emergency: jirkatangEmergency,
+              vip: jirkatangVIP,
+            },
           },
           {
             checkpostId: 2,
@@ -6790,6 +7043,10 @@ class AuthService {
             totalCheckProblem: middleStraitCheckProblem,
             totalArrivaltripsmiddleStrait: middleStraitArrival,
             totalArrivalPassengers: middleStraitArrivalPassengers,
+            specialConvoy: {
+              emergency: middleStraitEmergency,
+              vip: middleStraitVIP,
+            },
           },
         ],
       };
@@ -6817,25 +7074,33 @@ class AuthService {
               date,
               ...originCondition,
               [Op.or]: [{ status: 3 }, { verifiystatus: 3 }],
+
+              // ✅ ADD THIS
+              [Op.and]: [
+                Sequelize.where(
+                  Sequelize.cast(Sequelize.col("Trip.convoyTime"), "SIGNED"),
+                  { [Op.lt]: 99 },
+                ),
+              ],
             },
             attributes: ["tId", "date", "status", "verifiystatus"],
             include: [
               {
                 model: db.Driver,
-                as: "driver", // ✅ alias MATCH
-                required: false, // ✅ don't block trip rows
+                as: "driver",
+                required: false,
                 attributes: ["title", "dFirstName", "dLastName"],
               },
               {
                 model: db.Vehicle,
-                as: "vehicle", // ✅ alias MATCH
-                required: false, // ✅ don't block trip rows
-                attributes: ["vNum", "Vcat"], // ✅ vehicle number only
+                as: "vehicle",
+                required: false,
+                attributes: ["vNum", "Vcat"],
               },
               {
                 model: db.ApproveTrip,
                 as: "approveDetails",
-                required: false, // important: don't block if no record
+                required: false,
                 attributes: ["remarks", "astatus", "approveby"],
               },
             ],
@@ -6846,6 +7111,9 @@ class AuthService {
             where: {
               arrdate: date,
               astatus: { [Op.ne]: 0 }, // ✅ APPROVED / DEPARTED
+              convey_id: {
+                [Op.lt]: 99,
+              },
             },
             include: [
               {
@@ -6883,7 +7151,22 @@ class AuthService {
               {
                 model: db.Trip,
                 as: "trip",
-                attributes: ["tId", "date"],
+                required: true, // ✅ IMPORTANT (for filtering)
+                attributes: ["tId", "date", "convoyTime"],
+
+                where: {
+                  // ✅ ADD THIS (NORMAL CONVOY ONLY)
+                  [Op.and]: [
+                    Sequelize.where(
+                      Sequelize.cast(
+                        Sequelize.col("trip.convoyTime"),
+                        "SIGNED",
+                      ),
+                      { [Op.lt]: 99 },
+                    ),
+                  ],
+                },
+
                 include: [
                   {
                     model: db.Vehicle,
@@ -6904,13 +7187,27 @@ class AuthService {
           return await db.CheckoutTrip.findAll({
             where: {
               checkoutdate: date,
-              status: 0, // ✅ NON-ARRIVAL
+              status: 0,
               checkpostid: checkpostId === 1 ? 1 : { [Op.ne]: 1 },
             },
             include: [
               {
                 model: db.Trip,
-                as: "trip", // ⚠️ MUST MATCH ASSOCIATION
+                as: "trip",
+                required: true, // ✅ IMPORTANT
+
+                where: {
+                  [Op.and]: [
+                    Sequelize.where(
+                      Sequelize.cast(
+                        Sequelize.col("trip.convoyTime"),
+                        "SIGNED",
+                      ),
+                      { [Op.lt]: 99 },
+                    ),
+                  ],
+                },
+
                 attributes: ["tId", "date", "origin", "destination"],
                 include: [
                   {
@@ -6932,13 +7229,27 @@ class AuthService {
           return await db.CheckoutTrip.findAll({
             where: {
               checkoutdate: date,
-              status: 2, // ✅ ISSUE OCCURRED
+              status: 2,
               checkpostid: checkpostId === 1 ? 1 : { [Op.ne]: 1 },
             },
             include: [
               {
                 model: db.Trip,
-                as: "trip", // ⚠️ must match association
+                as: "trip",
+                required: true, // ✅ IMPORTANT
+
+                where: {
+                  [Op.and]: [
+                    Sequelize.where(
+                      Sequelize.cast(
+                        Sequelize.col("trip.convoyTime"),
+                        "SIGNED",
+                      ),
+                      { [Op.lt]: 99 },
+                    ),
+                  ],
+                },
+
                 attributes: ["tId", "date"],
                 include: [
                   {
@@ -6960,8 +7271,13 @@ class AuthService {
           return await db.ConveyControl.findAll({
             where: {
               date,
-              status: 0, // ✅ CLOSED CONVOY
-              checkpostid: checkpostId, // ✅ FIXED
+              status: 0,
+              checkpostid: checkpostId,
+
+              // ✅ ADD THIS
+              conveyid: {
+                [Op.lt]: 99,
+              },
             },
             attributes: ["id", "conveyid", "date", "starttime", "closetime"],
             include: [
@@ -7059,6 +7375,123 @@ class AuthService {
         timestamp: new Date().toISOString(),
       };
     }
+  }
+
+  static async getSplConvoyTripDetailsbyRegId(tripData, id) {
+    console.log("Fetching trip details with data:", tripData);
+    console.log("fetch trip details with data:", id);
+    const { Op, fn, col, where, literal } = require("sequelize");
+
+    // Get reg_id associated with the userId
+    let regIdObj = await Registration.findOne({
+      where: { userId: id },
+      attributes: ["reg_id"],
+    });
+
+    let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
+    console.log("Registration ID found:", reg_id);
+
+    if (!reg_id) {
+      throw new Error("No registration ID found for the given user.");
+    }
+
+    // Fetch trip details by reg_id
+    const trips = await db.Trip.findAll({
+      where: {
+        reg_id: reg_id,
+      },
+      include: [
+        {
+          model: db.Driver,
+          as: "driver",
+          attributes: ["dFirstName", "dLastName", "licenseNo"],
+        },
+        {
+          model: db.Vehicle,
+          as: "vehicle",
+          attributes: ["vId", "vNum", "vCat"],
+        },
+        {
+          model: db.Passenger,
+          as: "passengers",
+          attributes: ["passengerName", "phoneNo", "docId"],
+        },
+        {
+          model: db.OriginDestination,
+          as: "originLocation",
+          attributes: ["id", "location"], // ✅ include location name
+        },
+        {
+          model: db.OriginDestination,
+          as: "destinationLocation",
+          attributes: ["id", "location"], // ✅ include location name
+        },
+        {
+          model: db.TConvey,
+          as: "convey",
+          attributes: ["id", "convey_time", "convey_name"],
+        }, // add convey include here
+      ],
+      attributes: [
+        "tId",
+        "origin",
+        "destination",
+        "date",
+        "vId",
+        "dId",
+        "convoyTime",
+        "status",
+        "entrydatetime",
+        "verifiystatus",
+      ],
+      order: [["entrydatetime", "DESC"]],
+    });
+
+    // ===== LOOP ALL TRIPS =====
+    for (let trip of trips) {
+      if (trip.convoyTime !== null) {
+        const convoyVal = Number(trip.convoyTime);
+
+        // ===== FIX TCONVEY (100 / 200) =====
+        if (convoyVal >= 100 && convoyVal <= 199) {
+          const convey = await db.TConvey.findOne({
+            where: { id: 100 },
+            attributes: ["id", "convey_time", "convey_name"],
+          });
+          trip.dataValues.convey = convey;
+        } else if (convoyVal >= 200) {
+          const convey = await db.TConvey.findOne({
+            where: { id: 200 },
+            attributes: ["id", "convey_time", "convey_name"],
+          });
+          trip.dataValues.convey = convey;
+        }
+
+        // ===== GET START TIME =====
+        if (convoyVal >= 100) {
+          const conveyControl = await db.ConveyControl.findOne({
+            where: {
+              conveyid: convoyVal,
+              checkpostid: Number(trip.origin),
+              [Op.and]: [where(fn("DATE", col("date")), trip.date)],
+            },
+            attributes: ["starttime", "closetime"],
+          });
+
+          if (conveyControl && trip.dataValues.convey) {
+            trip.dataValues.convey.dataValues = {
+              ...trip.dataValues.convey.dataValues,
+              actual_start_time: conveyControl.starttime,
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      message: "Trip details loaded successfully",
+      trips: trips,
+    };
   }
 }
 

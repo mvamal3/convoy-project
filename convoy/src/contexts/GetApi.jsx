@@ -584,3 +584,13 @@ export const getNationalityList = async (accessToken) => {
 
   return await res.json();
 };
+
+export const getsplconvoyTripList = async (accessToken) => {
+  const res = await axios.get(
+    `${API_BASE_URL}/api/auth/get-trip-details-Spl-convoy`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  return res.data;
+};

@@ -166,8 +166,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       path: "#",
       children: [
         { label: "Departure", path: "/specialConvoydeparture" },
-        { label: "Arrival", path: "/specialConvoyarrival" },
-        { label: "Reports", path: "/ApprovedTrips" },
+        // { label: "Arrival", path: "/specialConvoyarrival" },
+        { label: "Reports", path: "/SpecialconvoyApprovedTrips" },
       ],
     },
 

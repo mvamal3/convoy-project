@@ -329,6 +329,12 @@ router.post("/sp/trip-details", AuthController.getSpTripDetails);
 
 router.post("/get-nationality", AuthController.getNationality);
 
+router.get(
+  "/get-trip-details-Spl-convoy",
+  authenticateToken,
+  AuthController.getSplConvoyTripDetailsbyRegId,
+);
+
 // Apply password reset limiter (if you implement password reset)
 // router.post('/forgot-password', passwordResetLimiter, AuthController.forgotPassword);
 // router.post('/reset-password', passwordResetLimiter, AuthController.resetPassword);
