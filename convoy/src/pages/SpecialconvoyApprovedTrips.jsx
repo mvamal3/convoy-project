@@ -187,7 +187,7 @@ const SpecialconvoyApprovedTrips = () => {
                             size="sm"
                             className="bg-blue-500 text-white"
                             onClick={() =>
-                              navigate(`ManageTrip/ViewTrip/${row.t_id}`)
+                              navigate(`/ManageTrip/ViewTrip/${row.t_id}`)
                             }
                           >
                             View
