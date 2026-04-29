@@ -594,3 +594,35 @@ export const getsplconvoyTripList = async (accessToken) => {
   );
   return res.data;
 };
+
+export const getSpecialConvoyReport = async (accessToken, payload) => {
+  console.log("getSpecialConvoyReport called with payload:", payload);
+  const res = await axios.post(
+    `${API_BASE_URL}/api/auth/get-special-convoy-report`,
+    payload,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  return res.data;
+};
+
+export const getSpecialCheckoutReports = async (
+  accessToken,
+  checkpostid,
+  status,
+  filteredConvey,
+) => {
+  const res = await fetch(`${API_BASE_URL}/api/auth/specialgetcheckoutreport`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ checkpostid, status, conveyId: filteredConvey }),
+  });
+  return res.json();
+};

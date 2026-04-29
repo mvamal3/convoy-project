@@ -226,6 +226,12 @@ router.post(
 );
 
 router.post(
+  "/specialgetcheckoutreport",
+  authenticatePoliceToken,
+  AuthController.getSpecialCheckOutReport,
+);
+
+router.post(
   "/getuserprofile",
   // authenticatePoliceToken,
   AuthController.getuserprofile,
@@ -333,6 +339,11 @@ router.get(
   "/get-trip-details-Spl-convoy",
   authenticateToken,
   AuthController.getSplConvoyTripDetailsbyRegId,
+);
+
+router.post(
+  "/get-special-convoy-report",
+  AuthController.getSpecialConvoyReport,
 );
 
 // Apply password reset limiter (if you implement password reset)

@@ -1208,8 +1208,8 @@ class AuthService {
       checkpost_id: Number(tripDTO.origin),
       remarks: "Auto-approved (Special Convoy)",
       astatus: 1, // approved
-      arrdate: new Date(),
-      arrtime: new Date(),
+      arrdate: tripDTO.date,
+      arrtime: tripDTO.convoyTime,
       approveby: reg_id,
     });
 
@@ -7492,6 +7492,276 @@ class AuthService {
       message: "Trip details loaded successfully",
       trips: trips,
     };
+  }
+
+  static async getSpecialConvoyReport(body) {
+    const { Op } = require("sequelize");
+
+    try {
+      console.log("📥 Payload:", body);
+
+      const { checkpostid, date } = body;
+
+      const whereCondition = {
+        origin: checkpostid,
+        [Op.and]: [db.sequelize.literal("CAST(convoyTime AS UNSIGNED) > 99")],
+      };
+
+      if (date) {
+        whereCondition.date = date;
+      }
+
+      const trips = await db.Trip.findAll({
+        where: whereCondition,
+
+        include: [
+          {
+            model: db.ApproveTrip,
+            as: "approveDetails",
+            attributes: ["arrdate", "arrtime", "checkpost_id"],
+            required: false,
+          },
+          {
+            model: db.CheckoutTrip,
+            as: "checkoutDetails",
+            attributes: ["checkoutdate", "checkouttime", "checkpostid"],
+            required: false,
+          },
+
+          // ✅ NEW JOIN (ACTUAL CONVOY TIME)
+          {
+            model: db.ConveyControl,
+            as: "conveyControl",
+            attributes: ["starttime", "closetime", "date", "checkpostid"],
+            required: false,
+          },
+
+          {
+            model: db.Vehicle,
+            as: "vehicle",
+            attributes: ["vNum", "vCat"],
+            required: false,
+          },
+
+          // 👨‍✈️ DRIVER (NEW)
+          {
+            model: db.Driver,
+            as: "driver",
+            attributes: ["dFirstName", "dLastName"],
+            required: false,
+          },
+          {
+            model: db.Passenger,
+            as: "passengers",
+            attributes: ["pId"],
+            through: { attributes: [] },
+            required: false,
+          },
+        ],
+
+        order: [["entrydatetime", "DESC"]],
+      });
+
+      console.log("✅ Trips:", trips.length);
+
+      const result = trips.map((trip) => {
+        const latestCheckout =
+          trip.checkoutDetails?.length > 0
+            ? trip.checkoutDetails.sort(
+                (a, b) =>
+                  new Date(b.checkoutdate + " " + b.checkouttime) -
+                  new Date(a.checkoutdate + " " + a.checkouttime),
+              )[0]
+            : null;
+
+        // 🔥 MERGED ACTUAL TIME (Date + Convoy Start Time)
+        const actualDateTime =
+          trip.date && trip.conveyControl?.starttime
+            ? `${trip.date} ${trip.conveyControl.starttime}`
+            : "-";
+
+        // 🔥 MERGED CHECKOUT DATETIME
+        const checkoutDateTime =
+          latestCheckout?.checkoutdate && latestCheckout?.checkouttime
+            ? `${latestCheckout.checkoutdate} ${latestCheckout.checkouttime}`
+            : "-";
+
+        return {
+          tId: trip.tId,
+
+          // 🔥 NEW MERGED FIELD
+          actualDateTime,
+
+          // 🔥 NEW CHECKOUT FIELD
+          checkoutDateTime,
+
+          // 🚗 VEHICLE
+          vehicle: trip.vehicle
+            ? `${trip.vehicle.vNum} (${trip.vehicle.vCat || "-"})`
+            : "-",
+
+          // 👨‍✈️ DRIVER
+          driverName: trip.driver
+            ? `${trip.driver.dFirstName} ${trip.driver.dLastName}`
+            : "-",
+          passengerCount: trip.passengers?.length || 0,
+          convoyTime: trip.convoyTime,
+        };
+      });
+
+      return result;
+    } catch (error) {
+      console.error("❌ Error:", error);
+      throw error;
+    }
+  }
+
+  static async splconvoygetCheckOutReport(params) {
+    try {
+      const whereClause = {
+        conveyid: { [Op.gt]: 99 }, // always applied
+      };
+
+      if (params.checkpostid !== undefined) {
+        whereClause.checkpostid = params.checkpostid;
+      }
+
+      if (params.status !== undefined) {
+        whereClause.status = params.status;
+      }
+
+      if (params.checkoutdate !== undefined) {
+        whereClause.checkoutdate = params.checkoutdate;
+      }
+
+      const approveWhere =
+        params.conveyId !== undefined &&
+        params.conveyId !== null &&
+        params.conveyId !== ""
+          ? { convey_id: params.conveyId }
+          : undefined;
+
+      const checkOutTrips = await db.CheckoutTrip.findAll({
+        where: whereClause,
+
+        // ✅ only required columns
+        attributes: [
+          "id",
+          "tId",
+          "checkoutdate",
+          "checkouttime",
+          "status",
+          "remarks",
+        ],
+
+        include: [
+          {
+            model: db.OriginDestination,
+            as: "checkpostLocation",
+            attributes: ["id", "location"],
+          },
+          {
+            model: db.Trip,
+            as: "trip",
+            attributes: ["date", "convoyTime"], // ✅ limit fields
+            include: [
+              {
+                model: db.Vehicle,
+                as: "vehicle",
+                attributes: ["vNum", "vCat"],
+              },
+              {
+                model: db.Driver,
+                as: "driver",
+                attributes: ["dFirstName", "dLastName"],
+              },
+            ],
+          },
+          {
+            model: db.ApproveTrip,
+            as: "approveTrip",
+            required: !!approveWhere,
+            where: approveWhere,
+            attributes: [
+              "id",
+              "tId",
+              "arrdate",
+              "arrtime",
+              "remarks",
+              "astatus",
+            ],
+            include: [
+              {
+                model: db.TConvey,
+                as: "convey",
+                attributes: ["convey_time", "convey_name"], // ✅ only needed
+              },
+            ],
+          },
+        ],
+
+        order: [["id", "DESC"]],
+        raw: false, // keep nested structure
+      });
+
+      // ✅ faster + cleaner mapping
+      const formatted = checkOutTrips.map((trip) => {
+        const t = trip.trip || {};
+        const vehicle = t.vehicle;
+        const driver = t.driver;
+        const approve = trip.approveTrip;
+
+        return {
+          id: trip.id,
+          tId: trip.tId,
+          checkoutdate: trip.checkoutdate,
+          checkouttime: trip.checkouttime,
+          status: trip.status,
+          remarks: trip.remarks,
+
+          tripdate: t.date || "-",
+          tripid: t.convoyTime || "-",
+
+          vehicle: vehicle ? `${vehicle.vNum} (${vehicle.vCat || "-"})` : "-",
+
+          driverName: driver ? `${driver.dFirstName} ${driver.dLastName}` : "-",
+
+          checkpostDetails: trip.checkpostLocation
+            ? {
+                id: trip.checkpostLocation.id,
+                location: trip.checkpostLocation.location,
+                checkoutdate: trip.checkoutdate,
+                checkouttime: trip.checkouttime,
+              }
+            : null,
+
+          approveDetails: approve
+            ? {
+                id: approve.id,
+                tId: approve.tId,
+                arrdate: approve.arrdate,
+                arrtime: approve.arrtime,
+                remarks: approve.remarks,
+                astatus: approve.astatus,
+                convey: approve.convey
+                  ? {
+                      convey_time: approve.convey.convey_time,
+                      convey_name: approve.convey.convey_name,
+                    }
+                  : null,
+              }
+            : null,
+        };
+      });
+
+      return {
+        message: "Checkout report loaded successfully",
+        data: formatted,
+      };
+    } catch (error) {
+      console.error("Error loading checkout report:", error);
+      throw new Error("Failed to load checkout report");
+    }
   }
 }
 

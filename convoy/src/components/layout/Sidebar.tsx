@@ -95,7 +95,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       children: [
         //{ label: "Departure", path: "/specialConvoydeparture" },
         { label: "Arrival", path: "/specialConvoyarrival" },
-        //{ label: "Reports", path: "/ApprovedTrips" }, // or create dedicated page
+        { label: "Departure Reports", path: "/specialConvoyReports" }, // or create dedicated page
+        { label: "Arrival Reports", path: "/SpecialConvoyArrivalReport" }, // or create dedicated page
       ],
     },
     { icon: Search, label: "View Trip", path: "/SearchTrip" },

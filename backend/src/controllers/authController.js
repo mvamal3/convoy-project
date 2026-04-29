@@ -669,6 +669,18 @@ class AuthController {
       res.status(500).json(BaseResponseDTO.error(error.message));
     }
   }
+  static async getSpecialCheckOutReport(req, res) {
+    try {
+      // req.body contains { checkpostid: someValue }
+      const params = req.body;
+      const result = await AuthService.splconvoygetCheckOutReport(params);
+      console.log("Check out report fetched successfully:", result);
+      res.json(BaseResponseDTO.success(result, "Check out Details"));
+    } catch (error) {
+      console.error("Error fetching check out details:", error);
+      res.status(500).json(BaseResponseDTO.error(error.message));
+    }
+  }
 
   static async getApproeveTripDetails(req, res) {
     try {
@@ -1538,6 +1550,20 @@ class AuthController {
       res.status(401).json(BaseResponseDTO.error(error.message));
     }
   }
-}
 
+  //////////police spl convoy report
+  static async getSpecialConvoyReport(req, res) {
+    try {
+      const result = await AuthService.getSpecialConvoyReport(req.body);
+      res.json(
+        BaseResponseDTO.success(
+          result,
+          "Special Convoy Report fetched successfully",
+        ),
+      );
+    } catch (error) {
+      res.status(400).json(BaseResponseDTO.error(error.message));
+    }
+  }
+}
 module.exports = AuthController;

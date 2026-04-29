@@ -132,6 +132,23 @@ module.exports = (sequelize, DataTypes) => {
       sourceKey: "tId",
       as: "allVerifiedTrips",
     });
+
+    // ✅ ADD THIS
+    Trip.hasMany(models.CheckoutTrip, {
+      foreignKey: "tId",
+      sourceKey: "tId",
+      as: "checkoutDetails",
+    });
+    Trip.hasOne(models.ConveyControl, {
+      foreignKey: "conveyid", // from ConveyControl
+      sourceKey: "convoyTime", // from Trip
+      as: "conveyControl",
+    });
+    Trip.hasMany(models.CheckoutControl, {
+      foreignKey: "conveyid",
+      sourceKey: "convoyTime",
+      as: "checkoutControls",
+    });
   };
 
   return Trip;
