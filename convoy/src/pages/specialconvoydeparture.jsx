@@ -935,7 +935,7 @@ Check console for details.
                   value={isTouristTrip}
                   onChange={(e) => setIsTouristTrip(e.target.value)}
                   className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm"
-                >
+                
                   <option value="">Select</option>
                   <option value="yes">Yes</option>
                   <option value="no">No</option>
