@@ -153,12 +153,31 @@ const TripOverviewCard = ({ tripDetails }) => {
               label="Destination"
               value={tripDetails.destinationLocation?.location || "N/A"}
             />
-            <InfoRow
-              label="Date"
-              value={new Date(tripDetails.date).toLocaleDateString("en-IN", {
-                dateStyle: "medium",
-              })}
-            />
+
+            {tripDetails.convey?.id >= 100 && (
+              <InfoRow
+                label="Date"
+                value={new Date(tripDetails.date).toLocaleDateString("en-IN", {
+                  dateStyle: "medium",
+                })}
+              />
+            )}
+
+            {tripDetails.convey?.id <= 99 && (
+              <InfoRow
+                label="Convoy details"
+                value={`${new Date(tripDetails.date).toLocaleDateString(
+                  "en-IN",
+                  {
+                    dateStyle: "medium",
+                  },
+                )} - ${
+                  tripDetails.convey?.actual_start_time ||
+                  tripDetails.convey?.convey_time ||
+                  "N/A"
+                }`}
+              />
+            )}
 
             {tripDetails.convey?.id >= 100 && (
               <InfoRow

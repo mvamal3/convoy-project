@@ -51,6 +51,18 @@ export default function AddTrip() {
 
   const [mode, setMode] = useState("forward"); // forward | return
 
+  useEffect(() => {
+    console.log("STATE:", location.state?.returnConvoyTime);
+    console.log("OPTIONS:", returnConveyList);
+    console.log("SELECT VALUE:", returnConvoyTime);
+    if (
+      isReturn &&
+      returnConveyList.length > 0 &&
+      location.state?.returnConvoyTime
+    ) {
+      setReturnConvoyTime(String(location.state.returnConvoyTime));
+    }
+  }, [returnConveyList, isReturn]);
   const [returnTripData, setReturnTripData] = useState({
     vId: "",
     dId: "",
@@ -190,11 +202,17 @@ export default function AddTrip() {
       const selectedPlace = locationList.find(
         (place) => String(place.id) === value,
       );
+
+      // Auto-set destination to the opposite location
+      const oppositePlace = locationList.find(
+        (place) => String(place.loc_id) !== String(selectedPlace?.loc_id),
+      );
+
       setFormData((prev) => ({
         ...prev,
         origin: value,
         loc_id: selectedPlace?.loc_id || "",
-        destination: "",
+        destination: oppositePlace ? String(oppositePlace.id) : "",
         convoyTime: "",
         date: prev.date,
       }));
@@ -224,8 +242,7 @@ export default function AddTrip() {
 
   useEffect(() => {
     const fetchReturnConvey = async () => {
-      if (!accessToken || !formData.destination) {
-        setReturnConveyList([]);
+      if (!accessToken || !formData.destination || locationList.length === 0) {
         return;
       }
 
@@ -241,17 +258,18 @@ export default function AddTrip() {
           accessToken,
         );
 
+        console.log("RETURN API DATA:", res); // 👈 ADD THIS
+
         setReturnConveyList(Array.isArray(res) ? res : []);
       } catch {
         setReturnConveyList([]);
       }
     };
 
-    if (isReturn) {
-      setReturnConvoyTime(""); // 🔥 THIS LINE IS MISSING
+    if (isReturn && formData.destination) {
       fetchReturnConvey();
     }
-  }, [formData.destination, isReturn, accessToken]);
+  }, [formData.destination, isReturn, accessToken, locationList]);
 
   // useEffect(() => {
   //   const fetchStoppedConveys = async () => {
@@ -294,6 +312,7 @@ export default function AddTrip() {
 
   const serverMinutes = getMinutes(serverTime);
   const isToday = formData.date === serverDate;
+  const isReturnToday = returnDate === serverDate;
 
   const GRACE_MINUTES = 30;
 
@@ -302,6 +321,21 @@ export default function AddTrip() {
     if (!serverDate || !serverTime) return true;
 
     if (isToday) {
+      const convoyMinutes = getMinutes(ct.convey_time);
+
+      // Allow convoy till convoy time + 30 mins
+      return convoyMinutes + GRACE_MINUTES > serverMinutes;
+    }
+
+    // Future dates → allow all
+    return true;
+  });
+
+  const availableReturnConveyTimes = returnConveyList.filter((ct) => {
+    // Allow all until server time loads
+    if (!serverDate || !serverTime) return true;
+
+    if (isReturnToday) {
       const convoyMinutes = getMinutes(ct.convey_time);
 
       // Allow convoy till convoy time + 30 mins
@@ -1004,12 +1038,32 @@ export default function AddTrip() {
         ...prev,
         ...location.state,
       }));
-      // ✅ THIS WAS MISSING
+      // ✅ Restore top-level state from navigation state
       if (location.state.isTouristTrip) {
         setIsTouristTrip(location.state.isTouristTrip);
       }
       if (location.state.vehicleSeating !== undefined) {
         setVehicleSeating(location.state.vehicleSeating);
+      }
+      if (location.state.isReturn !== undefined) {
+        setIsReturn(location.state.isReturn);
+      }
+      if (location.state.returnDate) {
+        setReturnDate(location.state.returnDate);
+      }
+      if (location.state.returnConvoyTime) {
+        setReturnConvoyTime(String(location.state.returnConvoyTime));
+      }
+      if (location.state.isReturn) {
+        setReturnTripData((prev) => ({
+          ...prev,
+          vId: location.state.vId || prev.vId,
+          dId: location.state.dId || prev.dId,
+          origin: location.state.destination || prev.origin,
+          destination: location.state.origin || prev.destination,
+          date: location.state.returnDate || prev.date,
+          convoyTime: location.state.returnConvoyTime || prev.convoyTime,
+        }));
       }
       setStep(2);
     }
@@ -1398,33 +1452,21 @@ Check console for details.
                 )}
               </div>
 
-              {/* Destination */}
+              {/* Destination - Auto-set */}
               <div className="w-full relative">
                 <Label htmlFor="destination" className="text-xs sm:text-sm">
                   Destination <span className="text-red-600">*</span>
                 </Label>
-                <select
-                  name="destination"
-                  value={formData.destination || ""}
-                  onChange={handleChange}
-                  disabled={!formData.origin}
-                  className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm max-w-full"
-                >
-                  <option value="">Select Destination</option>
-
-                  {locationList
-                    .filter(
+                <div className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm bg-gray-100 text-gray-700">
+                  {formData.destination ? (
+                    locationList.find(
                       (place) =>
-                        !selectedOriginPlace ||
-                        String(place.loc_id) !==
-                          String(selectedOriginPlace.loc_id),
-                    )
-                    .map((place) => (
-                      <option key={place.id} value={String(place.id)}>
-                        {place.location}
-                      </option>
-                    ))}
-                </select>
+                        String(place.id) === String(formData.destination),
+                    )?.location || "Auto-selected"
+                  ) : (
+                    <span className="text-gray-400">Select origin first</span>
+                  )}
+                </div>
               </div>
 
               {/* Convey Time */}
@@ -1518,18 +1560,25 @@ Check console for details.
                       Return Convoy Time
                     </Label>
                     <select
-                      value={returnConvoyTime}
+                      value={String(returnConvoyTime)}
                       disabled={!returnDate}
                       onChange={(e) => setReturnConvoyTime(e.target.value)}
                       className="w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
                     >
                       <option value="">Select</option>
-                      {returnConveyList?.map((c) => (
-                        <option key={c.id} value={c.id}>
+                      {availableReturnConveyTimes?.map((c) => (
+                        <option key={c.id} value={String(c.id)}>
                           {c.convey_time} ({c.convey_name})
                         </option>
                       ))}
                     </select>
+                    {availableReturnConveyTimes.length === 0 &&
+                      returnDate &&
+                      isReturnToday && (
+                        <p className="text-red-600 text-xs mt-1">
+                          No active convoys available for return date and time.
+                        </p>
+                      )}
                   </div>
                 </>
               )}

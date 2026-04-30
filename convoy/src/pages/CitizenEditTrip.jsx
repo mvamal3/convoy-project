@@ -297,11 +297,15 @@ export default function CitizenEditTrip() {
       const selectedPlace = locationList.find(
         (place) => String(place.id) === value,
       );
+      const oppositePlace = locationList.find(
+        (place) => String(place.loc_id) !== String(selectedPlace?.loc_id),
+      );
+
       setFormData((prev) => ({
         ...prev,
         origin: value,
         loc_id: selectedPlace?.loc_id || "",
-        destination: "",
+        destination: oppositePlace ? String(oppositePlace.id) : "",
         convoyTime: "",
       }));
     } else {
@@ -1133,32 +1137,21 @@ export default function CitizenEditTrip() {
                 )}
               </div>
 
-              {/* Destination */}
+              {/* Destination - auto-selected based on origin */}
               <div className="w-full relative">
                 <Label htmlFor="destination">
                   Destination <span className="text-red-600">*</span>
                 </Label>
-                <select
-                  name="destination"
-                  value={formData.destination || ""}
-                  onChange={handleChange}
-                  disabled={!formData.origin}
-                  className="border rounded px-3 py-2 w-full text-sm max-w-full"
-                >
-                  <option value="">Select Destination</option>
-                  {locationList
-                    .filter(
+                <div className="border rounded px-3 py-2 w-full text-sm bg-gray-100 text-gray-700">
+                  {formData.destination ? (
+                    locationList.find(
                       (place) =>
-                        !selectedOriginPlace ||
-                        String(place.loc_id) !==
-                          String(selectedOriginPlace.loc_id),
-                    )
-                    .map((place) => (
-                      <option key={place.id} value={String(place.id)}>
-                        {place.location}
-                      </option>
-                    ))}
-                </select>
+                        String(place.id) === String(formData.destination),
+                    )?.location || "Auto-selected"
+                  ) : (
+                    <span className="text-gray-400">Select origin first</span>
+                  )}
+                </div>
                 {errors.destination && (
                   <p className="text-red-500 text-xs mt-1">
                     {errors.destination}

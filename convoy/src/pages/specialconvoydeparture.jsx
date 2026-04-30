@@ -149,11 +149,18 @@ export default function specialConvoyDeparture() {
       const selectedPlace = locationList.find(
         (place) => String(place.id) === value,
       );
+
+      const oppositePlace = locationList.find(
+        (place) =>
+          String(place.loc_id) !== String(selectedPlace?.loc_id) &&
+          String(place.id) !== value,
+      );
+
       setFormData((prev) => ({
         ...prev,
         origin: value,
         loc_id: selectedPlace?.loc_id || "",
-        destination: "",
+        destination: oppositePlace ? String(oppositePlace.id) : "",
         convoyTime: "",
         date: prev.date,
       }));
@@ -1021,31 +1028,20 @@ Check console for details.
 
               {/* Destination */}
               <div className="w-full relative">
-                <Label htmlFor="destination" className="text-xs sm:text-sm">
-                  Destination <span className="text-red-600">*</span>
-                </Label>
-                <select
-                  name="destination"
-                  value={formData.destination || ""}
-                  onChange={handleChange}
-                  disabled={!formData.origin}
-                  className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm max-w-full"
-                >
-                  <option value="">Select Destination</option>
+                <div className="w-full">
+                  <Label className="text-xs sm:text-sm">
+                    Destination <span className="text-red-600">*</span>
+                  </Label>
 
-                  {locationList
-                    .filter(
-                      (place) =>
-                        !selectedOriginPlace ||
-                        String(place.loc_id) !==
-                          String(selectedOriginPlace.loc_id),
-                    )
-                    .map((place) => (
-                      <option key={place.id} value={String(place.id)}>
-                        {place.location}
-                      </option>
-                    ))}
-                </select>
+                  <div className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm bg-gray-100 text-gray-700">
+                    {formData.destination
+                      ? locationList.find(
+                          (place) =>
+                            String(place.id) === String(formData.destination),
+                        )?.location
+                      : "-"}
+                  </div>
+                </div>
               </div>
 
               {/* Convoy Type */}

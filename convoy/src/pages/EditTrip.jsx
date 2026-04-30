@@ -94,12 +94,24 @@ export default function EditTrip() {
   const serverMinutes = getMinutes(serverTime);
   const isToday = formData.date === serverDate;
 
+  const GRACE_MINUTES = 30;
+
   const availableConveyTimes = conveyTimeList
     .filter((ct) => {
       if (!serverDate || !serverTime) return true;
+
+      const serverMinutes = getMinutes(serverTime);
+
+      if (serverMinutes === null || isNaN(serverMinutes)) return true;
+
       if (isToday) {
-        return getMinutes(ct.convey_time) > serverMinutes;
+        const convoyMinutes = getMinutes(ct.convey_time);
+
+        if (convoyMinutes === null || isNaN(convoyMinutes)) return false;
+
+        return convoyMinutes + GRACE_MINUTES > serverMinutes;
       }
+
       return true;
     })
     .filter((ct) => !stopConveyList.includes(String(ct.id)));
@@ -272,11 +284,18 @@ export default function EditTrip() {
       const selectedPlace = locationList.find(
         (place) => String(place.id) === value,
       );
+
+      const oppositePlace = locationList.find(
+        (place) =>
+          String(place.loc_id) !== String(selectedPlace?.loc_id) &&
+          String(place.id) !== value,
+      );
+
       setFormData((prev) => ({
         ...prev,
         origin: value,
         loc_id: selectedPlace?.loc_id || "",
-        destination: "",
+        destination: oppositePlace ? String(oppositePlace.id) : "",
         convoyTime: "",
       }));
     } else {
@@ -1067,30 +1086,20 @@ export default function EditTrip() {
 
               {/* Destination */}
               <div className="w-full relative">
-                <Label htmlFor="destination">
-                  Destination <span className="text-red-600">*</span>
-                </Label>
-                <select
-                  name="destination"
-                  value={formData.destination || ""}
-                  onChange={handleChange}
-                  disabled={!formData.origin}
-                  className="border rounded px-3 py-2 w-full text-sm max-w-full"
-                >
-                  <option value="">Select Destination</option>
-                  {locationList
-                    .filter(
-                      (place) =>
-                        !selectedOriginPlace ||
-                        String(place.loc_id) !==
-                          String(selectedOriginPlace.loc_id),
-                    )
-                    .map((place) => (
-                      <option key={place.id} value={String(place.id)}>
-                        {place.location}
-                      </option>
-                    ))}
-                </select>
+                <div className="w-full">
+                  <Label htmlFor="destination">
+                    Destination <span className="text-red-600">*</span>
+                  </Label>
+
+                  <div className="border rounded px-3 h-10 flex items-center text-sm bg-gray-100 text-gray-700">
+                    {formData.destination
+                      ? locationList.find(
+                          (place) =>
+                            String(place.id) === String(formData.destination),
+                        )?.location
+                      : "Auto-selected"}
+                  </div>
+                </div>
               </div>
 
               {/* Convey Time */}

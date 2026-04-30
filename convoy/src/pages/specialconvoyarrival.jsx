@@ -211,7 +211,7 @@ const Specialconvoyarrival = () => {
                       <th className="px-4 py-2 border">Driver</th>
                       <th className="px-4 py-2 border">Route</th>
                       <th className="px-4 py-2 border">Convoy Time</th>
-                      <th className="px-4 py-2 border">Approve time</th>
+                      <th className="px-4 py-2 border">Approve Date & time</th>
                       <th className="px-4 py-2 border">Passengers</th>
                       <th className="px-4 py-2 border">View Details</th>{" "}
                       {/* ✅ NEW */}
@@ -239,7 +239,10 @@ const Specialconvoyarrival = () => {
                           {row.origin} → {row.destination}
                         </td>
                         <td className="px-4 py-2 border">{row.convoy_time}</td>
-                        <td className="px-4 py-2 border">{row.arr_time}</td>
+                        <td className="px-4 py-2 border">
+                          {new Date(row.date).toLocaleDateString("en-GB")}{" "}
+                          {row.arr_time}
+                        </td>
 
                         <td className="px-4 py-2 border">
                           {row.total_passengers}

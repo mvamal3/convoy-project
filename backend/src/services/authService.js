@@ -3569,9 +3569,9 @@ class AuthService {
         where: {
           checkpost_id: targetCheckpostId,
           astatus: 1,
-          arrdate: today,
+
           convey_id: {
-            [Op.gte]: 100,
+            [Op.gte]: 99,
           },
           //convey_id: closedConvey.conveyid, // ✅ ONLY CLOSED CONVEY
         },
@@ -3704,6 +3704,25 @@ class AuthService {
         }),
       );
 
+      console.log(
+        "FINAL RESPONSE:",
+        JSON.stringify(
+          {
+            success: true,
+            closed: true,
+            convey: {
+              conveyid: closedConvey.conveyid,
+              name: closedConvey.tconvey?.convey_name,
+              time: closedConvey.tconvey?.convey_time,
+              starttime: closedConvey.starttime,
+              closetime: closedConvey.closetime,
+            },
+            data: formattedTrips,
+          },
+          null,
+          2,
+        ),
+      );
       // ================= FINAL RESPONSE =================
       return {
         success: true,

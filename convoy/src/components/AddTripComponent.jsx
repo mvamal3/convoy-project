@@ -38,6 +38,10 @@ const AddTripComponent = () => {
     vehicleSeating: null,
     isTouristTrip: "",
   });
+  const [isReturn, setIsReturn] = useState(false);
+  const [returnDate, setReturnDate] = useState("");
+  const [returnConvoyTime, setReturnConvoyTime] = useState("");
+  const [returnConveyList, setReturnConveyList] = useState([]);
 
   const toMinutes = (time) => {
     if (!time || typeof time !== "string") return null;
@@ -89,11 +93,17 @@ const AddTripComponent = () => {
       const selectedPlace = locationList.find(
         (place) => String(place.id) === value,
       );
+
+      // Auto-set destination to the opposite location
+      const oppositePlace = locationList.find(
+        (place) => String(place.loc_id) !== String(selectedPlace?.loc_id),
+      );
+
       setFormData((prev) => ({
         ...prev,
         origin: value,
         loc_id: selectedPlace?.loc_id || "",
-        destination: "",
+        destination: oppositePlace ? String(oppositePlace.id) : "",
         convoyTime: "",
         date: prev.date,
       }));
@@ -121,6 +131,38 @@ const AddTripComponent = () => {
     };
     fetchServerTime();
   }, [accessToken]);
+
+  // Fetch return convey times and filter based on date and time
+  useEffect(() => {
+    const fetchReturnConvey = async () => {
+      if (!accessToken || !formData.destination || !isReturn) {
+        setReturnConveyList([]);
+        return;
+      }
+
+      try {
+        const selectedPlace = locationList.find(
+          (place) => String(place.id) === String(formData.destination),
+        );
+
+        if (!selectedPlace?.loc_id) return;
+
+        const res = await getConveyTimeByLocId(
+          selectedPlace.loc_id,
+          accessToken,
+        );
+
+        setReturnConveyList(Array.isArray(res) ? res : []);
+      } catch {
+        setReturnConveyList([]);
+      }
+    };
+
+    if (isReturn) {
+      setReturnConvoyTime("");
+      fetchReturnConvey();
+    }
+  }, [formData.destination, isReturn, accessToken, locationList]);
 
   // Fetch convey times and filter based on date and time
   useEffect(() => {
@@ -206,6 +248,25 @@ const AddTripComponent = () => {
     (ct) => !stopConveyList.includes(String(ct.id)),
   );
 
+  // Calculate return convey times with grace period filter
+  const isReturnToday = returnDate === serverDate;
+  const GRACE_MINUTES = 30;
+
+  const availableReturnConveyTimes = returnConveyList.filter((ct) => {
+    // Allow all until server time loads
+    if (!serverDate || !serverTime) return true;
+
+    if (isReturnToday) {
+      const convoyMinutes = toMinutes(ct.convey_time);
+
+      // Allow convoy till convoy time + 30 mins
+      return convoyMinutes + GRACE_MINUTES > toMinutes(serverTime);
+    }
+
+    // Future dates → allow all
+    return true;
+  });
+
   // Validation and navigation on Next button click
   const handleNext = () => {
     const newErrors = {};
@@ -220,10 +281,19 @@ const AddTripComponent = () => {
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.convoyTime) newErrors.convoyTime = "Convey Time is required";
 
+    // Return journey validation
+    if (isReturn) {
+      if (!returnDate) newErrors.returnDate = "Return date is required";
+      if (!returnConvoyTime)
+        newErrors.returnConvoyTime = "Return convoy time is required";
+    }
+
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    navigate("/AddTrip", { state: { ...formData } });
+    navigate("/AddTrip", {
+      state: { ...formData, isReturn, returnDate, returnConvoyTime },
+    });
   };
   const selectedOriginPlace = locationList.find(
     (loc) => String(loc.id) === String(formData.origin),
@@ -339,7 +409,10 @@ const AddTripComponent = () => {
             <p className="text-red-600 text-xs mt-1">{errors.date}</p>
           )}
         </div>
+      </div>
 
+      {/* Row 2: Origin, Convoy Time, Return Journey */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 mt-4">
         <div className="w-full">
           <Label htmlFor="origin">Origin {requiredMark}</Label>
           <select
@@ -359,37 +432,6 @@ const AddTripComponent = () => {
           </select>
           {errors.origin && (
             <p className="text-red-600 text-xs mt-1">{errors.origin}</p>
-          )}
-        </div>
-
-        <div className="w-full">
-          <Label htmlFor="destination">Destination {requiredMark}</Label>
-          <select
-            name="destination"
-            value={formData.destination}
-            onChange={handleChange}
-            disabled={!formData.origin}
-            className={`border rounded px-3 py-2 w-full text-sm max-w-full ${
-              errors.destination ? "border-red-600" : ""
-            }`}
-          >
-            <option value="">Select Destination</option>
-
-            {locationList
-              .filter(
-                (loc) =>
-                  !selectedOriginPlace ||
-                  String(loc.loc_id) !== String(selectedOriginPlace.loc_id),
-              )
-              .map((loc) => (
-                <option key={loc.id} value={String(loc.id)}>
-                  {loc.location}
-                </option>
-              ))}
-          </select>
-
-          {errors.destination && (
-            <p className="text-red-600 text-xs mt-1">{errors.destination}</p>
           )}
         </div>
 
@@ -420,7 +462,73 @@ const AddTripComponent = () => {
             <p className="text-red-600 text-xs mt-1">{errors.convoyTime}</p>
           )}
         </div>
+
+        <div className="w-full">
+          <Label>Return Journey</Label>
+          <select
+            value={isReturn ? "yes" : "no"}
+            onChange={(e) => {
+              const value = e.target.value === "yes";
+              setIsReturn(value);
+              if (!value) {
+                setReturnDate("");
+                setReturnConvoyTime("");
+                setReturnConveyList([]);
+              }
+            }}
+            className="w-full border rounded px-3 py-2 text-sm"
+          >
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
       </div>
+
+      {/* Return Date and Return Convoy Time (conditional) */}
+      {isReturn && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-4">
+          <div className="w-full">
+            <Label htmlFor="returnDate">Return Date</Label>
+            <input
+              type="date"
+              value={returnDate}
+              min={formData.date || minDate}
+              max={maxDate}
+              onChange={(e) => setReturnDate(e.target.value)}
+              className={`border rounded px-3 py-2 w-full text-sm max-w-full ${
+                errors.returnDate ? "border-red-600" : ""
+              }`}
+            />
+            {errors.returnDate && (
+              <p className="text-red-600 text-xs mt-1">{errors.returnDate}</p>
+            )}
+          </div>
+
+          <div className="w-full">
+            <Label htmlFor="returnConvoyTime">Return Convoy Time</Label>
+            <select
+              value={returnConvoyTime}
+              disabled={!returnDate}
+              onChange={(e) => setReturnConvoyTime(e.target.value)}
+              className={`w-full border rounded px-3 py-2 text-sm ${
+                errors.returnConvoyTime ? "border-red-600" : ""
+              }`}
+            >
+              <option value="">Select</option>
+              {availableReturnConveyTimes?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.convey_time} ({c.convey_name})
+                </option>
+              ))}
+            </select>
+            {errors.returnConvoyTime && (
+              <p className="text-red-600 text-xs mt-1">
+                {errors.returnConvoyTime}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-end mt-6">
         <Button onClick={handleNext}>Next</Button>
