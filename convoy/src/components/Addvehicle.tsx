@@ -51,6 +51,21 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
     status: 1,
   });
 
+  // ✅ Cargo vehicle types
+  const cargoVehicleTypes = [
+    "LMV Cargo",
+    "Van",
+    "Pickup Truck",
+    "Truck",
+    "HMV",
+    "Water Tanker",
+    "Oil Tanker",
+    "LPG Tanker",
+    "Tanker",
+  ];
+
+  const isCargoVehicle = cargoVehicleTypes.includes(formData.v_type);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
@@ -386,6 +401,28 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
                     className="h-8 text-sm"
                   />
                 </div>
+
+                {/* Load Capacity - Only for cargo vehicles */}
+                {isCargoVehicle && (
+                  <div className="flex flex-col space-y-1 w-full sm:w-1/2">
+                    <Label htmlFor="v_loadCapacity" className="text-xs">
+                      Load Capacity (Optional)
+                    </Label>
+                    <Input
+                      type="text"
+                      id="v_loadCapacity"
+                      value={formData.v_loadCapacity}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          v_loadCapacity: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., 5 tons, 2000 liters"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
