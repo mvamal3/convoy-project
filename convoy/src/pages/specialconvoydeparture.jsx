@@ -51,6 +51,7 @@ export default function specialConvoyDeparture() {
     convoyTime: "",
     specialType: "",
     Passengers: [],
+    remarks: "",
   });
 
   // const [passenger, setPassenger] = useState({
@@ -555,6 +556,7 @@ export default function specialConvoyDeparture() {
       convoyTime: formData.convoyTime,
       specialType: formData.specialType,
       isTouristTrip: isTouristTrip === "yes" ? 1 : 0,
+      remarks: formData.remarks || null,
       Passengers: formData.Passengers.map(mapPassengerForPayload),
       totalPax: formData.Passengers.length,
     };
@@ -595,6 +597,7 @@ export default function specialConvoyDeparture() {
         convoyTime: "",
         specialType: "",
         Passengers: [],
+        remarks: "",
       });
 
       setStep(1);
@@ -1027,7 +1030,7 @@ Check console for details.
               </div>
 
               {/* Destination */}
-              <div className="w-full relative">
+              {/* <div className="w-full relative">
                 <div className="w-full">
                   <Label className="text-xs sm:text-sm">
                     Destination <span className="text-red-600">*</span>
@@ -1042,7 +1045,7 @@ Check console for details.
                       : "-"}
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Convoy Type */}
               <div className="w-full">
@@ -1072,6 +1075,22 @@ Check console for details.
                   value={formData.convoyTime || ""}
                   onChange={handleChange}
                   className="border rounded px-2 sm:px-3 py-2 w-full text-sm cursor-pointer"
+                />
+              </div>
+              <div className="w-full">
+                <Label className="text-xs sm:text-sm">Remarks</Label>
+
+                <textarea
+                  name="remarks"
+                  value={formData.remarks}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      remarks: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter remarks (optional)"
+                  className="border rounded px-2 sm:px-3 py-2 w-full text-xs sm:text-sm h-16 resize-none"
                 />
               </div>
             </div>

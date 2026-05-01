@@ -912,6 +912,8 @@ class AuthService {
     const tripDTO = new TripRequestDTO(tripData);
     const validation = tripDTO.validate();
 
+    // console.log("Trip DTO validation result:", tripDTO.remarks);
+
     if (!validation.isValid) {
       throw new Error(validation.errors.join(", "));
     }
@@ -950,6 +952,7 @@ class AuthService {
       isTourist: tripDTO.isTourist,
       status: "1",
       verifiystatus: 0,
+      remarks: tripDTO.remarks,
     });
 
     // ===== Add forward passengers =====
@@ -1162,6 +1165,7 @@ class AuthService {
       origin: tripDTO.origin,
       destination: tripDTO.destination,
       date: tripDTO.date,
+      remarks: tripDTO.remarks,
 
       // 🔥 IMPORTANT: store conveyid
       convoyTime: newConveyId,
@@ -1490,6 +1494,7 @@ class AuthService {
         "convoyTime",
         "status",
         "verifiystatus",
+        "remarks",
       ],
     });
 

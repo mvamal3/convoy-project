@@ -60,6 +60,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: true,
       },
+      remarks: {
+        type: DataTypes.TEXT("long"),
+        allowNull: true,
+      },
     },
     {
       tableName: "trip_tbl",

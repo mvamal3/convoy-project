@@ -48,6 +48,8 @@ export default function AddTrip() {
   //const [returnPassengers, setReturnPassengers] = useState([]);
   const [returnConveyList, setReturnConveyList] = useState([]);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showCargoRemarksModal, setShowCargoRemarksModal] = useState(false);
+  const [tempCargoRemarks, setTempCargoRemarks] = useState("");
 
   const [mode, setMode] = useState("forward"); // forward | return
 
@@ -82,6 +84,7 @@ export default function AddTrip() {
     date: "",
     convoyTime: "",
     Passengers: [],
+    remarks: "",
   });
 
   // const [passenger, setPassenger] = useState({
@@ -194,6 +197,17 @@ export default function AddTrip() {
       setVehicleSeating(
         selectedVehicle ? Number(selectedVehicle.vSeating) : null,
       );
+
+      // Check if it's a cargo vehicle and prompt for remarks
+      if (
+        selectedVehicle &&
+        selectedVehicle.vCat &&
+        selectedVehicle.vCat.toLowerCase().includes("truck")
+      ) {
+        setShowCargoRemarksModal(true);
+        setTempCargoRemarks("");
+      }
+
       setFormData((prev) => ({
         ...prev,
         [name]: value,
@@ -764,6 +778,7 @@ export default function AddTrip() {
       declarationAccepted: accepted,
       isTouristTrip: isTouristTrip === "yes" ? 1 : 0,
       convoyTime: formData.convoyTime,
+      remarks: formData.remarks || null,
 
       Passengers: formData.Passengers.map(mapPassengerForPayload),
 
@@ -819,6 +834,7 @@ export default function AddTrip() {
         date: "",
         convoyTime: "",
         Passengers: [],
+        remarks: "",
       });
 
       setStep(1);
@@ -1298,6 +1314,68 @@ Check console for details.
 
   return (
     <DashboardLayout>
+      {/* Cargo Remarks Modal */}
+      {showCargoRemarksModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">
+                Cargo Vehicle - Remarks Required
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600">
+                You have selected a cargo vehicle. Please provide remarks about
+                the cargo/goods being transported.
+              </p>
+              <textarea
+                value={tempCargoRemarks}
+                onChange={(e) => setTempCargoRemarks(e.target.value)}
+                placeholder="Enter remarks (e.g., type of cargo, weight, special handling requirements, etc.)"
+                className="w-full border rounded p-2 text-sm h-24 resize-none"
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowCargoRemarksModal(false);
+                    setTempCargoRemarks("");
+                    // Reset vehicle selection
+                    setFormData((prev) => ({
+                      ...prev,
+                      vId: "",
+                    }));
+                  }}
+                  className="text-xs sm:text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!tempCargoRemarks.trim()) {
+                      MySwal.fire({
+                        icon: "warning",
+                        title: "Remarks Required",
+                        text: "Please provide remarks for the cargo vehicle.",
+                      });
+                      return;
+                    }
+                    setFormData((prev) => ({
+                      ...prev,
+                      remarks: tempCargoRemarks,
+                    }));
+                    setShowCargoRemarksModal(false);
+                  }}
+                  className="text-xs sm:text-sm"
+                >
+                  Confirm
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card className="w-full max-w-full mx-auto mt-6 overflow-x-hidden">
         <CardHeader className="p-3 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
@@ -1453,7 +1531,7 @@ Check console for details.
               </div>
 
               {/* Destination - Auto-set */}
-              <div className="w-full relative">
+              {/* <div className="w-full relative">
                 <Label htmlFor="destination" className="text-xs sm:text-sm">
                   Destination <span className="text-red-600">*</span>
                 </Label>
@@ -1467,7 +1545,9 @@ Check console for details.
                     <span className="text-gray-400">Select origin first</span>
                   )}
                 </div>
-              </div>
+              </div> */}
+
+              {/* Remarks (Optional) */}
 
               {/* Convey Time */}
               <div className="w-full">
@@ -1498,6 +1578,23 @@ Check console for details.
                       No active conveys available for this origin and date.
                     </p>
                   )}
+              </div>
+
+              <div className="w-full">
+                <Label className="text-xs sm:text-sm">Remarks</Label>
+
+                <textarea
+                  name="remarks"
+                  value={formData.remarks}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      remarks: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter remarks (optional)"
+                  className="border rounded px-2 sm:px-3 py-2 w-full text-xs sm:text-sm h-16 resize-none"
+                />
               </div>
 
               <div className="space-y-1 sm:space-y-2">

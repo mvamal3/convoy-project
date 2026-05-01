@@ -9,6 +9,7 @@ class TripRequestDTO {
     this.date = data.date;
     this.convoyTime = data.convoyTime;
     this.specialType = data.specialType || null;
+    this.remarks = data.remarks || null;
 
     // Tourist flag (1 = yes, 0 = no)
     this.isTourist = data.isTouristTrip === 1 ? 1 : 0;

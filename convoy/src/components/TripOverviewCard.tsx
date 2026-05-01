@@ -208,6 +208,13 @@ const TripOverviewCard = ({ tripDetails }) => {
                   <span className="font-medium">Ownership Type:</span>{" "}
                   {tripDetails.vehicle?.ownershipType || "N/A"}
                 </p>
+                {tripDetails?.remarks?.trim() && (
+                  <p className="flex items-start gap-2">
+                    <ClipboardIcon className="w-4 h-4 text-gray-500 mt-1" />
+                    <span className="font-medium">Remarks:</span>
+                    <span className="break-words">{tripDetails.remarks}</span>
+                  </p>
+                )}
               </div>
             </div>
           </div>
