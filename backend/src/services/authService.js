@@ -4353,6 +4353,7 @@ class AuthService {
         destination: trip.destination,
         date: trip.date,
         conveytime: trip.convoyTime,
+        remarks: trip.remarks,
         status: trip.status,
         isTourist: trip.isTourist,
         entrydatetime: trip.entrydatetime,
@@ -4501,6 +4502,7 @@ class AuthService {
               destination: data.destination,
               date: data.date,
               convoyTime: data.convoyTime,
+              remarks: data.remarks,
 
               // ✅ tourist flag fix
               isTourist: data.isTourist ?? undefined,

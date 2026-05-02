@@ -52,6 +52,7 @@ export default function EditTrip() {
     date: "",
     convoyTime: "",
     Passengers: [],
+    remarks: "",
   });
 
   const [passenger, setPassenger] = useState({
@@ -176,6 +177,7 @@ export default function EditTrip() {
                 ? String(tripData.conveytime)
                 : "",
               Passengers: passengers,
+              remarks: tripData.remarks || "",
               isTourist: tripData.isTourist,
             });
 
@@ -736,6 +738,7 @@ export default function EditTrip() {
           convoyTime: formData.convoyTime,
           //isTouristTrip: isTouristTrip === "yes" ? 1 : 0,
           isTourist: isTouristTrip === "yes" ? 1 : 0,
+          remarks: formData.remarks || null,
         },
       },
     });
@@ -1129,6 +1132,25 @@ export default function EditTrip() {
                       No active conveys available for this origin and date.
                     </p>
                   )}
+              </div>
+              {/* Remarks */}
+              <div className="w-full">
+                <Label htmlFor="remarks">Remarks</Label>
+
+                <textarea
+                  id="remarks"
+                  name="remarks"
+                  value={formData.remarks || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      remarks: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter remarks"
+                  rows={1}
+                  className="border rounded px-3 py-2 w-full text-sm bg-gray-100 text-gray-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                />
               </div>
             </div>
           )}

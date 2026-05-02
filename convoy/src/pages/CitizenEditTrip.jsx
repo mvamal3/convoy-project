@@ -53,6 +53,7 @@ export default function CitizenEditTrip() {
     date: "",
     convoyTime: "",
     Passengers: [],
+    remarks: "",
   });
 
   const [passenger, setPassenger] = useState({
@@ -190,6 +191,7 @@ export default function CitizenEditTrip() {
                 ? String(tripData.conveytime)
                 : "",
               Passengers: passengers,
+              remarks: tripData.remarks || "",
             });
 
             // Set vehicle seating
@@ -763,6 +765,7 @@ export default function CitizenEditTrip() {
           date: formData.date,
           convoyTime: formData.convoyTime,
           isTourist: isTouristTrip === "yes" ? 1 : 0,
+          remarks: formData.remarks || null,
         },
       },
     });
@@ -1138,7 +1141,7 @@ export default function CitizenEditTrip() {
               </div>
 
               {/* Destination - auto-selected based on origin */}
-              <div className="w-full relative">
+              {/* <div className="w-full relative">
                 <Label htmlFor="destination">
                   Destination <span className="text-red-600">*</span>
                 </Label>
@@ -1157,7 +1160,7 @@ export default function CitizenEditTrip() {
                     {errors.destination}
                   </p>
                 )}
-              </div>
+              </div> */}
 
               {/* Convey Time */}
               <div className="w-full">
@@ -1191,6 +1194,26 @@ export default function CitizenEditTrip() {
                       No active conveys available for this origin and date.
                     </p>
                   )}
+              </div>
+              {/* Remarks */}
+              {/* Remarks */}
+              <div className="w-full">
+                <Label htmlFor="remarks">Remarks</Label>
+
+                <textarea
+                  id="remarks"
+                  name="remarks"
+                  value={formData.remarks || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      remarks: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter remarks"
+                  rows={1}
+                  className="border rounded px-3 py-2 w-full text-sm bg-gray-100 text-gray-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
               </div>
             </div>
           )}
