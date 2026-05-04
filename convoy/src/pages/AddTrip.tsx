@@ -48,8 +48,6 @@ export default function AddTrip() {
   //const [returnPassengers, setReturnPassengers] = useState([]);
   const [returnConveyList, setReturnConveyList] = useState([]);
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [showCargoRemarksModal, setShowCargoRemarksModal] = useState(false);
-  const [tempCargoRemarks, setTempCargoRemarks] = useState("");
 
   const [mode, setMode] = useState("forward"); // forward | return
 
@@ -199,14 +197,6 @@ export default function AddTrip() {
       );
 
       // Check if it's a cargo vehicle and prompt for remarks
-      if (
-        selectedVehicle &&
-        selectedVehicle.vCat &&
-        selectedVehicle.vCat.toLowerCase().includes("truck")
-      ) {
-        setShowCargoRemarksModal(true);
-        setTempCargoRemarks("");
-      }
 
       setFormData((prev) => ({
         ...prev,
@@ -1314,68 +1304,6 @@ Check console for details.
 
   return (
     <DashboardLayout>
-      {/* Cargo Remarks Modal */}
-      {showCargoRemarksModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">
-                Cargo Vehicle - Remarks Required
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600">
-                You have selected a cargo vehicle. Please provide remarks about
-                the cargo/goods being transported.
-              </p>
-              <textarea
-                value={tempCargoRemarks}
-                onChange={(e) => setTempCargoRemarks(e.target.value)}
-                placeholder="Enter remarks (e.g., type of cargo, weight, special handling requirements, etc.)"
-                className="w-full border rounded p-2 text-sm h-24 resize-none"
-              />
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowCargoRemarksModal(false);
-                    setTempCargoRemarks("");
-                    // Reset vehicle selection
-                    setFormData((prev) => ({
-                      ...prev,
-                      vId: "",
-                    }));
-                  }}
-                  className="text-xs sm:text-sm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (!tempCargoRemarks.trim()) {
-                      MySwal.fire({
-                        icon: "warning",
-                        title: "Remarks Required",
-                        text: "Please provide remarks for the cargo vehicle.",
-                      });
-                      return;
-                    }
-                    setFormData((prev) => ({
-                      ...prev,
-                      remarks: tempCargoRemarks,
-                    }));
-                    setShowCargoRemarksModal(false);
-                  }}
-                  className="text-xs sm:text-sm"
-                >
-                  Confirm
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       <Card className="w-full max-w-full mx-auto mt-6 overflow-x-hidden">
         <CardHeader className="p-3 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">

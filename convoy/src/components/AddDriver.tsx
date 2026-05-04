@@ -167,7 +167,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
               value={formData.license_no}
               onChange={(e) => {
                 const value = e.target.value.toUpperCase();
-                /^[A-Z0-9]{0,12}$/.test(value) &&
+                /^[A-Z0-9]{0,16}$/.test(value) &&
                   setFormData({ ...formData, license_no: value });
               }}
               placeholder="Enter License Number"

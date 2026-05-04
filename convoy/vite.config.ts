@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     // ✅ ADD THIS LINE FOR APACHE
-    base: "/convoy/",
+    base: "/convoy",
 
     server: {
       host: "::",
