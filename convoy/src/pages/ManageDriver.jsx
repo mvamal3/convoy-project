@@ -56,7 +56,7 @@ const ManageDriver = () => {
   }, [fetchDriverList]);
 
   const filteredDrivers = drivers.filter((d) =>
-    d.name.toLowerCase().includes(searchTerm.toLowerCase())
+    d.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const indexOfLast = currentPage * rowsPerPage;
@@ -167,13 +167,6 @@ const ManageDriver = () => {
                       Phone: {row.phone}
                     </div>
                     <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/drivers/edit/${row.d_id}`)}
-                      >
-                        Edit
-                      </Button>
                       <Button
                         size="sm"
                         variant="destructive"
