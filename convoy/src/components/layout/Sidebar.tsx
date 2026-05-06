@@ -108,7 +108,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         { label: "Approved", path: "/ApprovedTrips" },
         { label: "Rejected", path: "/RejectedTrips" },
         { label: "Pending", path: "/PendingTrips" },
-        { label: "Verified Trips", path: "/ViewAllVerifiedTrips" },
+        //{ label: "Verified Trips", path: "/ViewAllVerifiedTrips" },
         { label: "Generate Report", path: "/generate-report" },
         { label: "Convoy Wise Report", path: "/ConveyWiseReport" },
         { label: "Arrival List", path: "/ArrivalList" },
@@ -194,6 +194,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 
   // ✅ AUTO OPEN SUBMENU
   useEffect(() => {
+    // ❌ Don't auto open submenu in mobile
+    if (isMobile) {
+      setOpenSubmenus([]);
+      return;
+    }
+
     menuItems.forEach((item) => {
       if (
         item.children &&
@@ -204,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         );
       }
     });
-  }, [location.pathname]);
+  }, [location.pathname, isMobile]);
 
   return (
     <aside
@@ -277,16 +283,29 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               {hasChildren && isSubmenuOpen && (
                 <div
                   className={cn(
-                    "bg-gray-800 rounded-md mt-1",
+                    "bg-gray-800 rounded-md mt-1 overflow-y-auto max-h-[70vh]",
                     finalCollapsed
-                      ? "absolute left-16 top-auto z-50 w-40 shadow-lg"
+                      ? "absolute left-16 z-50 w-52 shadow-lg"
                       : "ml-8",
                   )}
+                  style={
+                    finalCollapsed
+                      ? {
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                        }
+                      : {}
+                  }
                 >
                   {item.children?.map((child) => (
                     <Link
                       key={child.path}
                       to={child.path}
+                      onClick={() => {
+                        if (isMobile) {
+                          setOpenSubmenus([]);
+                        }
+                      }}
                       className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
                     >
                       {child.label}

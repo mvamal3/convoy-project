@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -14,6 +14,7 @@ const AllApproveTrips = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredConvoyTime, setFilteredConvoyTime] = useState("");
   const [conveyList, setConveyList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation(); // ✅ capture current URL
   const rowsPerPage = 10;
@@ -31,6 +32,7 @@ const AllApproveTrips = () => {
   const fetchTripList = useCallback(async () => {
     if (accessToken) {
       console.log("tetstss", user.checkpostid);
+      setLoading(true);
       try {
         const data = await getapproveTripdetails(
           accessToken,
@@ -76,6 +78,8 @@ const AllApproveTrips = () => {
         setTrips(tripList);
       } catch (err) {
         console.error("Error fetching approved trips:", err);
+      } finally {
+        setLoading(false);
       }
     }
   }, [accessToken, user.checkpostid, filteredConvoyTime]);
@@ -84,13 +88,22 @@ const AllApproveTrips = () => {
     fetchTripList();
   }, [fetchTripList]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredDate, filteredConvoyTime, searchTerm]);
+
   // ✅ Frontend Filter: if filteredDate from URL exists → show only that date
-  const filteredTrips = trips.filter((t) => {
-    const search = searchTerm.trim().toLowerCase();
-    const tripIdMatch = t.t_id?.toString().toLowerCase().includes(search);
-    const dateMatch = filteredDate ? t.date === filteredDate : true;
-    return tripIdMatch && dateMatch;
-  });
+  const filteredTrips = useMemo(() => {
+    return trips.filter((t) => {
+      const search = searchTerm.trim().toLowerCase();
+
+      const tripIdMatch = t.t_id?.toString().toLowerCase().includes(search);
+
+      const dateMatch = filteredDate ? t.date === filteredDate : true;
+
+      return tripIdMatch && dateMatch;
+    });
+  }, [trips, searchTerm, filteredDate]);
 
   const indexOfLast = currentPage * rowsPerPage;
   const indexOfFirst = indexOfLast - rowsPerPage;
@@ -123,18 +136,24 @@ const AllApproveTrips = () => {
     <DashboardLayout>
       <div className="space-y-8 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            All Approved Trip List
-          </h1>
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              All Approved Trip List
+            </h1>
+
+            <Button size="sm" variant="outline" onClick={fetchTripList}>
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <Card className="overflow-x-auto">
           <CardHeader />
           <CardContent>
             {/* Filter Form */}
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {/* Date Filter */}
-              <div className="w-full sm:w-1/3">
+              <div className="w-full">
                 <label className="block text-sm font-medium mb-1">
                   Filter by Date
                 </label>
@@ -147,7 +166,7 @@ const AllApproveTrips = () => {
               </div>
 
               {/* Convoy Time Filter */}
-              <div className="w-full sm:w-1/3">
+              <div className="w-full">
                 <label className="block text-sm font-medium mb-1">
                   Filter by Convoy Time
                 </label>
@@ -170,7 +189,7 @@ const AllApproveTrips = () => {
               </div>
 
               {/* ✅ Search by Trip ID Only */}
-              <div className="w-full sm:w-1/3">
+              <div className="w-full">
                 <label className="block text-sm font-medium mb-1">
                   Search by Trip IDcheckpostid
                 </label>
@@ -184,53 +203,180 @@ const AllApproveTrips = () => {
                   />
                   <Button
                     onClick={handleSearch}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium rounded-md"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium rounded-md hidden sm:flex"
                   >
                     Search
                   </Button>
                 </div>
               </div>
             </div>
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <div className="text-sm text-gray-500">
+                  Loading approved trips...
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Search + Table */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {filteredTrips.length} trip(s)
+                  </p>
+                </div>
 
-            {/* Search + Table */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {filteredTrips.length} trip(s)
-              </p>
-            </div>
+                {/* Table */}
+                <div className="hidden lg:block">
+                  <div className="w-full overflow-x-auto">
+                    <table className="min-w-[800px] w-full text-sm text-left text-gray-700 border">
+                      <thead className="bg-gray-100 text-xs uppercase">
+                        <tr>
+                          <th className="px-4 py-2 border">#</th>
+                          <th className="px-4 py-2 border">Trip ID</th>
+                          <th className="px-4 py-2 border text-center">
+                            Route
+                          </th>
+                          <th className="px-4 py-2 border">Date</th>
+                          <th className="px-4 py-2 border">
+                            Approve Convoy Details
+                          </th>
+                          <th className="px-4 py-2 border">Total Passenger</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentRows.length > 0 ? (
+                          currentRows.map((row, i) => (
+                            <tr
+                              key={row.t_id}
+                              className="hover:bg-gray-50 border-b"
+                            >
+                              <td className="px-4 py-2 border">
+                                {(currentPage - 1) * rowsPerPage + i + 1}
+                              </td>
+                              <td className="px-4 py-2 border">{row.t_id}</td>
+                              <td className="px-4 py-2 border text-center">
+                                {row.origin} → {row.destination}
+                              </td>
 
-            {/* Table */}
-            <div className="hidden sm:block">
-              <div className="w-full overflow-x-auto">
-                <table className="min-w-[800px] w-full text-sm text-left text-gray-700 border">
-                  <thead className="bg-gray-100 text-xs uppercase">
-                    <tr>
-                      <th className="px-4 py-2 border">#</th>
-                      <th className="px-4 py-2 border">Trip ID</th>
-                      <th className="px-4 py-2 border text-center">Route</th>
-                      <th className="px-4 py-2 border">Date</th>
-                      <th className="px-4 py-2 border">
-                        Approve Convoy Details
-                      </th>
-                      <th className="px-4 py-2 border">Total Passenger</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentRows.length > 0 ? (
-                      currentRows.map((row, i) => (
-                        <tr
-                          key={row.t_id}
-                          className="hover:bg-gray-50 border-b"
-                        >
-                          <td className="px-4 py-2 border">
-                            {(currentPage - 1) * rowsPerPage + i + 1}
-                          </td>
-                          <td className="px-4 py-2 border">{row.t_id}</td>
-                          <td className="px-4 py-2 border text-center">
+                              <td className="px-4 py-2 border">
+                                {row.date
+                                  ? new Date(row.date).toLocaleDateString(
+                                      "en-GB",
+                                      {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      },
+                                    )
+                                  : "-"}
+                              </td>
+                              <td className="px-4 py-2 border">
+                                {row.approveconveyname
+                                  ? `${row.approveconveyname} (${
+                                      row.approveConveyTime || "N/A"
+                                    })`
+                                  : "N/A"}
+                              </td>
+
+                              <td className="px-4 py-2 border">
+                                <div className="flex items-center gap-3">
+                                  <span>{row.passengerCount}</span>
+                                  <Button
+                                    size="sm"
+                                    className="bg-white text-gray-800 border border-gray-300 hover:bg-gray-100 hover:border-gray-400 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200"
+                                    onClick={() =>
+                                      navigate(
+                                        `/ManageTrip/PoliceViewTrip/${row.t_id}`,
+                                      )
+                                    }
+                                  >
+                                    View Details
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={9}
+                              className="text-center text-gray-500 py-4"
+                            >
+                              {trips.length > 0
+                                ? `No data found for Trip ID "${searchTerm}".`
+                                : "No trips found."}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4 text-sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePrev}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-gray-600">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNext}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="lg:hidden space-y-4">
+                  {currentRows.length > 0 ? (
+                    currentRows.map((row, i) => (
+                      <div
+                        key={row.t_id}
+                        className="border rounded-xl p-3 shadow-sm bg-white space-y-2"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-500">
+                            #{(currentPage - 1) * rowsPerPage + i + 1}
+                          </span>
+
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                            Approved
+                          </span>
+                        </div>
+
+                        {/* Trip ID */}
+                        <div>
+                          <p className="text-xs text-gray-500">Trip ID</p>
+                          <p className="font-semibold text-sm break-all">
+                            {row.t_id}
+                          </p>
+                        </div>
+
+                        {/* Route */}
+                        <div>
+                          <p className="text-xs text-gray-500">Route</p>
+                          <p className="text-sm font-medium">
                             {row.origin} → {row.destination}
-                          </td>
+                          </p>
+                        </div>
 
-                          <td className="px-4 py-2 border">
+                        {/* Date */}
+                        <div>
+                          <p className="text-xs text-gray-500">Date</p>
+                          <p className="text-sm">
                             {row.date
                               ? new Date(row.date).toLocaleDateString("en-GB", {
                                   day: "2-digit",
@@ -238,74 +384,81 @@ const AllApproveTrips = () => {
                                   year: "numeric",
                                 })
                               : "-"}
-                          </td>
-                          <td className="px-4 py-2 border">
+                          </p>
+                        </div>
+
+                        {/* Convoy */}
+                        <div>
+                          <p className="text-xs text-gray-500">Convoy</p>
+                          <p className="text-sm">
                             {row.approveconveyname
                               ? `${row.approveconveyname} (${
                                   row.approveConveyTime || "N/A"
                                 })`
                               : "N/A"}
-                          </td>
+                          </p>
+                        </div>
 
-                          <td className="px-4 py-2 border">
-                            <div className="flex items-center gap-3">
-                              <span>{row.passengerCount}</span>
-                              <Button
-                                size="sm"
-                                className="bg-white text-gray-800 border border-gray-300 hover:bg-gray-100 hover:border-gray-400 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200"
-                                onClick={() =>
-                                  navigate(
-                                    `/ManageTrip/PoliceViewTrip/${row.t_id}`,
-                                  )
-                                }
-                              >
-                                View Details
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={9}
-                          className="text-center text-gray-500 py-4"
-                        >
-                          {trips.length > 0
-                            ? `No data found for Trip ID "${searchTerm}".`
-                            : "No trips found."}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        {/* Passenger */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Passengers</p>
+                            <p className="font-semibold">
+                              {row.passengerCount}
+                            </p>
+                          </div>
 
-              {/* Pagination controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 text-sm">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePrev}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-gray-600">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleNext}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
+                          <Button
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() =>
+                              navigate(`/ManageTrip/PoliceViewTrip/${row.t_id}`)
+                            }
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-10 border rounded-lg bg-white">
+                      {trips.length > 0
+                        ? `No data found for Trip ID "${searchTerm}".`
+                        : "No trips found."}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {/* Mobile Pagination */}
+                {totalPages > 1 && (
+                  <div className="lg:hidden flex items-center justify-between mt-6 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePrev}
+                      disabled={currentPage === 1}
+                      className="flex-1"
+                    >
+                      Previous
+                    </Button>
+
+                    <div className="text-xs text-gray-600 whitespace-nowrap">
+                      {currentPage} / {totalPages}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNext}
+                      disabled={currentPage === totalPages}
+                      className="flex-1"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
