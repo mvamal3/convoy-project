@@ -75,7 +75,7 @@ const SpecialConvoyReport = () => {
       <div className="p-2 sm:p-4">
         <Card className="shadow-md">
           <CardHeader className="border-b bg-gray-50">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <h2 className="text-xl font-semibold">Special Convoy Report</h2>
 
               <Button variant="outline" onClick={() => navigate(-1)}>
@@ -87,7 +87,7 @@ const SpecialConvoyReport = () => {
           <CardContent>
             {/* 🔍 FILTER */}
             <div className="mb-6 w-full">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {/* Date Filter */}
                 <div>
                   <label className="text-sm font-medium mb-1 block">
@@ -152,7 +152,7 @@ const SpecialConvoyReport = () => {
             </div>
 
             {/* 📊 TABLE */}
-            <div className="overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm border">
                 <thead className="bg-gray-100 text-xs uppercase">
                   <tr>
@@ -247,11 +247,121 @@ const SpecialConvoyReport = () => {
                   )}
                 </tbody>
               </table>
+
+              {/* 📱 MOBILE VIEW */}
+            </div>
+            <div className="lg:hidden space-y-3">
+              {currentRows.length > 0 ? (
+                currentRows.map((row, i) => (
+                  <div
+                    key={`${row.tId}-${i}`}
+                    className="rounded-xl border bg-white p-3 shadow-sm"
+                  >
+                    {/* Top Row */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-500">
+                        #{(currentPage - 1) * rowsPerPage + i + 1}
+                      </span>
+
+                      <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                        Special Convoy
+                      </span>
+                    </div>
+
+                    {/* Trip ID */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">Trip ID</p>
+                      <p className="text-sm font-semibold break-all">
+                        {row.tId}
+                      </p>
+                    </div>
+
+                    {/* Vehicle + Passenger */}
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <p className="text-[11px] text-gray-500">Vehicle</p>
+                        <p className="text-sm">{row.vehicle || "-"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-[11px] text-gray-500">Passengers</p>
+                        <p className="text-sm font-medium">
+                          {row.passengerCount || "0"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Driver */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">Driver</p>
+                      <p className="text-sm truncate">
+                        {row.driverName || "-"}
+                      </p>
+                    </div>
+
+                    {/* Type */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">Type</p>
+
+                      <p className="text-sm">
+                        {(() => {
+                          const val = Number(row.convoyTime);
+
+                          if (val >= 100 && val < 200) return "Emergency Case";
+
+                          if (val >= 200) return "VIP / Special Convoy";
+
+                          return row.convoyTime || "-";
+                        })()}
+                      </p>
+                    </div>
+
+                    {/* Convoy Time */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">Convoy Time</p>
+
+                      <p className="text-sm">
+                        {row.actualDateTime
+                          ? new Date(row.actualDateTime).toLocaleString("en-GB")
+                          : "-"}
+                      </p>
+                    </div>
+
+                    {/* Checkout */}
+                    <div className="mb-3">
+                      <p className="text-[11px] text-gray-500">Checkout Time</p>
+
+                      <p className="text-sm">
+                        {row.checkoutDateTime
+                          ? new Date(row.checkoutDateTime).toLocaleString(
+                              "en-GB",
+                            )
+                          : "-"}
+                      </p>
+                    </div>
+
+                    {/* Button */}
+                    <Button
+                      size="sm"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() =>
+                        navigate(`/ManageTrip/PoliceViewTrip/${row.tId}`)
+                      }
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-10 border rounded-lg bg-white">
+                  No data found
+                </div>
+              )}
             </div>
 
             {/* PAGINATION */}
             {filteredTrips.length > rowsPerPage && (
-              <div className="flex justify-between mt-4 text-sm items-center">
+              <div className="hidden lg:flex justify-between mt-4 text-sm items-center">
                 <span>
                   Page {currentPage} of {totalPages}
                 </span>
@@ -286,6 +396,35 @@ const SpecialConvoyReport = () => {
                     Next
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* 📱 MOBILE PAGINATION */}
+            {filteredTrips.length > rowsPerPage && (
+              <div className="lg:hidden flex items-center justify-between gap-2 mt-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePrev}
+                  disabled={currentPage === 1}
+                  className="flex-1"
+                >
+                  Prev
+                </Button>
+
+                <span className="text-xs text-gray-600 whitespace-nowrap">
+                  {currentPage} / {totalPages}
+                </span>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleNext}
+                  disabled={currentPage === totalPages}
+                  className="flex-1"
+                >
+                  Next
+                </Button>
               </div>
             )}
           </CardContent>

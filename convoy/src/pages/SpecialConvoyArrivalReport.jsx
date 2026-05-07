@@ -58,11 +58,15 @@ const SpecialConvoyArrivalReport = () => {
   useEffect(() => {
     fetchTripList();
   }, [fetchTripList]);
+  useEffect(() => {
+    fetchTripList();
+  }, [fetchTripList]);
 
   const filteredTrips = trips.filter((t) => {
-    const searchMatch = `${t.tId} ${t.checkpostLocation} ${t.convoyInfo}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+    const searchMatch =
+      `${t.tId} ${t.vehicle} ${t.convoyName} ${t.checkoutCheckpost}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
     const dateMatch = filteredDate ? t.checkoutDate === filteredDate : true;
     const tripIdMatch =
       !searchTripId || t.tId?.toString().includes(searchTripId);
@@ -102,7 +106,7 @@ const SpecialConvoyArrivalReport = () => {
           <CardContent>
             {/* Filter Form */}
             <div className="mb-6 w-full">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {/* Filter by Date */}
                 <div>
                   <label className="block text-sm font-medium mb-1">
@@ -183,7 +187,7 @@ const SpecialConvoyArrivalReport = () => {
 </Button> */}
 
             {/* Table */}
-            <div className="hidden sm:block">
+            <div className="hidden lg:block">
               <div className="w-full overflow-x-auto">
                 <table className="min-w-[900px] w-full text-sm text-left text-gray-700 border">
                   <thead className="bg-gray-100 text-xs uppercase">
@@ -200,75 +204,68 @@ const SpecialConvoyArrivalReport = () => {
                   </thead>
                   <tbody>
                     {currentRows.length > 0 ? (
-                      currentRows.map((row, i) => {
-                        const approve = row.approveDetails;
-                        const convey = approve?.convey;
+                      currentRows.map((row, i) => (
+                        <tr key={row.tId} className="hover:bg-gray-50">
+                          {/* SN */}
+                          <td className="border px-3 py-2">
+                            {(currentPage - 1) * rowsPerPage + i + 1}
+                          </td>
 
-                        return (
-                          <tr key={row.tId} className="hover:bg-gray-50">
-                            {/* SN */}
-                            <td className="border px-3 py-2">
-                              {(currentPage - 1) * rowsPerPage + i + 1}
-                            </td>
+                          {/* Trip ID */}
+                          <td className="border px-3 py-2">{row.tId}</td>
 
-                            {/* Trip ID */}
-                            <td className="border px-3 py-2">{row.tId}</td>
+                          {/* DATE + TIME (APPROVE) */}
+                          <td className="border px-3 py-2">
+                            {row.approveDate !== "N/A"
+                              ? `${row.approveDate.split("-").reverse().join("-")}${
+                                  row.approveTime ? ` ${row.approveTime}` : ""
+                                }`
+                              : "N/A"}
+                          </td>
+                          <td className="border px-3 py-2">{row.vehicle}</td>
 
-                            {/* DATE + TIME (APPROVE) */}
-                            <td className="border px-3 py-2">
-                              {row.approveDate !== "N/A"
-                                ? `${row.approveDate.split("-").reverse().join("-")}${
-                                    row.approveTime ? ` ${row.approveTime}` : ""
-                                  }`
-                                : "N/A"}
-                            </td>
-                            <td className="border px-3 py-2">{row.vehicle}</td>
+                          {/* VEHICLE (FROM CONVEY NAME) */}
+                          <td className="border px-3 py-2">
+                            {(() => {
+                              const val = Number(row.convoyName);
 
-                            {/* VEHICLE (FROM CONVEY NAME) */}
-                            <td className="border px-3 py-2">
-                              {(() => {
-                                const val = Number(row.convoyName);
+                              if (val >= 100 && val < 200)
+                                return "Emergency Convoy";
+                              if (val >= 200) return "VIP Special Convoy";
 
-                                if (val >= 100 && val < 200)
-                                  return "Emergency Convoy";
-                                if (val >= 200) return "VIP Special Convoy";
+                              return row.convoyName || "-";
+                            })()}
+                          </td>
 
-                                return row.convoyName || "-";
-                              })()}
-                            </td>
+                          {/* CHECKOUT DATE + TIME */}
 
-                            {/* CHECKOUT DATE + TIME */}
+                          <td className="border px-3 py-2">
+                            {row.checkoutDate !== "N/A"
+                              ? `${row.checkoutDate.split("-").reverse().join("-")}${
+                                  row.checkoutTime ? ` ${row.checkoutTime}` : ""
+                                }`
+                              : "N/A"}
+                          </td>
 
-                            <td className="border px-3 py-2">
-                              {row.checkoutDate !== "N/A"
-                                ? `${row.checkoutDate.split("-").reverse().join("-")}${
-                                    row.checkoutTime
-                                      ? ` ${row.checkoutTime}`
-                                      : ""
-                                  }`
-                                : "N/A"}
-                            </td>
-
-                            {/* VIEW */}
-                            <td className="border px-3 py-2 text-center">
-                              <Button
-                                size="sm"
-                                className="bg-blue-500 text-white"
-                                onClick={() =>
-                                  navigate(
-                                    `/ManageTrip/PoliceViewTrip/${row.tId}?convoy=${approve?.convey?.id || ""}`,
-                                  )
-                                }
-                              >
-                                View
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })
+                          {/* VIEW */}
+                          <td className="border px-3 py-2 text-center">
+                            <Button
+                              size="sm"
+                              className="bg-blue-500 text-white"
+                              onClick={() =>
+                                navigate(
+                                  `/ManageTrip/PoliceViewTrip/${row.tId}`,
+                                )
+                              }
+                            >
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="text-center py-4">
+                        <td colSpan={7} className="text-center py-4">
                           No data found
                         </td>
                       </tr>
@@ -276,9 +273,10 @@ const SpecialConvoyArrivalReport = () => {
                   </tbody>
                 </table>
               </div>
+
               {/* Pagination controls */}
               {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between mt-6 text-sm gap-4">
+                <div className="hidden lg:flex flex-col sm:flex-row items-center justify-between mt-6 text-sm gap-4">
                   <span className="text-gray-600">
                     Page {currentPage} of {totalPages}
                   </span>
@@ -316,6 +314,138 @@ const SpecialConvoyArrivalReport = () => {
                 </div>
               )}
             </div>
+
+            {/* 📱 MOBILE CARD VIEW */}
+            <div className="lg:hidden space-y-3">
+              {currentRows.length > 0 ? (
+                currentRows.map((row, i) => (
+                  <div
+                    key={`${row.tId}-${i}`}
+                    className="rounded-xl border bg-white p-3 shadow-sm"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-500">
+                        #{(currentPage - 1) * rowsPerPage + i + 1}
+                      </span>
+
+                      <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                        Arrival
+                      </span>
+                    </div>
+
+                    {/* Trip ID */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">Trip ID</p>
+                      <p className="text-sm font-semibold break-all">
+                        {row.tId}
+                      </p>
+                    </div>
+
+                    {/* Vehicle */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">Vehicle</p>
+                      <p className="text-sm">{row.vehicle || "-"}</p>
+                    </div>
+
+                    {/* Convoy */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">Convoy</p>
+
+                      <p className="text-sm">
+                        {(() => {
+                          const val = Number(row.convoyName);
+
+                          if (val >= 100 && val < 200)
+                            return "Emergency Convoy";
+
+                          if (val >= 200) return "VIP Special Convoy";
+
+                          return row.convoyName || "-";
+                        })()}
+                      </p>
+                    </div>
+
+                    {/* Approve Date */}
+                    <div className="mb-2">
+                      <p className="text-[11px] text-gray-500">
+                        Approve Date & Time
+                      </p>
+
+                      <p className="text-sm">
+                        {row.approveDate !== "N/A"
+                          ? `${row.approveDate.split("-").reverse().join("-")}${
+                              row.approveTime ? ` ${row.approveTime}` : ""
+                            }`
+                          : "N/A"}
+                      </p>
+                    </div>
+
+                    {/* Checkout Date */}
+                    <div className="mb-3">
+                      <p className="text-[11px] text-gray-500">
+                        Checkout Details
+                      </p>
+
+                      <p className="text-sm">
+                        {row.checkoutDate !== "N/A"
+                          ? `${row.checkoutDate
+                              .split("-")
+                              .reverse()
+                              .join("-")}${
+                              row.checkoutTime ? ` ${row.checkoutTime}` : ""
+                            }`
+                          : "N/A"}
+                      </p>
+                    </div>
+
+                    {/* Button */}
+                    <Button
+                      size="sm"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() =>
+                        navigate(`/ManageTrip/PoliceViewTrip/${row.tId}`)
+                      }
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-10 border rounded-lg bg-white">
+                  No data found
+                </div>
+              )}
+            </div>
+
+            {/* 📱 MOBILE PAGINATION */}
+            {filteredTrips.length > rowsPerPage && (
+              <div className="lg:hidden flex items-center justify-between gap-2 mt-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePrev}
+                  disabled={currentPage === 1}
+                  className="flex-1"
+                >
+                  Prev
+                </Button>
+
+                <span className="text-xs text-gray-600 whitespace-nowrap">
+                  {currentPage} / {totalPages}
+                </span>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleNext}
+                  disabled={currentPage === totalPages}
+                  className="flex-1"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
