@@ -790,46 +790,116 @@ export default function AddTrip() {
     console.log("RETURN JSON:", returnTripData);
 
     handleAddTripAPI(payload, accessToken, (response) => {
-      if (response?.success && response?.data?.trip?.tId) {
-        const tripId = response.data.trip.tId;
-        const tripDate = response.data.trip.date;
+      console.log("FULL RESPONSE:", response);
 
-        const formattedDate = formatDateDDMMYY(tripDate);
-        const conveyname = response.data.trip.conveyTimeName;
-        const conveytime = response.data.trip.conveyTimeValue;
+      if (response?.success && response?.data?.trip?.tId) {
+        const trip = response.data.trip;
+        const returnTrip = response.data.returnTrip;
+
+        const formattedDate = formatDateDDMMYY(trip.date);
 
         MySwal.fire({
           icon: "success",
-          title: "Trip Created Successfully!",
+          title: "Trip Created",
+          width: "380px",
+          confirmButtonColor: "#16a34a",
+
           html: `
-            <div>
-              <p><strong>Trip ID:</strong> ${tripId}</p>
-              <p><strong>Date:</strong> ${formattedDate}</p>
-              <p><strong>Convey:</strong> ${conveyname}</p>
-              <p><strong>Time:</strong> ${conveytime}</p>
+      <div style="text-align:left;font-size:14px">
+
+        <!-- Forward Journey -->
+        <div style="
+          background:#f0fdf4;
+          border:1px solid #bbf7d0;
+          border-radius:10px;
+          padding:12px;
+          margin-bottom:12px;
+        ">
+          <div style="
+            font-size:15px;
+            font-weight:700;
+            color:#166534;
+            margin-bottom:8px;
+          ">
+            Forward Journey
+          </div>
+
+          <div style="margin-bottom:6px">
+            <strong>Trip ID:</strong><br/>
+            <span style="color:#2563eb;font-weight:600">
+              ${trip.tId}
+            </span>
+          </div>
+
+          <div style="margin-bottom:6px">
+            <strong>Date:</strong>
+            ${formattedDate}
+          </div>
+
+          <div style="margin-bottom:6px">
+            <strong>Convey:</strong>
+            ${trip.conveyTimeName || "-"}
+          </div>
+
+          <div>
+            <strong>Time:</strong>
+            ${trip.conveyTimeValue || "-"}
+          </div>
+        </div>
+
+        ${
+          returnTrip?.tId
+            ? `
+          <!-- Return Journey -->
+          <div style="
+            background:#eff6ff;
+            border:1px solid #bfdbfe;
+            border-radius:10px;
+            padding:12px;
+          ">
+            <div style="
+              font-size:15px;
+              font-weight:700;
+              color:#1d4ed8;
+              margin-bottom:8px;
+            ">
+              Return Journey
             </div>
-          `,
+
+            <div style="margin-bottom:6px">
+              <strong>Trip ID:</strong><br/>
+              <span style="color:#2563eb;font-weight:600">
+                ${returnTrip.tId}
+              </span>
+            </div>
+
+            <div style="margin-bottom:6px">
+              <strong>Date:</strong>
+              ${formatDateDDMMYY(returnTrip.date)}
+            </div>
+
+            <div style="margin-bottom:6px">
+              <strong>Convey:</strong>
+              ${returnTrip.conveyTimeName || "-"}
+            </div>
+
+            <div>
+              <strong>Time:</strong>
+              ${returnTrip.conveyTimeValue || "-"}
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+      </div>
+    `,
         }).then(() => {
-          navigate(`/ManageTrip/ViewTrip/${tripId}`);
+          navigate(`/ManageTrip/ViewTrip/${trip.tId}`);
         });
       }
 
-      // ✅ RESET FORM
-      setFormData({
-        vId: "",
-        dId: "",
-        origin: "",
-        destination: "",
-        loc_id: "",
-        date: "",
-        convoyTime: "",
-        Passengers: [],
-        remarks: "",
-      });
-
-      setStep(1);
-      setEditIndex(-1);
-      setVehicleSeating(null);
+      // reset form...
     });
   };
 

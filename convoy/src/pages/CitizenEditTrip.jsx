@@ -863,15 +863,15 @@ export default function CitizenEditTrip() {
       return;
     }
 
-    if (formData.Passengers.length === 0) {
-      MySwal.fire({
-        icon: "error",
-        title: "No Passengers",
-        text: "Please add at least one passenger.",
-        confirmButtonText: "OK",
-      });
-      return;
-    }
+    // if (formData.Passengers.length === 0) {
+    //   MySwal.fire({
+    //     icon: "error",
+    //     title: "No Passengers",
+    //     text: "Please add at least one passenger.",
+    //     confirmButtonText: "OK",
+    //   });
+    //   return;
+    // }
 
     const payload = buildPayloads();
 

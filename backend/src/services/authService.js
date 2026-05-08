@@ -901,7 +901,7 @@ class AuthService {
     let createdPassengers;
     let tripWithConvey;
     let returnTrip = null;
-
+    let createdReturnTrip = null;
     console.log("Creating new trip with data:", tripData);
 
     // 🔐 Declaration enforcement
@@ -1038,7 +1038,7 @@ class AuthService {
       }
 
       // 🔁 Create return trip
-      returnTrip = await db.Trip.create({
+      createdReturnTrip = await db.Trip.create({
         tId: returnTId,
         reg_id,
         vId: tripDTO.returnTripData?.vId || tripDTO.vId,
@@ -1061,6 +1061,16 @@ class AuthService {
       }));
 
       await tripRelation.bulkCreate(returnRelations);
+      returnTrip = await db.Trip.findOne({
+        where: { tId: createdReturnTrip.tId },
+        include: [
+          {
+            model: db.TConvey,
+            as: "convey",
+            attributes: ["id", "convey_time", "convey_name"],
+          },
+        ],
+      });
     }
 
     // ===== FINAL RESPONSE =====
@@ -1071,7 +1081,13 @@ class AuthService {
         conveyTimeName: tripWithConvey.convey?.convey_name || null,
         conveyTimeValue: tripWithConvey.convey?.convey_time || null,
       },
-      returnTrip: returnTrip || null,
+      returnTrip: returnTrip
+        ? {
+            ...returnTrip.toJSON(),
+            conveyTimeName: returnTrip.convey?.convey_name || null,
+            conveyTimeValue: returnTrip.convey?.convey_time || null,
+          }
+        : null,
     };
   }
 
