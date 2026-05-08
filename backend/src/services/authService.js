@@ -896,6 +896,40 @@ class AuthService {
 
   //-----------------------------
 
+  static async generateUniqueTripId() {
+    let tId;
+    let exists = true;
+    //console.log("test function");
+
+    while (exists) {
+      // ===== Generate Trip ID =====
+      const today = new Date();
+
+      const day = String(today.getDate()).padStart(2, "0");
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const year = today.getFullYear();
+
+      const dateString = `${day}${month}${year}`;
+
+      const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
+        6,
+        "0",
+      );
+
+      const combined = dateString + randomNum;
+
+      tId = BigInt(combined).toString(36).toUpperCase();
+
+      // ===== Check Existing =====
+      exists = await db.Trip.findOne({
+        where: { tId },
+        attributes: ["tId"],
+      });
+    }
+
+    return tId;
+  }
+  //------------------------------
   // =============create_new_trip========================
   static async newtrip(tripData, id) {
     let createdPassengers;
@@ -926,18 +960,21 @@ class AuthService {
     let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
 
     // ===== Generate forward tId =====
-    const today = new Date();
-    const day = String(today.getDate()).padStart(2, "0");
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const year = today.getFullYear();
-    const dateString = `${day}${month}${year}`;
-    const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
-      6,
-      "0",
-    );
-    const combined = dateString + randomNum;
-    const base36Value = BigInt(combined).toString(36).toUpperCase();
-    const tId = base36Value;
+    // const today = new Date();
+    // const day = String(today.getDate()).padStart(2, "0");
+    // const month = String(today.getMonth() + 1).padStart(2, "0");
+    // const year = today.getFullYear();
+    // const dateString = `${day}${month}${year}`;
+    // const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
+    //   6,
+    //   "0",
+    // );
+    // const combined = dateString + randomNum;
+    // const base36Value = BigInt(combined).toString(36).toUpperCase();
+    // const tId = base36Value;
+
+    // ===== Generate forward tId =====
+    const tId = await this.generateUniqueTripId();
 
     // ===== Create forward trip =====
     const newTrip = await db.Trip.create({
@@ -996,17 +1033,19 @@ class AuthService {
     // ================= RETURN TRIP LOGIC =================
     if (tripData.isReturn) {
       // 🔁 Generate return tId
-      const today = new Date();
-      const day = String(today.getDate()).padStart(2, "0");
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      const year = today.getFullYear();
-      const dateString = `${day}${month}${year}`;
-      const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
-        6,
-        "0",
-      );
-      const combined = dateString + randomNum;
-      const returnTId = BigInt(combined).toString(36).toUpperCase();
+      // const today = new Date();
+      // const day = String(today.getDate()).padStart(2, "0");
+      // const month = String(today.getMonth() + 1).padStart(2, "0");
+      // const year = today.getFullYear();
+      // const dateString = `${day}${month}${year}`;
+      // const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
+      //   6,
+      //   "0",
+      // );
+      // const combined = dateString + randomNum;
+      // const returnTId = BigInt(combined).toString(36).toUpperCase();
+      // 🔁 Generate return tId
+      const returnTId = await this.generateUniqueTripId();
 
       let passengersForReturn;
 
@@ -1090,7 +1129,6 @@ class AuthService {
         : null,
     };
   }
-
   // -------------------
 
   //--------------special convoy trip----------------
