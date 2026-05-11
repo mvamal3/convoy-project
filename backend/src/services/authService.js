@@ -1906,6 +1906,14 @@ class AuthService {
       };
     } catch (error) {
       await transaction.rollback();
+
+      if (
+        error.name === "SequelizeUniqueConstraintError" ||
+        error.original?.code === "ER_DUP_ENTRY"
+      ) {
+        throw new Error("Trip already approved");
+      }
+
       throw new Error(error.message || "Trip approval failed");
     }
   }
@@ -3962,6 +3970,16 @@ class AuthService {
       const currentTime =
         data.checkoutTime || new Date().toTimeString().split(" ")[0];
 
+      const existingCheckout = await db.CheckoutTrip.findOne({
+        where: { tId: data.tId },
+      });
+
+      if (existingCheckout) {
+        return {
+          success: false,
+          message: "Trip already checked out",
+        };
+      }
       //  3. Insert into checkout_trip
       const newCheckout = await db.CheckoutTrip.create({
         tId: data.tId,
@@ -3999,6 +4017,18 @@ class AuthService {
       };
     } catch (error) {
       console.error("❌ Error updating checkout trip:", error);
+
+      // ✅ Backup duplicate protection
+      if (
+        error.name === "SequelizeUniqueConstraintError" ||
+        error.original?.code === "ER_DUP_ENTRY"
+      ) {
+        return {
+          success: false,
+          message: "Trip already checked out",
+        };
+      }
+
       return {
         success: false,
         message: "Error updating checkout trip",
