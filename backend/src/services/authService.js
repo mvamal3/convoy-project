@@ -1198,17 +1198,19 @@ class AuthService {
     });
 
     // ===== GENERATE tId =====
-    const today = new Date();
-    const day = String(today.getDate()).padStart(2, "0");
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const year = today.getFullYear();
-    const dateString = `${day}${month}${year}`;
-    const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
-      6,
-      "0",
-    );
-    const combined = dateString + randomNum;
-    const tId = BigInt(combined).toString(36).toUpperCase();
+    // const today = new Date();
+    // const day = String(today.getDate()).padStart(2, "0");
+    // const month = String(today.getMonth() + 1).padStart(2, "0");
+    // const year = today.getFullYear();
+    // const dateString = `${day}${month}${year}`;
+    // const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
+    //   6,
+    //   "0",
+    // );
+    // const combined = dateString + randomNum;
+    // const tId = BigInt(combined).toString(36).toUpperCase();
+
+    const tId = await this.generateUniqueTripId();
 
     // ===== INSERT INTO TRIP =====
     const newTrip = await db.Trip.create({

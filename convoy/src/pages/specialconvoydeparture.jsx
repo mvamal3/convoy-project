@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Select from "react-select";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -945,49 +946,80 @@ Check console for details.
                 </select>
               </div>
               {/* Vehicle Select */}
-              <div className="w-full">
+              <div>
                 <Label htmlFor="vId" className="text-xs sm:text-sm">
-                  Select Vehicle<span className="text-red-600">*</span>
+                  Select Vehicle <span className="text-red-600">*</span>
                 </Label>
 
-                <select
-                  name="vId"
-                  value={formData.vId}
-                  onChange={handleChange}
-                  className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm max-w-full"
-                >
-                  <option value="">Select Vehicle</option>
-                  {vehicleList.map((vehicle) => (
-                    <option key={vehicle.vId} value={vehicle.vId}>
-                      {vehicle.vNum} - {vehicle.vCat}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  options={vehicleList.map((vehicle) => ({
+                    value: vehicle.vId,
+                    label: `${vehicle.vNum} - ${vehicle.vCat}`,
+                  }))}
+                  value={
+                    vehicleList
+                      .map((vehicle) => ({
+                        value: vehicle.vId,
+                        label: `${vehicle.vNum} - ${vehicle.vCat}`,
+                      }))
+                      .find(
+                        (option) =>
+                          String(option.value) === String(formData.vId),
+                      ) || null
+                  }
+                  onChange={(selectedOption) => {
+                    const value = selectedOption?.value || "";
+
+                    const selectedVehicle = vehicleList.find(
+                      (v) => String(v.vId) === String(value),
+                    );
+
+                    setVehicleSeating(
+                      selectedVehicle ? Number(selectedVehicle.vSeating) : null,
+                    );
+
+                    setFormData((prev) => ({
+                      ...prev,
+                      vId: value,
+                    }));
+                  }}
+                  placeholder="Search Vehicle..."
+                  isSearchable
+                  className="text-xs sm:text-sm"
+                />
               </div>
 
-              {/* Driver Select */}
-              <div className="w-full">
+              <div>
                 <Label htmlFor="dId" className="text-xs sm:text-sm">
                   Select Driver <span className="text-red-600">*</span>
                 </Label>
-                <select
-                  name="dId"
-                  value={formData.dId}
-                  onChange={handleChange}
-                  className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm max-w-full"
-                >
-                  <option value="">Select Driver</option>
-                  {driverList.length > 0 ? (
-                    driverList.map((driver) => (
-                      <option key={driver.dId} value={driver.dId}>
-                        {driver.dFirstName} {driver.dLastName} (
-                        {driver.licenseNo})
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>No drivers available</option>
-                  )}
-                </select>
+
+                <Select
+                  options={driverList.map((driver) => ({
+                    value: driver.dId,
+                    label: `${driver.dFirstName} ${driver.dLastName} (${driver.licenseNo})`,
+                  }))}
+                  value={
+                    driverList
+                      .map((driver) => ({
+                        value: driver.dId,
+                        label: `${driver.dFirstName} ${driver.dLastName} (${driver.licenseNo})`,
+                      }))
+                      .find(
+                        (option) =>
+                          String(option.value) === String(formData.dId),
+                      ) || null
+                  }
+                  onChange={(selectedOption) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      dId: selectedOption?.value || "",
+                    }));
+                  }}
+                  placeholder="Search Driver..."
+                  isSearchable
+                  className="text-xs sm:text-sm"
+                />
               </div>
 
               {/* Date */}
