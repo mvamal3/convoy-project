@@ -49,6 +49,7 @@
     "embla-carousel-react": "^8.3.0",
     "html5-qrcode": "^2.3.8",
     "input-otp": "^1.2.4",
+    "js-cookie": "^3.0.5",
     "js-sha256": "^0.11.1",
     "lucide-react": "^0.462.0",
     "next": "^15.4.1",
@@ -77,6 +78,7 @@
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
+    "@types/js-cookie": "^3.0.6",
     "@types/next": "^8.0.7",
     "@types/node": "^22.5.5",
     "@types/qrcode.react": "^1.0.5",

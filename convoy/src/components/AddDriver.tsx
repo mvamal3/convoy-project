@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { handleAddDriverAPI } from "@/contexts/PostApi";
+import CommonDropdown from "@/components/inputs/CommonDropdown";
+import CommonInput from "@/components/inputs/CommonInput";
 
 export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
   const { accessToken } = useAuth();
@@ -73,124 +75,118 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
         >
           {/* Title */}
-          <div className="space-y-1 sm:space-y-2">
-            <Label className="text-xs sm:text-sm">
-              Title <span className="text-red-600">*</span>
-            </Label>
-            <select
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              className="w-full h-9 sm:h-10 rounded-md border border-input bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-            >
-              <option value="">Select</option>
-              <option value="Mr">Mr</option>
-              <option value="Ms">Ms</option>
-              <option value="Mrs">Mrs</option>
-            </select>
-          </div>
 
+          <CommonDropdown
+            label="Title"
+            required
+            value={formData.title}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                title: e.target.value,
+              })
+            }
+            options={[
+              { value: "Mr", label: "Mr" },
+              { value: "Ms", label: "Ms" },
+              { value: "Mrs", label: "Mrs" },
+            ]}
+          />
           {/* First Name */}
-          <div className="space-y-1 sm:space-y-2">
-            <Label className="text-xs sm:text-sm">
-              First Name <span className="text-red-600">*</span>
-            </Label>
-            <Input
-              value={formData.first_name}
-              onChange={(e) =>
-                /^[A-Za-z\s]*$/.test(e.target.value) &&
-                setFormData({ ...formData, first_name: e.target.value })
-              }
-              placeholder="Enter First Name"
-              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-            />
-          </div>
+          <CommonInput
+            label="First Name"
+            required
+            value={formData.first_name}
+            onChange={(e) =>
+              /^[A-Za-z\s]*$/.test(e.target.value) &&
+              setFormData({
+                ...formData,
+                first_name: e.target.value,
+              })
+            }
+            placeholder="Enter First Name"
+          />
 
           {/* Last Name */}
-          <div className="space-y-1 sm:space-y-2">
-            <Label className="text-xs sm:text-sm">
-              Last Name <span className="text-red-600">*</span>
-            </Label>
-            <Input
-              value={formData.last_name}
-              onChange={(e) =>
-                /^[A-Za-z\s]*$/.test(e.target.value) &&
-                setFormData({ ...formData, last_name: e.target.value })
-              }
-              placeholder="Enter Last Name"
-              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-            />
-          </div>
+          <CommonInput
+            label="Last Name"
+            required
+            value={formData.last_name}
+            onChange={(e) =>
+              /^[A-Za-z\s]*$/.test(e.target.value) &&
+              setFormData({
+                ...formData,
+                last_name: e.target.value,
+              })
+            }
+            placeholder="Enter Last Name"
+          />
 
           {/* S/O Son of */}
-          <div className="space-y-1 sm:space-y-2">
-            <Label className="text-xs sm:text-sm">
-              S/O f <span className="text-red-600">*</span>
-            </Label>
-            <Input
-              value={formData.son_of}
-              onChange={(e) =>
-                /^[A-Za-z\s]*$/.test(e.target.value) &&
-                setFormData({ ...formData, son_of: e.target.value })
-              }
-              placeholder="Father / Guardian Name"
-              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-            />
-          </div>
+          <CommonInput
+            label="S/O Of"
+            required
+            value={formData.son_of}
+            onChange={(e) =>
+              /^[A-Za-z\s]*$/.test(e.target.value) &&
+              setFormData({
+                ...formData,
+                son_of: e.target.value,
+              })
+            }
+            placeholder="Father / Guardian Name"
+          />
 
           {/* Gender */}
-          <div className="space-y-1 sm:space-y-2">
-            <Label className="text-xs sm:text-sm">
-              Gender <span className="text-red-600">*</span>
-            </Label>
-            <select
-              value={formData.gender}
-              onChange={(e) =>
-                setFormData({ ...formData, gender: e.target.value })
-              }
-              className="w-full h-9 sm:h-10 rounded-md border border-input bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-            >
-              <option value="">Select</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+          <CommonDropdown
+            label="Gender"
+            required
+            value={formData.gender}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                gender: e.target.value,
+              })
+            }
+            options={[
+              { value: "Male", label: "Male" },
+              { value: "Female", label: "Female" },
+              { value: "Other", label: "Other" },
+            ]}
+          />
 
           {/* License No */}
-          <div className="space-y-1 sm:space-y-2">
-            <Label className="text-xs sm:text-sm">
-              License No. <span className="text-red-600">*</span>
-            </Label>
-            <Input
-              value={formData.license_no}
-              onChange={(e) => {
-                const value = e.target.value.toUpperCase();
-                /^[A-Z0-9]{0,16}$/.test(value) &&
-                  setFormData({ ...formData, license_no: value });
-              }}
-              placeholder="Enter License Number"
-              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-            />
-          </div>
+          <CommonInput
+            label="License No."
+            required
+            value={formData.license_no}
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase();
+
+              /^[A-Z0-9]{0,16}$/.test(value) &&
+                setFormData({
+                  ...formData,
+                  license_no: value,
+                });
+            }}
+            placeholder="Enter License Number"
+          />
 
           {/* Phone No */}
-          <div className="space-y-1 sm:space-y-2">
-            <Label className="text-xs sm:text-sm">
-              Phone No. <span className="text-red-600">*</span>
-            </Label>
-            <Input
-              value={formData.phone_no}
-              onChange={(e) =>
-                /^[0-9]{0,10}$/.test(e.target.value) &&
-                setFormData({ ...formData, phone_no: e.target.value })
-              }
-              maxLength={10}
-              placeholder="Enter 10-digit Phone Number"
-              className="h-9 sm:h-10 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
-            />
-          </div>
+          <CommonInput
+            label="Phone No."
+            required
+            maxLength={10}
+            value={formData.phone_no}
+            onChange={(e) =>
+              /^[0-9]{0,10}$/.test(e.target.value) &&
+              setFormData({
+                ...formData,
+                phone_no: e.target.value,
+              })
+            }
+            placeholder="Enter 10-digit Phone Number"
+          />
 
           {/* Residence */}
           <div className="space-y-1 sm:space-y-2 sm:col-span-2 lg:col-span-4">
