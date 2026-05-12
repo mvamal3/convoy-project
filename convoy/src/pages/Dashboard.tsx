@@ -28,6 +28,7 @@ import AddVehicle from "@/components/Addvehicle";
 import AddDriver from "@/components/AddDriver";
 import { useNavigate } from "react-router-dom";
 import AddTripComponent from "@/components/AddTripComponent";
+import AddSpecialTripComponent from "@/components/AddSpecialTripComponent";
 import TripTableWithPagination from "@/components/TripTableWithPagination";
 import QuickActionsCard from "@/components/QuickActionsCard";
 
@@ -221,7 +222,11 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <AddTripComponent />
+            {user?.role === "scs" ? (
+              <AddSpecialTripComponent />
+            ) : (
+              <AddTripComponent />
+            )}
           </CardContent>
         </Card>
         {/* Quick Actions Card */}
