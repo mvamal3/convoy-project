@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RefreshCw } from "lucide-react";
 
+import { RefreshCw } from "lucide-react";
+import CommonInput from "@/components/inputs/CommonInput";
 const Captcha = ({ onChange, value = "" }) => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const BASE_URL = `${API_BASE_URL}/api/auth`;
-  console.log("baseurl", BASE_URL);
+  //console.log("baseurl", BASE_URL);
   const canvasRef = useRef(null);
   const [inputValue, setInputValue] = useState(value);
 
@@ -120,13 +120,13 @@ const Captcha = ({ onChange, value = "" }) => {
         </Button>
 
         <div className="flex-1">
-          <Input
-            type="text"
+          <CommonInput
             value={inputValue}
             onChange={handleChange}
-            className="h-11"
             placeholder="Enter captcha"
             maxLength={6}
+            inputMode="numeric"
+            className="h-11"
           />
         </div>
       </div>

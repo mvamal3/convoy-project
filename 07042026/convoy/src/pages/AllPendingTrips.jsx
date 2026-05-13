@@ -36,7 +36,7 @@ const AllPendingTrips = () => {
         accessToken,
         1, // 1 = pending
         user.checkpostid,
-        filteredConvoyTime // ✅ include convoy filter
+        filteredConvoyTime, // ✅ include convoy filter
       );
 
       console.log("Pending Fetched Trip List:", data);
@@ -246,7 +246,7 @@ const AllPendingTrips = () => {
                                 className="bg-white text-gray-800 border border-gray-300 hover:bg-gray-100 hover:border-gray-400 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200"
                                 onClick={() =>
                                   navigate(
-                                    `/ManageTrip/PoliceViewTrip/${row.t_id}`
+                                    `/ManageTrip/PoliceViewTrip/${row.t_id}`,
                                   )
                                 }
                               >

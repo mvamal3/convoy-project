@@ -23,7 +23,7 @@ const TripViewDetails = () => {
   // ✅ Open new print page
   const handleOpenPrintPage = () => {
     const base = import.meta.env.BASE_URL;
-    window.open(`${base}trip/print/${tripId}`, "_blank");
+    window.open(`${base}/trip/print/${tripId}`, "_blank");
   };
 
   useEffect(() => {

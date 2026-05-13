@@ -8,19 +8,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff } from "lucide-react"; // 👁️ added icons
+import { Loader2 } from "lucide-react"; // 👁️ added icons
 import HomeHeader from "@/include/HomeHeader";
 import HomeFooter from "@/include/HomeFooter";
-
+import CommonInput from "@/components/inputs/CommonInput";
+import CommonPasswordInput from "@/components/inputs/CommonPasswordInput";
 const PoliceLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // 👈 added
+  // const [showPassword, setShowPassword] = useState(false); // 👈 added
   const { Policelogin, user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [captcha, setCaptcha] = useState("");
@@ -70,7 +70,7 @@ const PoliceLogin = () => {
       <HomeHeader />
       <div className="bg-gradient-to-br from-blue-50 to-indigo-100 flex justify-center px-3 py-6 md:p-8 overflow-x-hidden">
         <div className="w-full max-w-md">
-          <Card className="shadow-xl rounded-lg border border-gray-100 shadow-xl → shadow-lg">
+          <Card className="shadow-lg rounded-lg border border-gray-100">
             <CardHeader className="text-center p-4 md:p-6">
               <CardTitle className="text-xl md:text-3xl font-semibold">
                 Police Login
@@ -81,50 +81,23 @@ const PoliceLogin = () => {
             <CardContent className="p-4 md:p-6">
               <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
                 {/* Email */}
-                <div>
-                  <Label htmlFor="email">
-                    Email Address <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="mt-1"
-                    required
-                  />
-                </div>
+                <CommonInput
+                  label="Email Address"
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                />
 
                 {/* Password */}
-                <div>
-                  <Label htmlFor="password">
-                    Password <span className="text-red-600">*</span>
-                  </Label>
-                  <div className="relative mt-1">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      className="pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
+                <CommonPasswordInput
+                  label="Password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                />
 
                 {/* Captcha */}
                 <Captcha onChange={setCaptcha} />

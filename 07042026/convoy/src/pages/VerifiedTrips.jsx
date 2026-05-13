@@ -45,7 +45,7 @@ const VerifiedTrips = () => {
     if (accessToken) {
       const data = await getPendingVerifiedTripList(
         accessToken,
-        user.checkpostid
+        user.checkpostid,
       );
       //console.log("user", user.pol_reg_id);
       console.log("Trip list", data);
@@ -95,7 +95,7 @@ const VerifiedTrips = () => {
   const filteredTrips = trips.filter((t) =>
     `${t.t_id} ${t.origin} ${t.destination} ${t.driverName} ${t.vehicleNo}`
       .toLowerCase()
-      .includes(searchTerm.toLowerCase())
+      .includes(searchTerm.toLowerCase()),
   );
 
   const indexOfLast = currentPage * rowsPerPage;
@@ -218,7 +218,7 @@ const VerifiedTrips = () => {
             setShowScannerModal(false);
 
             navigate(`/VerifiedTrips/VerifyTrip/${decodedText}`);
-          }
+          },
         );
       } catch (err) {
         console.error("QR Scanner error:", err);
@@ -420,7 +420,7 @@ const VerifiedTrips = () => {
                               className="bg-blue-500 text-white hover:bg-blue-600"
                               onClick={() =>
                                 navigate(
-                                  `/VerifiedTrips/VerifyTrip/${row.t_id}`
+                                  `/VerifiedTrips/VerifyTrip/${row.t_id}`,
                                 )
                               }
                             >

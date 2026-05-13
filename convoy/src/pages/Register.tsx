@@ -1,21 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import HomeFooter from "@/include/HomeFooter";
 import HomeHeader from "@/include/HomeHeader";
-import { toast } from "sonner";
 import Swal from "sweetalert2";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import CommonInput from "@/components/inputs/CommonInput";
+import CommonDropdown from "@/components/inputs/CommonDropdown";
+import CommonPasswordInput from "@/components/inputs/CommonPasswordInput";
+import CommonTextarea from "@/components/inputs/CommonTextarea";
 
 import { getDistricts } from "@/contexts/GetApi";
 import { PostRegister } from "@/contexts/PostApi"; // ✅ use centralized API
@@ -44,9 +36,6 @@ const Register = () => {
   const [districts, setDistricts] = useState([]);
   // const [subdistricts, setSubdistricts] = useState([]);
   // const [villages, setVillages] = useState([]);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -213,37 +202,31 @@ const Register = () => {
       <h3 className="text-xl font-semibold text-blue-800 mb-2">
         Organization Details
       </h3>
-      <div>
-        <Label>
-          Organization Name <span className="text-red-600">*</span>
-        </Label>
-        <Input
-          value={formData.orgName}
-          onChange={(e) => handleChange("orgName", e.target.value)}
-          maxLength={30}
-        />
-      </div>
+      <CommonInput
+        label="Organization Name"
+        required
+        value={formData.orgName}
+        onChange={(e) => handleChange("orgName", e.target.value)}
+        maxLength={30}
+        placeholder="Enter Organization Name"
+      />
       <div className="grid md:grid-cols-2 gap-4 mt-4">
-        <div>
-          <Label>
-            Document ID Type <span className="text-red-600">*</span>
-          </Label>
-          <Input
-            value={formData.docIdtype}
-            onChange={(e) => handleChange("docIdtype", e.target.value)}
-            maxLength={10}
-          />
-        </div>
-        <div>
-          <Label>
-            Document ID <span className="text-red-600">*</span>
-          </Label>
-          <Input
-            value={formData.docId}
-            onChange={(e) => handleChange("docId", e.target.value)}
-            maxLength={10}
-          />
-        </div>
+        <CommonInput
+          label="Document ID Type"
+          required
+          value={formData.docIdtype}
+          onChange={(e) => handleChange("docIdtype", e.target.value)}
+          maxLength={10}
+          placeholder="Enter Document Type"
+        />
+        <CommonInput
+          label="Document ID"
+          required
+          value={formData.docId}
+          onChange={(e) => handleChange("docId", e.target.value)}
+          maxLength={10}
+          placeholder="Enter Document ID"
+        />
       </div>
       <div className="border-t border-gray-300 my-6" />
     </div>
@@ -255,60 +238,46 @@ const Register = () => {
         Personal Information
       </h3>
       <div className="grid md:grid-cols-3 gap-4">
-        <div>
-          <Label>
-            Title <span className="text-red-600">*</span>
-          </Label>
-          <Select
-            value={formData.title}
-            onValueChange={(val) => handleChange("title", val)}
-          >
-            <SelectTrigger className="h-12">
-              <SelectValue placeholder="Select Title" />
-            </SelectTrigger>
-            <SelectContent>
-              {["Mr", "Mrs", "Miss"].map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>
-            First Name <span className="text-red-600">*</span>
-          </Label>
-          <Input
-            value={formData.name}
-            onChange={(e) => {
-              const value = e.target.value;
-              // Allow only letters and spaces
-              if (/^[A-Za-z\s]*$/.test(value)) {
-                handleChange("name", value);
-              }
-            }}
-            placeholder="Enter First Name"
-            maxLength={50}
-          />
-        </div>
-        <div>
-          <Label>
-            Last Name <span className="text-red-600">*</span>
-          </Label>
-          <Input
-            value={formData.lastName}
-            onChange={(e) => {
-              const value = e.target.value;
-              // Allow only letters and spaces
-              if (/^[A-Za-z\s]*$/.test(value)) {
-                handleChange("lastName", value);
-              }
-            }}
-            placeholder="Enter Last Name"
-            maxLength={50}
-          />
-        </div>
+        <CommonDropdown
+          label="Title"
+          required
+          value={formData.title}
+          onChange={(e) => handleChange("title", e.target.value)}
+          placeholder="Select Title"
+          options={[
+            { value: "Mr", label: "Mr" },
+            { value: "Mrs", label: "Mrs" },
+            { value: "Miss", label: "Miss" },
+          ]}
+        />
+        <CommonInput
+          label="First Name"
+          required
+          value={formData.name}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Allow only letters and spaces
+            if (/^[A-Za-z\s]*$/.test(value)) {
+              handleChange("name", value);
+            }
+          }}
+          placeholder="Enter First Name"
+          maxLength={50}
+        />
+        <CommonInput
+          label="Last Name"
+          required
+          value={formData.lastName}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Allow only letters and spaces
+            if (/^[A-Za-z\s]*$/.test(value)) {
+              handleChange("lastName", value);
+            }
+          }}
+          placeholder="Enter Last Name"
+          maxLength={50}
+        />
       </div>
       <div className="border-t border-gray-300 my-6" />
     </div>
@@ -341,15 +310,17 @@ const Register = () => {
               </h3>
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
-                  <Label className="font-semibold">
-                    Registering as <span className="text-red-600">*</span>
-                  </Label>
-                  <Select
+                  <CommonDropdown
+                    label="Registering as"
+                    required
                     value={formData.isorg}
-                    onValueChange={(value) => {
+                    onChange={(e) => {
+                      const value = e.target.value;
+
                       setFormData({
                         ...formData,
                         isorg: value,
+
                         ...(value === "0" && {
                           orgName: "",
                           docIdtype: "",
@@ -357,16 +328,22 @@ const Register = () => {
                         }),
                       });
                     }}
-                  >
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select Registration Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">Individual / Citizen</SelectItem>
-                      <SelectItem value="1">Commercial / Travels</SelectItem>
-                      <SelectItem value="2">Government</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select Registration Type"
+                    options={[
+                      {
+                        value: "0",
+                        label: "Individual / Citizen",
+                      },
+                      {
+                        value: "1",
+                        label: "Commercial / Travels",
+                      },
+                      {
+                        value: "2",
+                        label: "Government",
+                      },
+                    ]}
+                  />
                 </div>
               </div>
               <div className="border-t border-gray-300 my-6" />
@@ -396,76 +373,56 @@ const Register = () => {
                   !formData.orgName) && (
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
                     {/* Department Selection */}
-                    <div>
-                      <Label>
-                        Select Department{" "}
-                        <span className="text-red-600">*</span>
-                      </Label>
-                      <Select
-                        value={formData.orgName}
-                        onValueChange={(val) => handleChange("orgName", val)}
-                      >
-                        <SelectTrigger className="h-10 w-full text-sm">
-                          <SelectValue placeholder="Select Department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Central">Central</SelectItem>
-                          <SelectItem value="Defence">Defence</SelectItem>
-                          <SelectItem value="Andaman Administration">
-                            Andaman Administration
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <CommonDropdown
+                      label="Select Department"
+                      required
+                      value={formData.orgName}
+                      onChange={(e) => handleChange("orgName", e.target.value)}
+                      placeholder="Select Department"
+                      options={[
+                        { value: "Central", label: "Central" },
+                        { value: "Defence", label: "Defence" },
+                        {
+                          value: "Andaman Administration",
+                          label: "Andaman Administration",
+                        },
+                      ]}
+                    />
 
                     {/* Sub Government Category (Only for Central / Andaman) */}
                     {(formData.orgName === "Central" ||
                       formData.orgName === "Andaman Administration") && (
-                      <div>
-                        <Label>
-                          Government Sub Category{" "}
-                          <span className="text-red-600">*</span>
-                        </Label>
-                        <Select
-                          value={formData.govtsubcat}
-                          onValueChange={(val) =>
-                            handleChange("govtsubcat", val)
-                          }
-                        >
-                          <SelectTrigger className="h-10 w-full text-sm">
-                            <SelectValue placeholder="Select Sub Category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Ministry">Ministry</SelectItem>
-                            <SelectItem value="Department">
-                              Department
-                            </SelectItem>
-                            <SelectItem value="Commission">
-                              Commission
-                            </SelectItem>
-                            <SelectItem value="Autonomous Body">
-                              Autonomous Body
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <CommonDropdown
+                        label="Government Sub Category"
+                        required
+                        value={formData.govtsubcat}
+                        onChange={(e) =>
+                          handleChange("govtsubcat", e.target.value)
+                        }
+                        placeholder="Select Sub Category"
+                        options={[
+                          { value: "Ministry", label: "Ministry" },
+                          { value: "Department", label: "Department" },
+                          { value: "Commission", label: "Commission" },
+                          {
+                            value: "Autonomous Body",
+                            label: "Autonomous Body",
+                          },
+                        ]}
+                      />
                     )}
 
                     {/* Department Name Field */}
-                    <div>
-                      <Label>
-                        Department Name <span className="text-red-600">*</span>
-                      </Label>
-                      <Input
-                        type="text"
-                        placeholder="Enter Department Name"
-                        value={formData.govtdeptName || ""}
-                        onChange={(e) =>
-                          handleChange("govtdeptName", e.target.value)
-                        }
-                        className="h-10 w-full text-sm"
-                      />
-                    </div>
+                    <CommonInput
+                      label="Department Name"
+                      required
+                      type="text"
+                      placeholder="Enter Department Name"
+                      value={formData.govtdeptName || ""}
+                      onChange={(e) =>
+                        handleChange("govtdeptName", e.target.value)
+                      }
+                    />
                   </div>
                 )}
 
@@ -479,35 +436,30 @@ const Register = () => {
                 Contact Details
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <Label>
-                    Contact Number <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
-                    value={formData.ownContact}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow only digits and limit to 10
-                      if (/^\d{0,10}$/.test(value)) {
-                        handleChange("ownContact", value);
-                      }
-                    }}
-                    maxLength={10}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="Enter 10-digit number"
-                  />
-                </div>
-                <div>
-                  <Label>
-                    Email Address <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleChange("email", e.target.value)}
-                  />
-                </div>
+                <CommonInput
+                  label="Contact Number"
+                  required
+                  value={formData.ownContact}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow only digits and limit to 10
+                    if (/^\d{0,10}$/.test(value)) {
+                      handleChange("ownContact", value);
+                    }
+                  }}
+                  maxLength={10}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Enter 10-digit number"
+                />
+                <CommonInput
+                  label="Email Address"
+                  required
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  placeholder="Enter Email Address"
+                />
               </div>
               <div className="border-t border-gray-300 my-6" />
             </div>
@@ -525,40 +477,28 @@ const Register = () => {
               <div className="grid md:grid-cols-3 gap-4">
                 {/* Address - 2 columns */}
                 <div className="md:col-span-2">
-                  <Label className="font-medium">
-                    Full Address <span className="text-red-600">*</span>
-                  </Label>
-                  <textarea
-                    rows={3}
-                    className="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  <CommonTextarea
+                    label="Full Address"
+                    required
                     placeholder="Enter your complete address"
                     value={formData.ownAddress}
                     onChange={(e) => handleChange("ownAddress", e.target.value)}
+                    rows={3}
                   />
                 </div>
 
                 {/* State - 1 column */}
-                <div>
-                  <Label className="font-medium">
-                    State <span className="text-red-600">*</span>
-                  </Label>
-                  <Select
-                    value={formData.district}
-                    onValueChange={handleDistrictChange}
-                  >
-                    <SelectTrigger className="h-11 mt-1 rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500">
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-
-                    <SelectContent className="max-h-60">
-                      {districts.map((d) => (
-                        <SelectItem key={d.code} value={d.code.toString()}>
-                          {d.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <CommonDropdown
+                  label="State"
+                  required
+                  value={formData.district}
+                  onChange={(e) => handleDistrictChange(e.target.value)}
+                  placeholder="Select State"
+                  options={districts.map((d) => ({
+                    value: d.code.toString(),
+                    label: d.name,
+                  }))}
+                />
               </div>
             </div>
 
@@ -568,44 +508,22 @@ const Register = () => {
                 Password
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <Label>
-                    Password <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) => handleChange("password", e.target.value)}
-                  />
-                  <div
-                    className="absolute top-9 right-3 cursor-pointer"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </div>
-                </div>
-                <div className="relative">
-                  <Label>
-                    Confirm Password <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword}
-                    onChange={(e) =>
-                      handleChange("confirmPassword", e.target.value)
-                    }
-                  />
-                  <div
-                    className="absolute top-9 right-3 cursor-pointer"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={20} />
-                    ) : (
-                      <Eye size={20} />
-                    )}
-                  </div>
-                </div>
+                <CommonPasswordInput
+                  label="Password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => handleChange("password", e.target.value)}
+                  placeholder="Enter your password"
+                />
+                <CommonPasswordInput
+                  label="Confirm Password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    handleChange("confirmPassword", e.target.value)
+                  }
+                  placeholder="Confirm your password"
+                />
               </div>
 
               <div className="mt-4 text-sm text-gray-700 border border-blue-200 bg-blue-50 p-3 rounded-lg">

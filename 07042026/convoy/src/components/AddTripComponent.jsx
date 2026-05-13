@@ -136,14 +136,14 @@ const AddTripComponent = () => {
         console.log("Fetched convey times:", res);
         const conveyTimes = Array.isArray(res) ? res : [];
 
-        console.log(
-          "Filtering convey times with formDate:",
-          formData.date,
-          "serverDate:",
-          serverDate,
-          "serverTime:",
-          serverTime,
-        );
+        // console.log(
+        //   "Filtering convey times with formDate:",
+        //   formData.date,
+        //   "serverDate:",
+        //   serverDate,
+        //   "serverTime:",
+        //   serverTime,
+        // );
 
         // Filter convey times by current time only if date matches server date
         if (formData.date === serverDate) {

@@ -102,18 +102,18 @@ const Dashboard = () => {
 
         // Filter trips with date >= server date (future and today)
         const filteredTrips = trips.filter(
-          (trip) => trip.date >= serverDateString
+          (trip) => trip.date >= serverDateString,
         );
         setTripList(filteredTrips);
 
         // Count trips for today (date === serverDateString)
         const todaysTripsCount = trips.filter(
-          (trip) => trip.date === serverDateString
+          (trip) => trip.date === serverDateString,
         ).length;
 
         // Count upcoming trips (date > serverDateString)
         const upcomingTripsCount = trips.filter(
-          (trip) => trip.date > serverDateString
+          (trip) => trip.date > serverDateString,
         ).length;
 
         setTodaysTrips(todaysTripsCount);

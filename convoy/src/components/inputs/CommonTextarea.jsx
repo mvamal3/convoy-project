@@ -1,19 +1,16 @@
 import React from "react";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const CommonInput = ({
+const CommonTextarea = ({
   label,
   required = false,
-  type = "text",
   value,
   onChange,
   placeholder = "",
   maxLength,
   disabled = false,
   className = "",
-  inputMode,
-  pattern,
+  rows = 3,
 }) => {
   return (
     <div className="w-full space-y-1">
@@ -25,28 +22,28 @@ const CommonInput = ({
         </Label>
       )}
 
-      <Input
-        type={type}
+      <textarea
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         maxLength={maxLength}
         disabled={disabled}
-        inputMode={inputMode}
-        pattern={pattern}
+        rows={rows}
         className={`
           w-full
-          h-11
           rounded-md
           border
           border-gray-300
           bg-white
           px-3
+          py-2
           text-sm
           outline-none
-          focus-visible:ring-2
-          focus-visible:ring-blue-500
-          focus-visible:border-blue-500
+          focus:ring-2
+          focus:ring-blue-500
+          focus:border-blue-500
+          resize-vertical
+          ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}
           ${className}
         `}
       />
@@ -54,4 +51,4 @@ const CommonInput = ({
   );
 };
 
-export default CommonInput;
+export default CommonTextarea;

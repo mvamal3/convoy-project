@@ -53,10 +53,10 @@ const TripOverviewCard = ({ tripDetails }) => {
     status === 2
       ? 2
       : status === 3 || verifyStatus === 3
-      ? 3
-      : status === 1
-      ? 1
-      : 0;
+        ? 3
+        : status === 1
+          ? 1
+          : 0;
 
   // 🔹 UI CONFIG (LABEL + COLOR ALWAYS MATCH)
   const statusUI = {

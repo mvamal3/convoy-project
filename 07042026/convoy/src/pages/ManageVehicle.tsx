@@ -76,7 +76,7 @@ const ManageVehicle = () => {
           toast.success("Vehicle deleted successfully!");
         } else {
           toast.error(
-            "Failed to delete vehicle: " + (res?.message || "Unknown error")
+            "Failed to delete vehicle: " + (res?.message || "Unknown error"),
           );
         }
       } catch (error) {
@@ -106,7 +106,7 @@ const ManageVehicle = () => {
 
   // Filtering & Pagination
   const filteredVehicles = vehicles.filter((v) =>
-    v.v_number.toLowerCase().includes(searchTerm.toLowerCase())
+    v.v_number.toLowerCase().includes(searchTerm.toLowerCase()),
   );
   const indexOfLast = currentPage * rowsPerPage;
   const indexOfFirst = indexOfLast - rowsPerPage;

@@ -9,7 +9,7 @@ const ConveyWiseReport = () => {
   const { accessToken } = useAuth();
   const [reportData, setReportData] = useState({});
   const [filteredDate, setFilteredDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().split("T")[0],
   );
 
   const convoyUp = [

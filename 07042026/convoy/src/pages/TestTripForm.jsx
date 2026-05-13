@@ -44,7 +44,7 @@ const TestTripForm = () => {
       }
 
       const selectedOrigin = locationList.find(
-        (place) => String(place.id) === formData.origin
+        (place) => String(place.id) === formData.origin,
       );
 
       if (!selectedOrigin?.loc_id) {
@@ -79,7 +79,7 @@ const TestTripForm = () => {
         const rawData = await getStopConveyDetails(
           "121212",
           formData.origin,
-          formData.date // send date too 🚀
+          formData.date, // send date too 🚀
         );
         console.log("🔎 Normalized Stop Convey data:", rawData);
 
@@ -100,7 +100,7 @@ const TestTripForm = () => {
 
   // Filter available convey times by removing stopped ones
   const availableConveyTimes = conveyTimeList.filter(
-    (ct) => !stopConveyList.includes(String(ct.id))
+    (ct) => !stopConveyList.includes(String(ct.id)),
   );
   console.log("✅ Available Convey Times:", availableConveyTimes);
 

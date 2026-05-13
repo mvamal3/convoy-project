@@ -32,7 +32,7 @@ const OtpVerification = () => {
     const [name, domain] = email.split("@");
     if (name.length <= 2) return email; // too short to mask
     return `${name[0]}${"*".repeat(name.length - 2)}${name.slice(
-      -1
+      -1,
     )}@${domain}`;
   };
 
@@ -121,11 +121,11 @@ const OtpVerification = () => {
               <CardDescription>
                 {email && mobile
                   ? `Enter the 6-digit OTP sent to ${maskEmail(
-                      email
+                      email,
                     )} and ${maskMobile(mobile)}.`
                   : email
-                  ? `Enter the 6-digit OTP sent to ${maskEmail(email)}.`
-                  : `Enter the 6-digit OTP sent to ${maskMobile(mobile)}.`}
+                    ? `Enter the 6-digit OTP sent to ${maskEmail(email)}.`
+                    : `Enter the 6-digit OTP sent to ${maskMobile(mobile)}.`}
               </CardDescription>
             </CardHeader>
             <CardContent>

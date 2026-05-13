@@ -56,7 +56,7 @@ const ManageDriver = () => {
   }, [fetchDriverList]);
 
   const filteredDrivers = drivers.filter((d) =>
-    d.name.toLowerCase().includes(searchTerm.toLowerCase())
+    d.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const indexOfLast = currentPage * rowsPerPage;

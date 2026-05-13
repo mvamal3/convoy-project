@@ -83,7 +83,7 @@ const TripReport = () => {
           2,
           user.checkpostid,
           filteredConvoyTime || "",
-          filteredDate || ""
+          filteredDate || "",
         );
 
         // ================================
@@ -117,23 +117,23 @@ const TripReport = () => {
         });
 
         // SAFE normalization
-          // const ownershipType = trip.vehicle?.ownershipType;
+        // const ownershipType = trip.vehicle?.ownershipType;
 
-          // Force string + normalize
-          // const type = String(ownershipType || "")
-          //   .toLowerCase()
-          //   .trim();
+        // Force string + normalize
+        // const type = String(ownershipType || "")
+        //   .toLowerCase()
+        //   .trim();
 
         // Instead of strict equality, using .includes() matching.
         //   if (type.includes("government")) {
         //     govt++;
-        //   } 
+        //   }
         //   else if (type.includes("commercial")) {
         //     commercial++;
-        //   } 
+        //   }
         //   else if (type.includes("private")) {
         //     individual++;
-        //   } 
+        //   }
         //   else if (type.includes("ambulance")) {
         //     ambulance++;
         //   }
@@ -144,7 +144,7 @@ const TripReport = () => {
         //   trip.vehicle?.ownershipType
         // );
 
-        // Simple and Safe report logic 
+        // Simple and Safe report logic
         // let govt = 0;
         // let commercial = 0;
         // let individual = 0;
@@ -169,7 +169,6 @@ const TripReport = () => {
         // });
 
         // console.log("Vehicle ownershipType raw:", ownershipType, "→ normalized:", type);
-
 
         // Set vehicle counts
         setGovtVehicles(govt);
@@ -236,7 +235,7 @@ const TripReport = () => {
         }
         if (tripIdFilter) {
           tripList = tripList.filter((t) =>
-            t.t_id.toString().includes(tripIdFilter)
+            t.t_id.toString().includes(tripIdFilter),
           );
         }
 
