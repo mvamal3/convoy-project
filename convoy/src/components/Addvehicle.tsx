@@ -1,70 +1,111 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import CommonInput from "@/components/inputs/CommonInput";
+import CommonDropdown from "@/components/inputs/CommonDropdown";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { handleAddVehicleAPI } from "@/contexts/PostApi";
+
+// ✅ Static arrays - defined outside component to prevent recreation on every render
+const CARGO_VEHICLE_TYPES = [
+  "LMV Cargo",
+  "Van",
+  "Pickup Truck",
+  "Truck",
+  "HMV",
+  "Water Tanker",
+  "Oil Tanker",
+  "LPG Tanker",
+  "Tanker",
+];
+
+const getVehicleCategoryOptions = (userType) => {
+  if (userType === 0) {
+    return [
+      { value: "Car", label: "Car (Max. 5 passengers)" },
+      { value: "SUV", label: "SUV (Max. 7 passengers)" },
+      { value: "Bus", label: "Bus" },
+    ];
+  }
+
+  if ([1, 2, 3].includes(userType)) {
+    return [
+      { value: "Car", label: "Car (Max. 5 passengers)" },
+      { value: "SUV", label: "SUV (Max. 7 passengers)" },
+      { value: "LMV Cargo", label: "LMV Cargo" },
+      { value: "Van", label: "Van" },
+      { value: "Pickup Truck", label: "Pickup Truck" },
+      { value: "Truck", label: "Truck (Max. 3 passengers)" },
+      { value: "HMV", label: "HMV" },
+      { value: "Bus", label: "Bus" },
+      { value: "Ambulance", label: "Ambulance" },
+      { value: "Mortuary Van", label: "Mortuary Van" },
+      { value: "Water Tanker", label: "Water Tanker" },
+      { value: "Oil Tanker", label: "Oil Tanker" },
+      { value: "LPG Tanker", label: "LPG Tanker" },
+      { value: "Tanker", label: "Tanker (General)" },
+      { value: "Other", label: "Other" },
+    ];
+  }
+
+  return [];
+};
+
+const getOwnershipOptions = (userType) => {
+  if (userType === 0)
+    return [
+      { label: "Commercial (Yellow Board)", value: "Commercial" },
+      { label: "Private (White Board)", value: "Private" },
+    ];
+
+  if (userType === 1)
+    return [{ label: "Commercial (Yellow Board)", value: "Commercial" }];
+
+  if (userType === 2) return [{ label: "Government", value: "Government" }];
+
+  if (userType === 3)
+    return [
+      { label: "Government", value: "Government" },
+      { label: "Commercial (Yellow Board)", value: "Commercial" },
+      { label: "Private (White Board)", value: "Private" },
+    ];
+
+  return [];
+};
+
+const INITIAL_FORM_STATE = {
+  v_owner_name: "",
+  v_number: "",
+  v_category: "",
+  commercial_type: "",
+  department_name: "",
+  v_type: "",
+  v_type_other: "",
+  cargo_passenger: "cargo_passenger",
+  cargo_passenger_other: "",
+  v_capacity: "",
+  v_loadCapacity: "",
+  registration_date: "",
+  status: 1,
+};
 
 export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
   const { accessToken, user } = useAuth();
   const { toast } = useToast();
   const type = Number(user?.usertype); // ✅ cast to number explicitly
-  const getOwnershipOptions = () => {
-    const type = Number(user?.usertype);
+  const ownershipOptions = user ? getOwnershipOptions(type) : [];
 
-    if (type === 0)
-      return [
-        { label: "Commercial (Yellow Board)", value: "Commercial" },
-        { label: "Private (White Board)", value: "Private" },
-      ];
+  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
 
-    if (type === 1)
-      return [{ label: "Commercial (Yellow Board)", value: "Commercial" }];
-
-    if (type === 2) return [{ label: "Government", value: "Government" }];
-    if (type === 3)
-      return [
-        { label: "Government", value: "Government" },
-        { label: "Commercial (Yellow Board)", value: "Commercial" },
-        { label: "Private (White Board)", value: "Private" },
-      ];
-
-    return [];
+  // ✅ Helper to update form fields
+  const updateField = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const ownershipOptions = user ? getOwnershipOptions() : [];
-
-  const [formData, setFormData] = useState({
-    v_owner_name: "",
-    v_number: "",
-    v_category: "",
-    commercial_type: "",
-    department_name: "",
-    v_type: "",
-    v_type_other: "",
-    cargo_passenger: "cargo_passenger",
-    cargo_passenger_other: "",
-    v_capacity: "",
-    v_loadCapacity: "",
-    registration_date: "",
-    status: 1,
-  });
-
-  // ✅ Cargo vehicle types
-  const cargoVehicleTypes = [
-    "LMV Cargo",
-    "Van",
-    "Pickup Truck",
-    "Truck",
-    "HMV",
-    "Water Tanker",
-    "Oil Tanker",
-    "LPG Tanker",
-    "Tanker",
-  ];
-
-  const isCargoVehicle = cargoVehicleTypes.includes(formData.v_type);
+  const isCargoVehicle = CARGO_VEHICLE_TYPES.includes(formData.v_type);
 
   if (!isOpen) return null;
 
@@ -107,66 +148,9 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
 
     // Proceed with API call if all validations pass
     handleAddVehicleAPI(formData, accessToken, () => {
-      setFormData({
-        v_owner_name: "",
-        v_number: "",
-        v_category: "",
-        commercial_type: "",
-        department_name: "",
-        v_type: "",
-        v_type_other: "",
-        cargo_passenger: "cargo_passenger",
-        cargo_passenger_other: "",
-        v_capacity: "",
-        v_loadCapacity: "",
-        registration_date: "",
-        status: 1,
-      });
-
+      setFormData(INITIAL_FORM_STATE);
       if (typeof onSuccessAdd === "function") onSuccessAdd();
     });
-  };
-
-  {
-    (formData.v_type === "Car" || formData.v_type === "SUV") &&
-      formData.v_capacity && (
-        <p className="text-xs text-red-500">
-          {formData.v_type === "Car" &&
-            formData.v_capacity > 5 &&
-            "Max capacity for Car is 5"}
-          {formData.v_type === "SUV" &&
-            formData.v_capacity > 7 &&
-            "Max capacity for SUV is 7"}
-        </p>
-      );
-  }
-  // Inside your handleInputChange function or directly in JSX:
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    let newValue = value;
-
-    if (name === "vSeating") {
-      const numValue = parseInt(value) || 0;
-
-      // Get current vehicle category (Car, SUV, etc.)
-      const vCat = formData.vCat;
-
-      // Apply auto-limit rules
-      if (vCat === "Car" && numValue > 5) {
-        newValue = 5;
-      } else if (vCat === "SUV" && numValue > 7) {
-        newValue = 7;
-      } else if (numValue < 1) {
-        newValue = 1;
-      } else {
-        newValue = numValue;
-      }
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: newValue,
-    }));
   };
 
   return (
@@ -184,43 +168,35 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
               <h3 className="md:col-span-2 text-lg font-semibold">
                 🚗 Basic Information
               </h3>
-              <div className="space-y-2">
-                <Label htmlFor="v_number">
-                  Vehicle Registration Number/Plate Number{" "}
-                  <span className="text-red-600">*</span>
-                </Label>
-                <Input
-                  id="v_number"
-                  value={formData.v_number}
-                  onChange={(e) => {
-                    const value = e.target.value.toUpperCase(); // ✅ convert to uppercase
-                    // Allow only alphabets and numbers (max 10 characters)
-                    if (/^[A-Z0-9]{0,10}$/.test(value)) {
-                      setFormData({ ...formData, v_number: value });
-                    }
-                  }}
-                  maxLength={10}
-                  placeholder="Enter Vehicle Number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="owner_full_name">
-                  Owner Full Name<span className="text-red-600">*</span>
-                </Label>
-                <Input
-                  id="owner_full_name"
-                  value={formData.v_owner_name}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // ✅ Allow only alphabets and spaces (no numbers or special characters)
-                    if (/^[A-Za-z\s]*$/.test(value)) {
-                      setFormData({ ...formData, v_owner_name: value });
-                    }
-                  }}
-                  placeholder="Enter Owner Full Name"
-                  maxLength={50}
-                />
-              </div>
+              <CommonInput
+                label="Vehicle Registration Number/Plate Number"
+                required
+                value={formData.v_number}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+
+                  if (/^[A-Z0-9]{0,10}$/.test(value)) {
+                    updateField("v_number", value);
+                  }
+                }}
+                maxLength={10}
+                placeholder="Enter Vehicle Number"
+              />
+
+              <CommonInput
+                label="Owner Full Name"
+                required
+                value={formData.v_owner_name}
+                onChange={(e) => {
+                  const value = e.target.value;
+
+                  if (/^[A-Za-z\s]*$/.test(value)) {
+                    updateField("v_owner_name", value);
+                  }
+                }}
+                placeholder="Enter Owner Full Name"
+                maxLength={50}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg shadow-sm">
@@ -228,198 +204,83 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
                 🚘 Vehicle Classification
               </h3>
 
-              <div className="space-y-2">
-                <Label htmlFor="commercial_type">
-                  Ownership Type<span className="text-red-600">*</span>
-                </Label>
-                <select
-                  id="commercial_type"
-                  value={formData.commercial_type}
-                  onChange={(e) => {
-                    const selected = e.target.value;
-                    setFormData({
-                      ...formData,
-                      commercial_type: selected,
-                      department_name:
-                        selected === "Government"
-                          ? formData.department_name
-                          : "",
-                    });
-                  }}
-                  className="w-full border rounded p-2"
-                  disabled={ownershipOptions.length === 0}
-                >
-                  <option value="">-- Select --</option>
-                  {ownershipOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-
-                {formData.commercial_type === "Government" && (
-                  <div className="w-full">
-                    <Label htmlFor="department_name">
-                      Department Name <span className="text-red-600">*</span>
-                    </Label>
-                    <Input
-                      id="department_name"
-                      className="mt-2"
-                      placeholder="Enter Department Name"
-                      value={formData.department_name}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          department_name: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="v_type">
-                  Vehicle Category <span className="text-red-600">*</span>
-                </Label>
-                <select
-                  id="v_type"
-                  value={formData.v_type}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      v_type: e.target.value,
-                      v_type_other: "",
-                    })
+              <CommonDropdown
+                label="Ownership Type"
+                required
+                value={formData.commercial_type}
+                onChange={(e) => {
+                  const selected = e.target.value;
+                  updateField("commercial_type", selected);
+                  if (selected !== "Government") {
+                    updateField("department_name", "");
                   }
-                  className="w-full border rounded p-2"
-                >
-                  <option value="">-- Select --</option>
+                }}
+                placeholder="Select Ownership Type"
+                options={ownershipOptions}
+              />
 
-                  {type === 0 && (
-                    <>
-                      <option value="Car">Car (Max. 5 passengers)</option>
-                      <option value="SUV">SUV (Max. 7 passengers)</option>
-                      <option value="Bus">Bus</option>
-                    </>
-                  )}
-
-                  {[1, 2, 3].includes(type) && (
-                    <>
-                      <option value="Car">Car (Max. 5 passengers)</option>
-                      <option value="SUV">SUV (Max. 7 passengers)</option>
-
-                      <option value="LMV Cargo">LMV Cargo</option>
-
-                      <option value="Van">Van</option>
-                      <option value="Pickup Truck">Pickup Truck</option>
-
-                      <option value="Truck">Truck (Max. 3 passengers)</option>
-                      <option value="HMV">HMV</option>
-
-                      <option value="Bus">Bus</option>
-                      <option value="Ambulance">Ambulance</option>
-                      <option value="Mortuary Van">Mortuary Van</option>
-
-                      <option value="Water Tanker">Water Tanker</option>
-                      <option value="Oil Tanker">Oil Tanker</option>
-                      <option value="LPG Tanker">LPG Tanker</option>
-
-                      <option value="Tanker">Tanker (General)</option>
-
-                      <option value="Other">Other</option>
-                    </>
-                  )}
-                </select>
-
-                {formData.v_type === "Other" && (
-                  <Input
-                    placeholder="Enter Other Vehicle Category"
-                    value={formData.v_type_other || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, v_type_other: e.target.value })
-                    }
-                  />
-                )}
-              </div>
-
-              {/* <div className="space-y-2">
-              <Label htmlFor="cargo_passenger">Vehicle Purpose</Label>
-              <select
-                id="cargo_passenger"
-                value={formData.cargo_passenger}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    cargo_passenger: e.target.value,
-                    cargo_passenger_other: "",
-                  })
-                }
-                className="w-full border rounded p-2"
-              >
-                <option value="">-- Select --</option>
-                <option value="Passenger">Passenger</option>
-                <option value="Cargo">Cargo</option>
-                <option value="Other">Other</option>
-              </select>
-              {formData.cargo_passenger === "Other" && (
-                <Input
-                  placeholder="Enter Other Purpose"
-                  value={formData.cargo_passenger_other || ""}
+              {formData.commercial_type === "Government" && (
+                <CommonInput
+                  label="Department Name"
+                  required
+                  value={formData.department_name}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      cargo_passenger_other: e.target.value,
-                    })
+                    updateField("department_name", e.target.value)
                   }
+                  placeholder="Enter Department Name"
                 />
               )}
-            </div> */}
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
-                <div className="flex flex-col space-y-1 w-full sm:w-1/2">
-                  <Label htmlFor="v_capacity" className="text-xs">
-                    Seating <span className="text-red-600">*</span>
-                  </Label>
-                  <Input
+              <CommonDropdown
+                label="Vehicle Category"
+                required
+                value={formData.v_type}
+                onChange={(e) => {
+                  updateField("v_type", e.target.value);
+                  updateField("v_type_other", "");
+                }}
+                placeholder="Select Vehicle Category"
+                options={getVehicleCategoryOptions(type)}
+              />
+
+              {formData.v_type === "Other" && (
+                <CommonInput
+                  label="Other Vehicle Category"
+                  value={formData.v_type_other || ""}
+                  onChange={(e) => updateField("v_type_other", e.target.value)}
+                  placeholder="Enter Other Vehicle Category"
+                />
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="w-full sm:w-1/2">
+                  <CommonInput
+                    label="Seating"
+                    required
                     type="number"
-                    id="v_capacity"
                     value={formData.v_capacity}
                     onChange={(e) => {
                       let value = Number(e.target.value);
 
-                      // ✅ Auto-limit based on type
                       if (formData.v_type === "Car" && value > 5) value = 5;
                       if (formData.v_type === "SUV" && value > 7) value = 7;
-
-                      // ✅ Prevent negative or zero
                       if (value < 1) value = 1;
 
-                      setFormData({ ...formData, v_capacity: value });
+                      updateField("v_capacity", value);
                     }}
                     placeholder="Vehicle Capacity"
-                    className="h-8 text-sm"
                   />
                 </div>
 
-                {/* Load Capacity - Only for cargo vehicles */}
                 {isCargoVehicle && (
-                  <div className="flex flex-col space-y-1 w-full sm:w-1/2">
-                    <Label htmlFor="v_loadCapacity" className="text-xs">
-                      Load Capacity (Optional)
-                    </Label>
-                    <Input
-                      type="text"
-                      id="v_loadCapacity"
+                  <div className="w-full sm:w-1/2">
+                    <CommonInput
+                      label="Load Capacity (Optional)"
                       value={formData.v_loadCapacity}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          v_loadCapacity: e.target.value,
-                        })
+                        updateField("v_loadCapacity", e.target.value)
                       }
                       placeholder="e.g., 5 tons, 2000 liters"
-                      className="h-8 text-sm"
                     />
                   </div>
                 )}
