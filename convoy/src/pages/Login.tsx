@@ -33,6 +33,7 @@ const Login = () => {
   const { login, user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [captcha, setCaptcha] = useState("");
+  const [refreshCaptcha, setRefreshCaptcha] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,6 +52,10 @@ const Login = () => {
 
       console.error("Login error:", message);
       toast.error(message); // ✅ show backend message
+      setCaptcha("");
+
+      // refresh captcha
+      setRefreshCaptcha((prev) => !prev);
     }
   };
 
@@ -102,7 +107,10 @@ const Login = () => {
                   placeholder="Enter your password"
                 />
                 {/* CAPTCHA */}
-                <Captcha onChange={setCaptcha} />
+                <Captcha
+                  onChange={setCaptcha}
+                  refreshTrigger={refreshCaptcha}
+                />
 
                 {/* Submit */}
                 <Button

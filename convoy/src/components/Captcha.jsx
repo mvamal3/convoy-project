@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 
 import { RefreshCw } from "lucide-react";
 import CommonInput from "@/components/inputs/CommonInput";
-const Captcha = ({ onChange, value = "" }) => {
+const Captcha = ({ onChange, value = "", refreshTrigger }) => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const BASE_URL = `${API_BASE_URL}/api/auth`;
   //console.log("baseurl", BASE_URL);
@@ -67,6 +67,11 @@ const Captcha = ({ onChange, value = "" }) => {
     }
     drawCaptchaFromText();
   }, []);
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      handleRefresh();
+    }
+  }, [refreshTrigger]);
 
   // Handle input change
   const handleChange = (e) => {

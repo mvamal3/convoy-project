@@ -93,7 +93,7 @@ const ManageTrip = () => {
           await fetchTripList();
         } else {
           toast.error(
-            "Failed to delete trip: " + (res?.message || "Unknown error")
+            "Failed to delete trip: " + (res?.message || "Unknown error"),
           );
         }
       } catch (error) {
@@ -118,7 +118,7 @@ const ManageTrip = () => {
     .filter((t) =>
       `${t.origin} ${t.destination} ${t.driverName} ${t.vehicleNo}`
         .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()),
     );
 
   const todaysTrips = trips
@@ -129,7 +129,7 @@ const ManageTrip = () => {
     .filter((t) =>
       `${t.origin} ${t.destination} ${t.driverName} ${t.vehicleNo}`
         .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()),
     );
 
   const completedTrips = trips
@@ -137,7 +137,7 @@ const ManageTrip = () => {
     .filter((t) =>
       `${t.origin} ${t.destination} ${t.driverName} ${t.vehicleNo}`
         .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()),
     );
 
   const rejectedTrips = trips
@@ -146,12 +146,12 @@ const ManageTrip = () => {
         Number(t.status) === 3 ||
         Number(t.verifyStatus) === 3 ||
         Number(t.verifyStatus) === 0 ||
-        Number(t.status) === 0
+        Number(t.status) === 0,
     )
     .filter((t) =>
       `${t.origin} ${t.destination} ${t.driverName} ${t.vehicleNo}`
         .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+        .includes(searchTerm.toLowerCase()),
     );
 
   // Set tab from URL or defaults
@@ -188,7 +188,7 @@ const ManageTrip = () => {
   const indexOfFirstCompleted = indexOfLastCompleted - rowsPerPage;
   const currentCompletedRows = completedTrips.slice(
     indexOfFirstCompleted,
-    indexOfLastCompleted
+    indexOfLastCompleted,
   );
   const totalCompletedPages = Math.ceil(completedTrips.length / rowsPerPage);
 
@@ -196,7 +196,7 @@ const ManageTrip = () => {
   const indexOfFirstRejected = indexOfLastRejected - rowsPerPage;
   const currentRejectedRows = rejectedTrips.slice(
     indexOfFirstRejected,
-    indexOfLastRejected
+    indexOfLastRejected,
   );
   const totalRejectedPages = Math.ceil(rejectedTrips.length / rowsPerPage);
 
@@ -204,7 +204,7 @@ const ManageTrip = () => {
   const indexOfFirstToday = indexOfLastToday - rowsPerPage;
   const currentTodayRows = todaysTrips.slice(
     indexOfFirstToday,
-    indexOfLastToday
+    indexOfLastToday,
   );
   const totalTodayPages = Math.ceil(todaysTrips.length / rowsPerPage);
 
@@ -225,7 +225,7 @@ const ManageTrip = () => {
 
   // init open based on current route
   const [reportsOpen, setReportsOpen] = useState(() =>
-    location.pathname.startsWith("/ManageTrip")
+    location.pathname.startsWith("/ManageTrip"),
   );
 
   useEffect(() => {
@@ -386,7 +386,7 @@ const ManageTrip = () => {
                                       day: "2-digit",
                                       month: "2-digit",
                                       year: "numeric",
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>
@@ -600,7 +600,7 @@ const ManageTrip = () => {
                                       day: "2-digit",
                                       month: "2-digit",
                                       year: "numeric",
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>
@@ -793,7 +793,7 @@ const ManageTrip = () => {
                                       day: "2-digit",
                                       month: "2-digit",
                                       year: "numeric",
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>
@@ -986,7 +986,7 @@ const ManageTrip = () => {
                                       day: "2-digit",
                                       month: "2-digit",
                                       year: "numeric",
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </td>
