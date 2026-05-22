@@ -138,6 +138,11 @@ router.post(
 );
 
 router.post(
+  "/get-all-Approve-Rejected-Pending-trip-details",
+  authenticatePoliceToken,
+  AuthController.getallApproeveRejectedPendingTripDetails,
+);
+router.post(
   "/get-all-trip-details",
   authenticatePoliceToken,
   AuthController.getTripDetails,

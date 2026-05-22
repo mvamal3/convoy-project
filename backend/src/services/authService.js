@@ -20,6 +20,10 @@ const PoliceLoginRequestDTO = require("../dto/request/PoliceLoginRequestDTO");
 const PoliceLoginResponseDTO = require("../dto/response/PoliceLoginResponseDTO");
 const AdminLoginRequestDTO = require("../dto/request/AdminLoginRequestDTO");
 
+//new dto
+
+const TripDetailsByDateResponseDTO = require("../dto/response/new/TripDetailsByDateResponseDTO");
+
 const Driver = db.Driver;
 const { v4: uuidv4 } = require("uuid");
 const DriverStatus = db.DriverStatus;
@@ -1661,66 +1665,41 @@ class AuthService {
   //--------------------------
 
   //get trip_details_by date role police, parameters - dt
+
   static async getTripDetailsbydt(param) {
-    const now = new Date();
-    const kolkataTimeString = now.toLocaleString("en-US", {
+    // ✅ Current Kolkata date
+    const currentDate = new Date().toLocaleDateString("en-CA", {
       timeZone: "Asia/Kolkata",
     });
-    const kolkataTime = new Date(kolkataTimeString);
-    const year = kolkataTime.getFullYear();
-    const month = String(kolkataTime.getMonth() + 1).padStart(2, "0");
-    const day = String(kolkataTime.getDate()).padStart(2, "0");
-    const currentDate = `${year}-${month}-${day}`;
 
-    const whereConditions = [
-      db.Sequelize.where(
-        db.Sequelize.fn("DATE", db.Sequelize.col("date")),
-        currentDate,
-      ),
-      { status: 1 },
-      { verifiystatus: 0 },
-    ];
+    // ✅ Base where condition
+    const whereConditions = {
+      status: 1,
+      verifiystatus: 0,
 
-    // 🟩 Location-based filter
+      [db.Sequelize.Op.and]: [
+        db.Sequelize.where(
+          db.Sequelize.fn("DATE", db.Sequelize.col("date")),
+          currentDate,
+        ),
+      ],
+    };
+
+    // ✅ Location filter
     if (param?.locationid === 1) {
-      whereConditions.push({ origin: 1 });
+      whereConditions.origin = 1;
     } else if (param?.locationid === 2) {
-      whereConditions.push({
-        origin: { [db.Sequelize.Op.ne]: 1 }, // origin not equal to 1
-      });
+      whereConditions.origin = {
+        [db.Sequelize.Op.ne]: 1,
+      };
     } else if (param?.locationid) {
-      whereConditions.push({ origin: param.locationid });
+      whereConditions.origin = param.locationid;
     }
 
+    // ✅ Fetch trip data
     const trips = await db.Trip.findAll({
-      where: { [db.Sequelize.Op.and]: whereConditions },
-      include: [
-        {
-          model: db.Passenger,
-          as: "passengers",
-          attributes: ["passengerName", "docId", "phoneNo"],
-          through: {
-            attributes: [], // hide junction fields
-            where: { status: 1 },
-          },
-        },
-        {
-          model: db.OriginDestination,
-          as: "originLocation",
-          attributes: ["id", "location"],
-        },
-        {
-          model: db.OriginDestination,
-          as: "destinationLocation",
-          attributes: ["id", "location"],
-        },
-        { model: db.Vehicle, as: "vehicle", attributes: ["vNum", "vCat"] },
-        {
-          model: db.TConvey,
-          as: "convey",
-          attributes: ["id", "convey_time", "convey_name"],
-        },
-      ],
+      where: whereConditions,
+
       attributes: [
         "origin",
         "destination",
@@ -1731,14 +1710,55 @@ class AuthService {
         "entrydatetime",
         "verifiedtime",
       ],
+
+      include: [
+        {
+          model: db.Passenger,
+          as: "passengers",
+
+          attributes: ["passengerName", "docId", "phoneNo"],
+
+          through: {
+            attributes: [],
+            where: { status: 1 },
+          },
+        },
+
+        {
+          model: db.OriginDestination,
+          as: "originLocation",
+          attributes: ["id", "location"],
+        },
+
+        {
+          model: db.OriginDestination,
+          as: "destinationLocation",
+          attributes: ["id", "location"],
+        },
+
+        {
+          model: db.Vehicle,
+          as: "vehicle",
+          attributes: ["vNum", "vCat"],
+        },
+
+        {
+          model: db.TConvey,
+          as: "convey",
+          attributes: ["id", "convey_time", "convey_name"],
+        },
+      ],
     });
 
+    // ✅ Logs
     console.log("✅ Current Kolkata Date:", currentDate);
     console.log("📍 Location ID:", param?.locationid);
 
+    // ✅ DTO Response
     return {
       message: "Trip details loaded successfully",
-      trips,
+
+      trips: TripDetailsByDateResponseDTO.response(trips),
     };
   }
 
@@ -2360,6 +2380,223 @@ class AuthService {
     }
   }
 
+  static async getallApproeveRejectedPendingTripDetails(params) {
+    try {
+      console.log(
+        "🟩 Incoming Parameters to getallApproeveRejectedPendingTripDetails:",
+        params,
+      );
+
+      const { Op } = require("sequelize");
+
+      // ✅ Trip Filters
+      const tripWhere = {};
+
+      // ✅ Approve Filters
+      const approveWhere = {};
+
+      // ✅ Chunk Pagination
+      const chunkSize = 100;
+
+      const chunkPage = Number(params?.chunkPage) || 1;
+
+      const offset = (chunkPage - 1) * chunkSize;
+
+      // ✅ Status Filter
+      if (params?.statuscode !== undefined) {
+        tripWhere.status = params.statuscode;
+
+        // ✅ convoyTime < 99
+        tripWhere[Op.and] = [
+          db.Sequelize.where(
+            db.Sequelize.cast(db.Sequelize.col("Trip.convoyTime"), "SIGNED"),
+            {
+              [Op.lt]: 99,
+            },
+          ),
+        ];
+      }
+
+      // ✅ Search Filter (Trip Table)
+      if (params?.searchTerm && params.searchTerm.trim() !== "") {
+        tripWhere.tId = {
+          [Op.like]: `%${params.searchTerm.trim()}%`,
+        };
+      }
+
+      // ✅ Pending Trips
+      if (Number(params?.statuscode) === 1) {
+        // ✅ Date Filter from trip_tbl
+        if (params?.filteredDate) {
+          tripWhere.date = params.filteredDate;
+        }
+
+        // ✅ Convoy Filter from trip_tbl
+        if (params?.conveyid) {
+          tripWhere.convoyTime = params.conveyid;
+        }
+
+        if (params?.checkpostid) {
+          tripWhere.origin = params.checkpostid;
+        }
+      }
+
+      // ✅ Approved / Rejected Trips
+      else {
+        // ✅ Date Filter from approve_trip
+        if (params?.filteredDate) {
+          approveWhere.arrdate = params.filteredDate;
+        }
+
+        // ✅ Convoy Filter from approve_trip
+        if (params?.conveyid) {
+          approveWhere.convey_id = params.conveyid;
+        }
+
+        // ✅ Checkpost Filter
+        if (params?.checkpostid) {
+          approveWhere.checkpost_id = params.checkpostid;
+        }
+      }
+
+      // ✅ Fetch Trips
+      const { count, rows: trips } = await db.Trip.findAndCountAll({
+        where: tripWhere,
+
+        attributes: [
+          "tId",
+          "origin",
+          "destination",
+          "date",
+          "status",
+          "convoyTime",
+          "updatedate",
+
+          // ✅ Passenger Count
+          [
+            db.Sequelize.literal(`(
+      SELECT COUNT(*)
+      FROM trip_relation_tbl AS tr
+      WHERE tr.tId = Trip.tId
+    )`),
+            "passengerCount",
+          ],
+        ],
+        include: [
+          // ✅ Origin
+          {
+            model: db.OriginDestination,
+
+            as: "originLocation",
+
+            attributes: ["id", "location"],
+          },
+
+          // ✅ Destination
+          {
+            model: db.OriginDestination,
+
+            as: "destinationLocation",
+
+            attributes: ["id", "location"],
+          },
+
+          // ✅ Vehicle
+          {
+            model: db.Vehicle,
+
+            as: "vehicle",
+
+            attributes: ["vId", "vNum", "vCat"],
+          },
+
+          // ✅ Driver
+          {
+            model: db.Driver,
+
+            as: "driver",
+
+            attributes: ["dId", "dFirstName", "dLastName"],
+          },
+
+          // ✅ Requested Convoy
+          {
+            model: db.TConvey,
+
+            as: "convey",
+
+            attributes: ["id", "convey_time", "convey_name"],
+          },
+
+          // ✅ Approve Details
+          {
+            model: db.ApproveTrip,
+
+            as: "approveDetails",
+
+            required: Object.keys(approveWhere).length > 0,
+
+            where:
+              Object.keys(approveWhere).length > 0 ? approveWhere : undefined,
+            duplicating: false,
+
+            attributes: [
+              "id",
+              "convey_id",
+              "arrdate",
+              "arrtime",
+              "astatus",
+              "checkpost_id",
+              "remarks",
+            ],
+
+            include: [
+              // ✅ Approved Convoy
+              {
+                model: db.TConvey,
+
+                as: "convey",
+
+                attributes: ["id", "convey_time", "convey_name"],
+              },
+            ],
+          },
+        ],
+
+        order: [["updatedate", "DESC"]],
+
+        // ✅ Backend Chunk Pagination
+        limit: chunkSize,
+
+        offset,
+
+        distinct: true,
+
+        subQuery: false,
+      });
+
+      console.log("✅ Trips Count:", trips.length);
+
+      return {
+        message: "Trips fetched successfully",
+
+        totalRecords: count,
+
+        chunkPage,
+
+        chunkSize,
+
+        totalChunks: Math.ceil(count / chunkSize),
+
+        trips,
+      };
+    } catch (error) {
+      console.error("❌ Error:", error.message);
+
+      throw new Error(error.message || "Failed to fetch trips");
+    }
+  }
+
   static async getAllFilterdata(filterKeys) {
     try {
       const {
@@ -2454,11 +2691,7 @@ class AuthService {
             ],
             where: Object.keys(vehicleWhere).length ? vehicleWhere : undefined,
           },
-          {
-            model: db.Passenger,
-            as: "passengers",
-            attributes: ["passengerName", "docId", "phoneNo"],
-          },
+
           {
             model: db.OriginDestination,
             as: "originLocation",

@@ -4,7 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom"; // ✅ Added useLocation
-import { getapproveTripdetails, getConveyDetails } from "@/contexts/GetApi";
+import {
+  getApproveRejectedPendingTripdetails,
+  getConveyDetails,
+} from "@/contexts/GetApi";
 
 const AllApproveTrips = () => {
   const { user, accessToken } = useAuth();
@@ -12,9 +15,12 @@ const AllApproveTrips = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredDate, setFilteredDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [chunkPage, setChunkPage] = useState(1);
+  const [totalChunks, setTotalChunks] = useState(1);
   const [filteredConvoyTime, setFilteredConvoyTime] = useState("");
   const [conveyList, setConveyList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [totalRecords, setTotalRecords] = useState(0);
   const navigate = useNavigate();
   const location = useLocation(); // ✅ capture current URL
   const rowsPerPage = 10;
@@ -34,14 +40,25 @@ const AllApproveTrips = () => {
       console.log("tetstss", user.checkpostid);
       setLoading(true);
       try {
-        const data = await getapproveTripdetails(
+        const data = await getApproveRejectedPendingTripdetails(
           accessToken,
-          2, // statuscode (approved)
+
+          2,
+
           user.checkpostid,
+
           filteredConvoyTime,
+
+          filteredDate,
+
+          chunkPage,
+
+          searchTerm,
         );
 
         console.log("Approve Fetched Trip List:", data);
+        setTotalChunks(data?.data?.totalChunks || 1);
+        setTotalRecords(data?.data?.totalRecords || 0);
         //console.log("Approvedetails", data?.data?.trips);
 
         const tripList = Array.isArray(data?.data?.trips)
@@ -62,8 +79,10 @@ const AllApproveTrips = () => {
                     }`.trim()
                   : "N/A",
                 licenseNo: trip.driver?.licenseNo || "N/A",
-                vehicleNo: trip.vehicle?.vNum || "N/A",
-                passengerCount: trip.passengers?.length || 0,
+                vehicleNo: trip.vehicle
+                  ? `${trip.vehicle.vNum || "N/A"} (${trip.vehicle.vCat || "N/A"})`
+                  : "N/A",
+                passengerCount: trip.passengerCount || "0",
                 status: trip.status || "N/A",
                 approveConveyTime:
                   trip.approveDetails?.convey?.convey_time || "N/A",
@@ -82,7 +101,19 @@ const AllApproveTrips = () => {
         setLoading(false);
       }
     }
-  }, [accessToken, user.checkpostid, filteredConvoyTime]);
+  }, [
+    accessToken,
+
+    user.checkpostid,
+
+    filteredConvoyTime,
+
+    filteredDate,
+
+    chunkPage,
+
+    searchTerm,
+  ]);
 
   useEffect(() => {
     fetchTripList();
@@ -90,33 +121,51 @@ const AllApproveTrips = () => {
 
   useEffect(() => {
     setCurrentPage(1);
+
+    setChunkPage(1);
   }, [filteredDate, filteredConvoyTime, searchTerm]);
 
-  // ✅ Frontend Filter: if filteredDate from URL exists → show only that date
-  const filteredTrips = useMemo(() => {
-    return trips.filter((t) => {
-      const search = searchTerm.trim().toLowerCase();
+  // ✅ Global pagination
+  const globalTotalPages = Math.ceil(totalRecords / rowsPerPage);
 
-      const tripIdMatch = t.t_id?.toString().toLowerCase().includes(search);
+  // ✅ Index-based slicing (pure math)
+  const rowsPerChunk = 100;
 
-      const dateMatch = filteredDate ? t.date === filteredDate : true;
+  const chunkStartIndex = (chunkPage - 1) * rowsPerChunk;
 
-      return tripIdMatch && dateMatch;
-    });
-  }, [trips, searchTerm, filteredDate]);
+  const globalStartIndex = (currentPage - 1) * rowsPerPage;
 
-  const indexOfLast = currentPage * rowsPerPage;
-  const indexOfFirst = indexOfLast - rowsPerPage;
-  const currentRows = filteredTrips.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredTrips.length / rowsPerPage);
+  const localStartIndex = globalStartIndex - chunkStartIndex;
 
-  const handleSearch = () => {
-    setCurrentPage(1);
+  const localEndIndex = localStartIndex + rowsPerPage;
+
+  const currentRows = trips.slice(localStartIndex, localEndIndex);
+
+  // ✅ Auto-calculate chunk based on global page
+  const pagesPerChunk = 10;
+
+  useEffect(() => {
+    const requiredChunk = Math.ceil(currentPage / pagesPerChunk);
+
+    if (requiredChunk !== chunkPage) {
+      setLoading(true);
+      setChunkPage(requiredChunk);
+    }
+  }, [currentPage, pagesPerChunk, chunkPage]);
+
+  const handlePrev = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
   };
 
-  const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
-  const handleNext = () =>
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  const handleNext = () => {
+    const maxGlobalPages = Math.ceil(totalRecords / rowsPerPage);
+
+    if (currentPage < maxGlobalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
 
   useEffect(() => {
     const fetchConveys = async () => {
@@ -202,7 +251,7 @@ const AllApproveTrips = () => {
                     className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
                   />
                   <Button
-                    onClick={handleSearch}
+                    onClick={fetchTripList}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium rounded-md hidden sm:flex"
                   >
                     Search
@@ -221,7 +270,7 @@ const AllApproveTrips = () => {
                 {/* Search + Table */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                   <p className="text-sm text-muted-foreground">
-                    Showing {filteredTrips.length} trip(s)
+                    Showing {trips.length} trip(s)
                   </p>
                 </div>
 
@@ -236,6 +285,8 @@ const AllApproveTrips = () => {
                           <th className="px-4 py-2 border text-center">
                             Route
                           </th>
+                          <th className="px-4 py-2 border">Vehicle</th>
+                          <th className="px-4 py-2 border">Driver</th>
                           <th className="px-4 py-2 border">Date</th>
                           <th className="px-4 py-2 border">
                             Approve Convoy Details
@@ -256,6 +307,12 @@ const AllApproveTrips = () => {
                               <td className="px-4 py-2 border">{row.t_id}</td>
                               <td className="px-4 py-2 border text-center">
                                 {row.origin} → {row.destination}
+                              </td>
+                              <td className="px-4 py-2 border">
+                                {row.vehicleNo}
+                              </td>
+                              <td className="px-4 py-2 border">
+                                {row.driverName}
                               </td>
 
                               <td className="px-4 py-2 border">
@@ -313,7 +370,7 @@ const AllApproveTrips = () => {
                   </div>
 
                   {/* Pagination controls */}
-                  {totalPages > 1 && (
+                  {globalTotalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 text-sm">
                       <Button
                         variant="outline"
@@ -324,13 +381,13 @@ const AllApproveTrips = () => {
                         Previous
                       </Button>
                       <span className="text-gray-600">
-                        Page {currentPage} of {totalPages}
+                        Page {currentPage} of {globalTotalPages}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleNext}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage >= globalTotalPages}
                       >
                         Next
                       </Button>
@@ -430,7 +487,7 @@ const AllApproveTrips = () => {
                 </div>
 
                 {/* Mobile Pagination */}
-                {totalPages > 1 && (
+                {globalTotalPages > 1 && (
                   <div className="lg:hidden flex items-center justify-between mt-6 gap-2">
                     <Button
                       variant="outline"
@@ -443,14 +500,14 @@ const AllApproveTrips = () => {
                     </Button>
 
                     <div className="text-xs text-gray-600 whitespace-nowrap">
-                      {currentPage} / {totalPages}
+                      Page {currentPage} of {globalTotalPages}
                     </div>
 
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleNext}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage >= globalTotalPages}
                       className="flex-1"
                     >
                       Next

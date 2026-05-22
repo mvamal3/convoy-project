@@ -127,7 +127,40 @@ export const getAllAproveTrips = async (
 
 //   return res.data;
 // };
+
 export const getapproveTripdetails = async (
+  accessToken,
+  statuscode,
+  checkpostid,
+  conveyid,
+  filteredDate,
+) => {
+  try {
+    const res = await axios.post(
+      `${API_BASE_URL}/api/auth/get-all-Approve-trip-details`,
+      {
+        statuscode: statuscode,
+        checkpostid: checkpostid, // ✅ sending status code in body
+        conveyid: conveyid,
+        filteredDate: filteredDate || "",
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    //console.log("Fetched Trip List:", res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching trip list:", error);
+    return [];
+  }
+};
+
+export const getApproveRejectedPendingTripdetails = async (
   accessToken,
   statuscode,
   checkpostid,

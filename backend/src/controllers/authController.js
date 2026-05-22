@@ -3,6 +3,10 @@ const BaseResponseDTO = require("../dto/response/BaseResponseDTO");
 const { CaptchaGenerator } = require("captcha-canvas");
 const db = require("../models"); // make sure index.js in /models returns db with initialized models
 
+////new dto
+const GetTripDetailsByDateRequestDTO = require("../dto/request/new/GetTripDetailsByDateRequestDTO");
+//const GetAllApproveTripRequestDTO = require("../dto/request/GetAllApproveTripRequestDTO");
+
 class AuthController {
   static async login(req, res) {
     try {
@@ -435,9 +439,13 @@ class AuthController {
   //-------------------------
 
   //get tripdetails by date
+
   static async getTripDetailsbydt(req, res) {
     try {
-      const result = await AuthService.getTripDetailsbydt(req.body);
+      const dto = new GetTripDetailsByDateRequestDTO(req.body);
+
+      const result = await AuthService.getTripDetailsbydt(dto);
+
       res.json(BaseResponseDTO.success(result, "Trip Details by date"));
     } catch (error) {
       res.status(401).json(BaseResponseDTO.error(error.message));
@@ -710,6 +718,23 @@ class AuthController {
       };
 
       const result = await AuthService.getallApproveTrip(filters); // Updated to use getAllFilterdata
+      //console.log("Trip details fetched successfully:", result);
+      res.json(BaseResponseDTO.success(result, "All Trip Details"));
+    } catch (error) {
+      console.error("Error fetching trip details:", error);
+      res.status(500).json(BaseResponseDTO.error(error.message));
+    }
+  }
+  static async getallApproeveRejectedPendingTripDetails(req, res) {
+    try {
+      const filters = {
+        ...req.body,
+        page: req.body.page ? parseInt(req.body.page, 10) : 1,
+        limit: req.body.limit ? parseInt(req.body.limit, 10) : 10,
+      };
+
+      const result =
+        await AuthService.getallApproeveRejectedPendingTripDetails(filters); // Updated to use getAllFilterdata
       //console.log("Trip details fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "All Trip Details"));
     } catch (error) {

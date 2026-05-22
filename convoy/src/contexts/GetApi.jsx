@@ -159,6 +159,52 @@ export const getapproveTripdetails = async (
   }
 };
 
+export const getApproveRejectedPendingTripdetails = async (
+  accessToken,
+  statuscode,
+  checkpostid,
+  conveyid,
+  filteredDate,
+  chunkPage,
+  searchTerm,
+) => {
+  try {
+    const requestBody = {
+      statuscode,
+
+      checkpostid,
+
+      conveyid,
+
+      filteredDate: filteredDate || "",
+
+      chunkPage: chunkPage || 1,
+
+      searchTerm: searchTerm || "",
+    };
+
+    const res = await axios.post(
+      `${API_BASE_URL}/api/auth/get-all-Approve-Rejected-Pending-trip-details`,
+
+      requestBody,
+
+      {
+        headers: {
+          "Content-Type": "application/json",
+
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching trip list:", error);
+
+    return [];
+  }
+};
+
 export const getPendingVerifiedTripList = async (accessToken, locationid) => {
   const res = await axios.post(
     `${API_BASE_URL}/api/auth/get-Pending-trip-details-by-dt`,
