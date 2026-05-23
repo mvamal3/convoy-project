@@ -19,6 +19,7 @@ const AllRejectedTrips = () => {
   const [totalChunks, setTotalChunks] = useState(1);
   const [filteredConvoyTime, setFilteredConvoyTime] = useState("");
   const [conveyList, setConveyList] = useState([]);
+  const [vehicleSearch, setVehicleSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [totalRecords, setTotalRecords] = useState(0);
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ const AllRejectedTrips = () => {
           chunkPage,
 
           searchTerm,
+          vehicleSearch,
         );
 
         console.log("Approve Fetched Trip List:", data);
@@ -114,6 +116,7 @@ const AllRejectedTrips = () => {
     chunkPage,
 
     searchTerm,
+    vehicleSearch,
   ]);
 
   useEffect(() => {
@@ -124,7 +127,7 @@ const AllRejectedTrips = () => {
     setCurrentPage(1);
 
     setChunkPage(1);
-  }, [filteredDate, filteredConvoyTime, searchTerm]);
+  }, [filteredDate, filteredConvoyTime, searchTerm, vehicleSearch]);
 
   // ✅ Global pagination
   const globalTotalPages = Math.ceil(totalRecords / rowsPerPage);
@@ -149,7 +152,6 @@ const AllRejectedTrips = () => {
     const requiredChunk = Math.ceil(currentPage / pagesPerChunk);
 
     if (requiredChunk !== chunkPage) {
-      setLoading(true);
       setChunkPage(requiredChunk);
     }
   }, [currentPage, pagesPerChunk, chunkPage]);
@@ -201,7 +203,7 @@ const AllRejectedTrips = () => {
           <CardHeader />
           <CardContent>
             {/* Filter Form */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               {/* Date Filter */}
               <div className="w-full">
                 <label className="block text-sm font-medium mb-1">
@@ -251,19 +253,35 @@ const AllRejectedTrips = () => {
                     placeholder="Enter Trip ID..."
                     className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
                   />
-                  <Button
-                    onClick={fetchTripList}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium rounded-md hidden sm:flex"
-                  >
-                    Search
-                  </Button>
                 </div>
               </div>
+              {/* ✅ Search by Vehicle Number */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Search by Vehicle No
+                </label>
+
+                <input
+                  type="text"
+                  value={vehicleSearch}
+                  onChange={(e) => setVehicleSearch(e.target.value)}
+                  placeholder="Enter Vehicle Number..."
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end mb-6">
+              <Button
+                onClick={fetchTripList}
+                className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 text-sm font-medium rounded-md"
+              >
+                Search
+              </Button>
             </div>
             {loading ? (
               <div className="flex justify-center items-center py-20">
                 <div className="text-sm text-gray-500">
-                  Loading approved trips...
+                  Loading Rejected trips...
                 </div>
               </div>
             ) : (

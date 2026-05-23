@@ -18,6 +18,7 @@ const AllApproveTrips = () => {
   const [chunkPage, setChunkPage] = useState(1);
   const [totalChunks, setTotalChunks] = useState(1);
   const [filteredConvoyTime, setFilteredConvoyTime] = useState("");
+  const [vehicleSearch, setVehicleSearch] = useState("");
   const [conveyList, setConveyList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -54,6 +55,7 @@ const AllApproveTrips = () => {
           chunkPage,
 
           searchTerm,
+          vehicleSearch,
         );
 
         console.log("Approve Fetched Trip List:", data);
@@ -113,6 +115,7 @@ const AllApproveTrips = () => {
     chunkPage,
 
     searchTerm,
+    vehicleSearch,
   ]);
 
   useEffect(() => {
@@ -123,7 +126,7 @@ const AllApproveTrips = () => {
     setCurrentPage(1);
 
     setChunkPage(1);
-  }, [filteredDate, filteredConvoyTime, searchTerm]);
+  }, [filteredDate, filteredConvoyTime, searchTerm, vehicleSearch]);
 
   // ✅ Global pagination
   const globalTotalPages = Math.ceil(totalRecords / rowsPerPage);
@@ -148,7 +151,6 @@ const AllApproveTrips = () => {
     const requiredChunk = Math.ceil(currentPage / pagesPerChunk);
 
     if (requiredChunk !== chunkPage) {
-      setLoading(true);
       setChunkPage(requiredChunk);
     }
   }, [currentPage, pagesPerChunk, chunkPage]);
@@ -200,7 +202,7 @@ const AllApproveTrips = () => {
           <CardHeader />
           <CardContent>
             {/* Filter Form */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               {/* Date Filter */}
               <div className="w-full">
                 <label className="block text-sm font-medium mb-1">
@@ -237,27 +239,45 @@ const AllApproveTrips = () => {
                 </select>
               </div>
 
-              {/* ✅ Search by Trip ID Only */}
+              {/* ✅ Search by Trip ID */}
               <div className="w-full">
                 <label className="block text-sm font-medium mb-1">
-                  Search by Trip IDcheckpostid
+                  Search by Trip ID
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Enter Trip ID..."
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
-                  />
-                  <Button
-                    onClick={fetchTripList}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium rounded-md hidden sm:flex"
-                  >
-                    Search
-                  </Button>
-                </div>
+
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Enter Trip ID..."
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                />
               </div>
+
+              {/* ✅ Search by Vehicle Number */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Search by Vehicle No
+                </label>
+
+                <input
+                  type="text"
+                  value={vehicleSearch}
+                  onChange={(e) => setVehicleSearch(e.target.value)}
+                  placeholder="Enter Vehicle Number..."
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* ✅ Common Search Button */}
+            <div className="flex justify-end mb-6">
+              <Button
+                onClick={fetchTripList}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 text-sm font-medium rounded-md"
+              >
+                Search
+              </Button>
             </div>
             {loading ? (
               <div className="flex justify-center items-center py-20">

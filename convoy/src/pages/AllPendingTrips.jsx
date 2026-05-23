@@ -3,81 +3,121 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { useNavigate, useLocation } from "react-router-dom";
-import { getAllAproveTrips, getConveyDetails } from "@/contexts/GetApi";
-import { formatDateDDMMYY } from "@/utils/dateUtils";
+import { useNavigate, useLocation } from "react-router-dom"; // ✅ Added useLocation
+import {
+  getApproveRejectedPendingTripdetails,
+  getConveyDetails,
+} from "@/contexts/GetApi";
 
 const AllPendingTrips = () => {
   const { user, accessToken } = useAuth();
   const [trips, setTrips] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredDate, setFilteredDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [chunkPage, setChunkPage] = useState(1);
+  const [totalChunks, setTotalChunks] = useState(1);
   const [filteredConvoyTime, setFilteredConvoyTime] = useState("");
+  const [vehicleSearch, setVehicleSearch] = useState("");
   const [conveyList, setConveyList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   const navigate = useNavigate();
-  const location = useLocation();
+  const location = useLocation(); // ✅ capture current URL
   const rowsPerPage = 10;
 
-  // ✅ Extract date from URL query (e.g., ?date=2025-11-03)
+  // ✅ Check if date is passed via URL (e.g., /ApprovedTrips?date=2025-11-03)
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const dateFromQuery = queryParams.get("date");
-    if (dateFromQuery) {
-      setFilteredDate(dateFromQuery);
+    const params = new URLSearchParams(location.search);
+    const dateFromUrl = params.get("date");
+    if (dateFromUrl) {
+      console.log("📅 Filter date from URL:", dateFromUrl);
+      setFilteredDate(dateFromUrl);
     }
   }, [location.search]);
 
-  // ✅ Fetch Pending Trip List
   const fetchTripList = useCallback(async () => {
-    if (!accessToken) return;
-    setLoading(true);
-    try {
-      const data = await getAllAproveTrips(
-        accessToken,
-        1, // 1 = pending
-        user.checkpostid,
-        filteredConvoyTime, // ✅ include convoy filter
-      );
+    if (accessToken) {
+      console.log("tetstss", user.checkpostid);
+      setLoading(true);
+      try {
+        const data = await getApproveRejectedPendingTripdetails(
+          accessToken,
 
-      console.log("Pending Fetched Trip List:", data);
+          1,
 
-      const tripList = Array.isArray(data?.data?.trips)
-        ? data.data.trips.map((trip) => {
-            const conveyTime = trip.convey?.convey_time || "N/A";
-            const conveyName = trip.convey?.convey_name || "";
-            return {
-              t_id: trip.tId,
-              origin: trip.originLocation?.location || "N/A",
-              destination: trip.destinationLocation?.location || "N/A",
-              date: trip.date || "N/A",
-              convoyTime: conveyName
-                ? `${conveyTime} (${conveyName})`
-                : conveyTime,
-              driverName: trip.driver
-                ? `${trip.driver.dFirstName || ""} ${
-                    trip.driver.dLastName || ""
-                  }`.trim()
-                : "N/A",
-              licenseNo: trip.driver?.licenseNo || "N/A",
-              vehicleNo: trip.vehicle?.vNum || "N/A",
-              passengerCount: trip.passengers?.length || 0,
-              status: trip.status || "N/A",
-            };
-          })
-        : [];
+          user.checkpostid,
 
-      // Sort descending by trip ID
-      tripList.sort((a, b) => Number(b.t_id) - Number(a.t_id));
-      setTrips(tripList);
-    } catch (err) {
-      console.error("Error fetching pending trips:", err);
-      setTrips([]);
-    } finally {
-      setLoading(false);
+          filteredConvoyTime,
+
+          filteredDate,
+
+          chunkPage,
+
+          searchTerm,
+          vehicleSearch,
+        );
+
+        console.log("Approve Fetched Trip List:", data);
+        setTotalChunks(data?.data?.totalChunks || 1);
+        setTotalRecords(data?.data?.totalRecords || 0);
+        //console.log("Approvedetails", data?.data?.trips);
+
+        const tripList = Array.isArray(data?.data?.trips)
+          ? data.data.trips.map((trip) => {
+              const conveyTime = trip.convey?.convey_time || "N/A";
+              const conveyName = trip.convey?.convey_name || "";
+              return {
+                t_id: trip.tId,
+                origin: trip.originLocation?.location || "N/A",
+                destination: trip.destinationLocation?.location || "N/A",
+                date: trip.date || "N/A",
+                convoyTime: conveyName
+                  ? `${conveyTime} (${conveyName})`
+                  : conveyTime,
+                driverName: trip.driver
+                  ? `${trip.driver.dFirstName || ""} ${
+                      trip.driver.dLastName || ""
+                    }`.trim()
+                  : "N/A",
+                licenseNo: trip.driver?.licenseNo || "N/A",
+                vehicleNo: trip.vehicle
+                  ? `${trip.vehicle.vNum || "N/A"} (${trip.vehicle.vCat || "N/A"})`
+                  : "N/A",
+                passengerCount: trip.passengerCount || "0",
+                status: trip.status || "N/A",
+                approveConveyTime:
+                  trip.approveDetails?.convey?.convey_time || "N/A",
+                approveconveyname:
+                  trip.approveDetails?.convey?.convey_name || "N/A",
+                remarks: trip.approveDetails?.remarks || "N/A",
+              };
+            })
+          : [];
+
+        tripList.sort((a, b) => Number(b.t_id) - Number(a.t_id));
+
+        setTrips(tripList);
+      } catch (err) {
+        console.error("Error fetching approved trips:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [accessToken, user.checkpostid]);
+  }, [
+    accessToken,
+
+    user.checkpostid,
+
+    filteredConvoyTime,
+
+    filteredDate,
+
+    chunkPage,
+
+    searchTerm,
+    vehicleSearch,
+  ]);
 
   useEffect(() => {
     fetchTripList();
@@ -85,164 +125,176 @@ const AllPendingTrips = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filteredDate, filteredConvoyTime, searchTerm]);
 
-  // ✅ Fetch Convoy List
+    setChunkPage(1);
+  }, [filteredDate, filteredConvoyTime, searchTerm, vehicleSearch]);
+
+  // ✅ Global pagination
+  const globalTotalPages = Math.ceil(totalRecords / rowsPerPage);
+
+  // ✅ Index-based slicing (pure math)
+  const rowsPerChunk = 100;
+
+  const chunkStartIndex = (chunkPage - 1) * rowsPerChunk;
+
+  const globalStartIndex = (currentPage - 1) * rowsPerPage;
+
+  const localStartIndex = globalStartIndex - chunkStartIndex;
+
+  const localEndIndex = localStartIndex + rowsPerPage;
+
+  const currentRows = trips.slice(localStartIndex, localEndIndex);
+
+  // ✅ Auto-calculate chunk based on global page
+  const pagesPerChunk = 10;
+
+  useEffect(() => {
+    const requiredChunk = Math.ceil(currentPage / pagesPerChunk);
+
+    if (requiredChunk !== chunkPage) {
+      setChunkPage(requiredChunk);
+    }
+  }, [currentPage, pagesPerChunk, chunkPage]);
+
+  const handlePrev = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const handleNext = () => {
+    const maxGlobalPages = Math.ceil(totalRecords / rowsPerPage);
+
+    if (currentPage < maxGlobalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
   useEffect(() => {
     const fetchConveys = async () => {
       if (!accessToken) return;
       try {
         const res = await getConveyDetails(accessToken, user.checkpostid);
-        console.log("Fetched convoy list:", res);
+        console.log("Fetched convey list:", res);
         setConveyList(res?.data?.data || []);
-      } catch (err) {
-        console.error("Error fetching conveys:", err);
+      } catch {
         setConveyList([]);
       }
     };
     fetchConveys();
   }, [accessToken, user.checkpostid]);
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-  };
-  const handleBack = () => {
-    navigate(-1); // go to previous page
-  };
-
-  // ✅ Apply frontend filters (date, search, convoy)
-  const filteredTrips = useMemo(() => {
-    return trips.filter((t) => {
-      const searchMatch =
-        `${t.t_id} ${t.origin} ${t.destination} ${t.driverName} ${t.vehicleNo}`
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-
-      const dateMatch = filteredDate ? t.date === filteredDate : true;
-
-      const convoyMatch = filteredConvoyTime
-        ? t.convoyTime
-            .toLowerCase()
-            .includes(
-              conveyList
-                .find((c) => String(c.id) === String(filteredConvoyTime))
-                ?.convey_time?.toLowerCase() || "",
-            )
-        : true;
-
-      return searchMatch && dateMatch && convoyMatch;
-    });
-  }, [trips, searchTerm, filteredDate]);
-
-  // ✅ Pagination
-  const indexOfLast = currentPage * rowsPerPage;
-  const indexOfFirst = indexOfLast - rowsPerPage;
-  const currentRows = filteredTrips.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredTrips.length / rowsPerPage);
-
-  const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
-  const handleNext = () =>
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-
   return (
     <DashboardLayout>
       <div className="space-y-8 px-2 sm:px-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              All Pending Trip List
+            </h1>
+
+            <Button size="sm" variant="outline" onClick={fetchTripList}>
+              Refresh
+            </Button>
+          </div>
+        </div>
+
         <Card className="overflow-x-auto">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                All Pending Trip List
-              </h1>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="outline" onClick={fetchTripList}>
-                  Refresh
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={handleBack}
-                  className="flex items-center gap-2"
-                >
-                  ← Back
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
+          <CardHeader />
           <CardContent>
-            {/* ✅ Filters */}
-            {/* ✅ Filters */}
-            <div className="sticky top-0 bg-white z-10 pb-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {/* Date Filter */}
-                <div className="w-full">
-                  <label className="block text-sm font-medium mb-1">
-                    Filter by Date
-                  </label>
+            {/* Filter Form */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              {/* Date Filter */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Filter by Date
+                </label>
+                <input
+                  type="date"
+                  value={filteredDate}
+                  onChange={(e) => setFilteredDate(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                />
+              </div>
+
+              {/* Convoy Time Filter */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Filter by Convoy Time
+                </label>
+                <select
+                  value={filteredConvoyTime}
+                  onChange={(e) => setFilteredConvoyTime(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                >
+                  <option value="">All Convoy Times</option>
+                  {conveyList.length > 0 ? (
+                    conveyList.map((convey) => (
+                      <option key={convey.id} value={convey.id}>
+                        {convey.convey_name} ({convey.convey_time})
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No conveys available</option>
+                  )}
+                </select>
+              </div>
+
+              {/* ✅ Search by Trip ID Only */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Search by Trip IDcheckpostid
+                </label>
+                <div className="flex gap-2">
                   <input
-                    type="date"
-                    value={filteredDate}
-                    onChange={(e) => setFilteredDate(e.target.value)}
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Enter Trip ID..."
                     className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
                   />
                 </div>
-
-                {/* Convoy Time Filter */}
-                <div className="w-full">
-                  <label className="block text-sm font-medium mb-1">
-                    Filter by Convoy Time
-                  </label>
-                  <select
-                    value={filteredConvoyTime}
-                    onChange={(e) => setFilteredConvoyTime(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
-                  >
-                    <option value="">All Convoy Times</option>
-                    {conveyList.length > 0 ? (
-                      conveyList.map((convey) => (
-                        <option key={convey.id} value={convey.id}>
-                          {convey.convey_name} ({convey.convey_time})
-                        </option>
-                      ))
-                    ) : (
-                      <option disabled>No convoy available</option>
-                    )}
-                  </select>
-                </div>
-
-                {/* Search Input + Button */}
-                <div className="w-full">
-                  <label className="block text-sm font-medium mb-1">
-                    Search
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search by origin, destination, driver, or vehicle..."
-                      className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
-                    />
-                    <Button
-                      onClick={handleSearch}
-                      className="hidden sm:flex bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium rounded-md"
-                    >
-                      Search
-                    </Button>
-                  </div>
-                </div>
               </div>
+              {/* ✅ Search by Vehicle Number */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Search by Vehicle No
+                </label>
+
+                <input
+                  type="text"
+                  value={vehicleSearch}
+                  onChange={(e) => setVehicleSearch(e.target.value)}
+                  placeholder="Enter Vehicle Number..."
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end mb-6">
+              <Button
+                onClick={fetchTripList}
+                className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 text-sm font-medium rounded-md"
+              >
+                Search
+              </Button>
             </div>
             {loading ? (
               <div className="flex justify-center items-center py-20">
                 <div className="text-sm text-gray-500">
-                  Loading pending trips...
+                  Loading Pending trips...
                 </div>
               </div>
             ) : (
               <>
-                {/* ✅ Table */}
+                {/* Search + Table */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {trips.length} trip(s)
+                  </p>
+                </div>
+
+                {/* Table */}
                 <div className="hidden lg:block">
                   <div className="w-full overflow-x-auto">
                     <table className="min-w-[800px] w-full text-sm text-left text-gray-700 border">
@@ -250,10 +302,13 @@ const AllPendingTrips = () => {
                         <tr>
                           <th className="px-4 py-2 border">#</th>
                           <th className="px-4 py-2 border">Trip ID</th>
-                          <th className="px-4 py-2 border">Origin</th>
-                          <th className="px-4 py-2 border">Destination</th>
+                          <th className="px-4 py-2 border text-center">
+                            Route
+                          </th>
+                          <th className="px-4 py-2 border">Vehicle</th>
+                          <th className="px-4 py-2 border">Driver</th>
                           <th className="px-4 py-2 border">Date</th>
-                          <th className="px-4 py-2 border">Convoy Time</th>
+
                           <th className="px-4 py-2 border">Total Passenger</th>
                         </tr>
                       </thead>
@@ -261,23 +316,36 @@ const AllPendingTrips = () => {
                         {currentRows.length > 0 ? (
                           currentRows.map((row, i) => (
                             <tr
-                              key={`${row.t_id}-${i}`}
+                              key={row.t_id}
                               className="hover:bg-gray-50 border-b"
                             >
                               <td className="px-4 py-2 border">
                                 {(currentPage - 1) * rowsPerPage + i + 1}
                               </td>
                               <td className="px-4 py-2 border">{row.t_id}</td>
-                              <td className="px-4 py-2 border">{row.origin}</td>
-                              <td className="px-4 py-2 border">
-                                {row.destination}
+                              <td className="px-4 py-2 border text-center">
+                                {row.origin} → {row.destination}
                               </td>
                               <td className="px-4 py-2 border">
-                                {formatDateDDMMYY(row.date)}
+                                {row.vehicleNo}
                               </td>
                               <td className="px-4 py-2 border">
-                                {row.convoyTime}
+                                {row.driverName}
                               </td>
+
+                              <td className="px-4 py-2 border">
+                                {row.date
+                                  ? new Date(row.date).toLocaleDateString(
+                                      "en-GB",
+                                      {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      },
+                                    )
+                                  : "-"}
+                              </td>
+
                               <td className="px-4 py-2 border">
                                 <div className="flex items-center gap-3">
                                   <span>{row.passengerCount}</span>
@@ -303,7 +371,7 @@ const AllPendingTrips = () => {
                               className="text-center text-gray-500 py-4"
                             >
                               {trips.length > 0
-                                ? `No data found for "${searchTerm}" on selected filters.`
+                                ? `No data found for Trip ID "${searchTerm}".`
                                 : "No trips found."}
                             </td>
                           </tr>
@@ -312,8 +380,8 @@ const AllPendingTrips = () => {
                     </table>
                   </div>
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
+                  {/* Pagination controls */}
+                  {globalTotalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 text-sm">
                       <Button
                         variant="outline"
@@ -324,13 +392,13 @@ const AllPendingTrips = () => {
                         Previous
                       </Button>
                       <span className="text-gray-600">
-                        Page {currentPage} of {totalPages}
+                        Page {currentPage} of {globalTotalPages}
                       </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleNext}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage >= globalTotalPages}
                       >
                         Next
                       </Button>
@@ -343,8 +411,8 @@ const AllPendingTrips = () => {
                   {currentRows.length > 0 ? (
                     currentRows.map((row, i) => (
                       <div
-                        key={`${row.t_id}-${i}`}
-                        className="border rounded-xl p-3 shadow-sm bg-white space-y-2"
+                        key={row.t_id}
+                        className="border border-red-200 rounded-2xl p-4 shadow-sm bg-white space-y-3"
                       >
                         {/* Header */}
                         <div className="flex items-center justify-between">
@@ -352,7 +420,7 @@ const AllPendingTrips = () => {
                             #{(currentPage - 1) * rowsPerPage + i + 1}
                           </span>
 
-                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">
                             Pending
                           </span>
                         </div>
@@ -373,22 +441,36 @@ const AllPendingTrips = () => {
                           </p>
                         </div>
 
+                        {/* Vehicle */}
+                        <div>
+                          <p className="text-xs text-gray-500">Vehicle</p>
+                          <p className="text-sm">{row.vehicleNo}</p>
+                        </div>
+
+                        {/* Driver */}
+                        <div>
+                          <p className="text-xs text-gray-500">Driver</p>
+                          <p className="text-sm">{row.driverName}</p>
+                        </div>
+
                         {/* Date */}
                         <div>
                           <p className="text-xs text-gray-500">Date</p>
                           <p className="text-sm">
-                            {formatDateDDMMYY(row.date)}
+                            {row.date
+                              ? new Date(row.date).toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                })
+                              : "-"}
                           </p>
                         </div>
 
-                        {/* Convoy */}
-                        <div>
-                          <p className="text-xs text-gray-500">Convoy</p>
-                          <p className="text-sm">{row.convoyTime}</p>
-                        </div>
+                        {/* Rejected Convoy */}
 
-                        {/* Passenger */}
-                        <div className="flex items-center justify-between">
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-2">
                           <div>
                             <p className="text-xs text-gray-500">Passengers</p>
                             <p className="font-semibold">
@@ -398,7 +480,7 @@ const AllPendingTrips = () => {
 
                           <Button
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            className="bg-yellow-500 hover:bg-yellow-600 text-white"
                             onClick={() =>
                               navigate(`/ManageTrip/PoliceViewTrip/${row.t_id}`)
                             }
@@ -411,13 +493,14 @@ const AllPendingTrips = () => {
                   ) : (
                     <div className="text-center text-gray-500 py-10 border rounded-lg bg-white">
                       {trips.length > 0
-                        ? `No data found for "${searchTerm}".`
+                        ? `No data found for Trip ID "${searchTerm}".`
                         : "No trips found."}
                     </div>
                   )}
                 </div>
+
                 {/* Mobile Pagination */}
-                {totalPages > 1 && (
+                {globalTotalPages > 1 && (
                   <div className="lg:hidden flex items-center justify-between mt-6 gap-2">
                     <Button
                       variant="outline"
@@ -430,14 +513,14 @@ const AllPendingTrips = () => {
                     </Button>
 
                     <div className="text-xs text-gray-600 whitespace-nowrap">
-                      {currentPage} / {totalPages}
+                      Page {currentPage} of {globalTotalPages}
                     </div>
 
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleNext}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage >= globalTotalPages}
                       className="flex-1"
                     >
                       Next

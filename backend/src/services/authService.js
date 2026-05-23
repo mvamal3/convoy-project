@@ -2459,6 +2459,15 @@ class AuthService {
         }
       }
 
+      // ✅ Vehicle Search Filter
+      const vehicleWhere = {};
+
+      if (params?.vehicleSearch && params.vehicleSearch.trim() !== "") {
+        vehicleWhere.vNum = {
+          [Op.like]: `%${params.vehicleSearch.trim()}%`,
+        };
+      }
+
       // ✅ Fetch Trips
       const { count, rows: trips } = await db.Trip.findAndCountAll({
         where: tripWhere,
@@ -2507,9 +2516,13 @@ class AuthService {
 
             as: "vehicle",
 
+            required: Object.keys(vehicleWhere).length > 0,
+
+            where:
+              Object.keys(vehicleWhere).length > 0 ? vehicleWhere : undefined,
+
             attributes: ["vId", "vNum", "vCat"],
           },
-
           // ✅ Driver
           {
             model: db.Driver,

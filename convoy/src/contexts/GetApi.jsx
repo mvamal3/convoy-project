@@ -167,6 +167,7 @@ export const getApproveRejectedPendingTripdetails = async (
   filteredDate,
   chunkPage,
   searchTerm,
+  vehicleSearch,
 ) => {
   try {
     const requestBody = {
@@ -181,6 +182,7 @@ export const getApproveRejectedPendingTripdetails = async (
       chunkPage: chunkPage || 1,
 
       searchTerm: searchTerm || "",
+      vehicleSearch: vehicleSearch || "",
     };
 
     const res = await axios.post(
