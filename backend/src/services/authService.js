@@ -148,9 +148,9 @@ class AuthService {
     const userCaptcha = String(loginData.captcha || "").trim();
     const sessionCaptcha = String(req.session.captcha || "").trim();
 
-    console.log("LOGIN SESSION ID:", req.sessionID);
-    console.log("SESSION CAPTCHA:", req.session.captcha);
-    console.log("USER CAPTCHA:", loginData.captcha);
+    //console.log("LOGIN SESSION ID:", req.sessionID);
+    //console.log("SESSION CAPTCHA:", req.session.captcha);
+    // console.log("USER CAPTCHA:", loginData.captcha);
 
     if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
       throw new Error("Invalid captcha");
@@ -310,19 +310,19 @@ class AuthService {
     });
 
     // Generate JWT tokens
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    // const accessToken = JWTConfig.generateAccessToken({
+    //   userId: user.id,
+    //   email: user.email,
+    //   role: user.role,
+    // });
 
-    const refreshToken = JWTConfig.generateRefreshToken({
-      userId: user.id,
-    });
+    // const refreshToken = JWTConfig.generateRefreshToken({
+    //   userId: user.id,
+    // });
 
     // Save refresh token
-    user.refreshToken = refreshToken;
-    await user.save();
+    // user.refreshToken = refreshToken;
+    // await user.save();
 
     await registration.reload({
       include: [
@@ -336,8 +336,10 @@ class AuthService {
     // Optionally send OTP via SMS or Email here
 
     return {
-      auth: new AuthResponseDTO(registration, accessToken, refreshToken),
+      //auth: new AuthResponseDTO(registration, accessToken, refreshToken),
+      auth: new AuthResponseDTO(registration),
       otp: otpCode, // you might hide this in prod
+      message: "OTP sent successfully",
     };
   }
 
@@ -472,12 +474,16 @@ class AuthService {
     const vehicleDTO = new VehicleRequestDTO(registerData);
     const validation = vehicleDTO.validate();
 
+    // if (!validation.isValid) {
+    //   // Stop execution immediately
+    //   return {
+    //     success: false,
+    //     errors: validation.errors,
+    //   };
+    // }
+
     if (!validation.isValid) {
-      // Stop execution immediately
-      return {
-        success: false,
-        errors: validation.errors,
-      };
+      throw new Error(validation.errors.join(", "));
     }
 
     console.log("Vehicle data:", vehicleDTO);
@@ -2879,11 +2885,14 @@ class AuthService {
   static async loginPolice(loginData, req) {
     //console.log("SESSION ID:", req.sessionID);
 
-    console.log("req", req.session.captcha);
+    //console.log("req", req.session.captcha);
     const userCaptcha = String(loginData.captcha || "").trim();
     const sessionCaptcha = String(req.session.captcha || "").trim();
-    console.log("User Captcha1111:", userCaptcha);
-    console.log("Session Captcha11111:", sessionCaptcha);
+    //console.log("User Captcha1111:", userCaptcha);
+    //console.log("Session Captcha11111:", sessionCaptcha);
+    if (!/^\d{6}$/.test(userCaptcha)) {
+      throw new Error("Invalid captcha format");
+    }
 
     if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
       throw new Error("Invalid captcha");

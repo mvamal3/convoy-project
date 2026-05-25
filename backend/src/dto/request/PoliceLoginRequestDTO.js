@@ -1,7 +1,17 @@
+const validator = require("validator");
+
 class PoliceLoginRequestDTO {
   constructor(data) {
-    this.email = data.email?.toLowerCase().trim();
-    this.password = data.password;
+    this.email =
+      validator.normalizeEmail(
+        validator.escape(
+          String(data.email || "")
+            .trim()
+            .toLowerCase(),
+        ),
+      ) || "";
+
+    this.password = validator.escape(String(data.password || "").trim());
   }
 
   validate() {
@@ -10,15 +20,24 @@ class PoliceLoginRequestDTO {
     // Email validation
     if (!this.email) {
       errors.push("Email is required");
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
+    }
+
+    if (this.email && !validator.isEmail(this.email)) {
       errors.push("Invalid email format");
     }
 
     // Password validation
     if (!this.password) {
       errors.push("Password is required");
-    } else if (this.password.length < 6) {
-      errors.push("Password must be at least 6 characters long");
+    }
+
+    // Max length validation
+    if (this.email && this.email.length > 100) {
+      errors.push("Email too long");
+    }
+
+    if (this.password && this.password.length > 100) {
+      errors.push("Password too long");
     }
 
     return {
