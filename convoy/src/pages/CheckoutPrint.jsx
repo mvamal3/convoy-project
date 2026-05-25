@@ -19,13 +19,13 @@ const CheckoutPrint = () => {
         accessToken,
         user.checkpostid,
         1,
-        filteredConvey || ""
+        filteredConvey || "",
       );
 
       const tripList = Array.isArray(data?.data?.data)
         ? data.data.data
             .filter((trip) =>
-              filteredDate ? trip.checkoutdate === filteredDate : true
+              filteredDate ? trip.checkoutdate === filteredDate : true,
             )
             .map((trip, index) => {
               const approveConvey = trip.approveDetails?.convey;
@@ -64,9 +64,7 @@ const CheckoutPrint = () => {
         <div className="text-center mb-6">
           {/* Optional logo area */}
           {/* <img src="/logo.png" alt="Logo" className="mx-auto mb-2 w-16 h-16" /> */}
-          <h1 className="text-2xl font-bold uppercase">
-            Checkout Trip Report
-          </h1>
+          <h1 className="text-2xl font-bold uppercase">Checkout Trip Report</h1>
           <p className="text-sm text-gray-700 mt-1">
             Checkpost ID: <strong>{user?.checkpostid || "N/A"}</strong>
           </p>
@@ -81,8 +79,7 @@ const CheckoutPrint = () => {
             </p>
           )}
           <p className="text-sm text-gray-700 mt-1">
-            Generated On:{" "}
-            <strong>{new Date().toLocaleString("en-GB")}</strong>
+            Generated On: <strong>{new Date().toLocaleString("en-GB")}</strong>
           </p>
           <hr className="border-t border-gray-400 mt-3" />
         </div>

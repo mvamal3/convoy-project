@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom"; // ✅ Added useLocation
 import {
-  getApproveRejectedPendingTripdetails,
+  getApproveRejectedPendingTripdetails, //getAllAproveTrips
   getConveyDetails,
 } from "@/contexts/GetApi";
 

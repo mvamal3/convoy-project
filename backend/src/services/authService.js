@@ -24,6 +24,9 @@ const AdminLoginRequestDTO = require("../dto/request/AdminLoginRequestDTO");
 
 const TripDetailsByDateResponseDTO = require("../dto/response/new/TripDetailsByDateResponseDTO");
 
+const CheckoutReportRequestDTO = require("../dto/request/new/CheckoutReportRequestDTO");
+const CheckoutReportResponseDTO = require("../dto/response/new/CheckoutReportResponseDTO");
+
 const Driver = db.Driver;
 const { v4: uuidv4 } = require("uuid");
 const DriverStatus = db.DriverStatus;
@@ -2389,13 +2392,13 @@ class AuthService {
 
       const { Op } = require("sequelize");
 
-      // ✅ Trip Filters
+      //  Trip Filters
       const tripWhere = {};
 
-      // ✅ Approve Filters
+      //  Approve Filters
       const approveWhere = {};
 
-      // ✅ Chunk Pagination
+      //  Chunk Pagination
       const chunkSize = 100;
 
       const chunkPage = Number(params?.chunkPage) || 1;
@@ -5219,31 +5222,193 @@ class AuthService {
       };
     }
   }
+  // static async getCheckOutReport(params) {
+  //   try {
+  //     const whereClause = {};
+
+  //     // Filter by Checkpost ID
+  //     if (params.checkpostid !== undefined) {
+  //       whereClause.checkpostid = params.checkpostid;
+  //     }
+
+  //     // Filter by Status
+  //     if (params.status !== undefined) {
+  //       whereClause.status = params.status;
+  //     }
+
+  //     // Filter by Date (checkoutdate)
+  //     if (params.checkoutdate !== undefined) {
+  //       whereClause.checkoutdate = params.checkoutdate;
+  //     }
+
+  //     // Only fetch normal convoy (<= 99)
+  //     whereClause.conveyid = {
+  //       [Op.lte]: 99,
+  //     };
+
+  //     const approveWhere = {};
+  //     if (
+  //       params.conveyId !== undefined &&
+  //       params.conveyId !== null &&
+  //       params.conveyId !== ""
+  //     ) {
+  //       approveWhere.convey_id = params.conveyId;
+  //     }
+  //     console.log("wherease", whereClause);
+
+  //     // If conveyId is undefined or null, approveWhere remains empty, meaning no filter
+
+  //     // Fetch with associations
+  //     const checkOutTrips = await db.CheckoutTrip.findAll({
+  //       where: whereClause,
+  //       include: [
+  //         {
+  //           model: db.OriginDestination,
+  //           as: "checkpostLocation",
+  //           attributes: ["id", "location"],
+  //         },
+  //         {
+  //           model: db.Trip,
+  //           as: "trip",
+  //           include: [
+  //             {
+  //               model: db.OriginDestination,
+  //               as: "originLocation",
+  //               attributes: ["id", "location"],
+  //             },
+  //             {
+  //               model: db.OriginDestination,
+  //               as: "destinationLocation",
+  //               attributes: ["id", "location"],
+  //             },
+  //           ],
+  //         },
+  //         {
+  //           model: db.ApproveTrip,
+  //           as: "approveTrip",
+  //           required: !!params.conveyId,
+  //           where: Object.keys(approveWhere).length ? approveWhere : undefined, // Only apply when conveyId is given
+  //           include: [
+  //             {
+  //               model: db.TConvey,
+  //               as: "convey",
+  //               required: false,
+  //             },
+  //           ],
+  //         },
+  //       ],
+  //       order: [["id", "DESC"]],
+  //     });
+
+  //     // ✅ Reshape response into nested JSON
+  //     const formatted = checkOutTrips.map((trip) => {
+  //       return {
+  //         id: trip.id,
+  //         tId: trip.tId,
+  //         checkoutdate: trip.checkoutdate,
+  //         checkouttime: trip.checkouttime,
+  //         status: trip.status,
+  //         remarks: trip.remarks,
+
+  //         // ✅ Nested Checkpost Details
+  //         checkpostDetails: trip.checkpostLocation
+  //           ? {
+  //               id: trip.checkpostLocation.id,
+  //               location: trip.checkpostLocation.location,
+  //             }
+  //           : null,
+
+  //         // ✅ Nested ApproveTrip Details
+  //         approveDetails: trip.approveTrip
+  //           ? {
+  //               id: trip.approveTrip.id,
+  //               tId: trip.approveTrip.tId,
+  //               arrdate: trip.approveTrip.arrdate,
+  //               arrtime: trip.approveTrip.arrtime,
+  //               remarks: trip.approveTrip.remarks,
+  //               astatus: trip.approveTrip.astatus,
+  //               convey: trip.approveTrip.convey || null,
+  //             }
+  //           : null,
+  //       };
+  //     });
+
+  //     return {
+  //       message: "Checkout report loaded successfully",
+  //       data: formatted,
+  //     };
+  //   } catch (error) {
+  //     console.error("Error loading checkout report:", error);
+  //     throw new Error("Failed to load checkout report");
+  //   }
+  // }
+
   static async getCheckOutReport(params) {
     try {
-      const whereClause = {};
+      const { Op } = require("sequelize");
 
-      // Filter by Checkpost ID
+      // ✅ Clean Request DTO
+      params = CheckoutReportRequestDTO(params);
+
+      // ✅ Pagination
+      const usePagination =
+        params.page !== undefined && params.limit !== undefined;
+
+      const chunkSize = usePagination ? Number(params.limit) : null;
+
+      const page = usePagination ? Number(params.page) : null;
+
+      const offset = usePagination ? (page - 1) * chunkSize : null;
+
+      // ✅ Main Filters
+      const whereClause = {
+        conveyid: {
+          [Op.lte]: 99,
+        },
+      };
+
+      // ✅ Checkpost Filter
       if (params.checkpostid !== undefined) {
         whereClause.checkpostid = params.checkpostid;
       }
 
-      // Filter by Status
-      if (params.status !== undefined) {
-        whereClause.status = params.status;
+      // ✅ Status Filter
+      if (
+        params.status !== undefined &&
+        params.status !== null &&
+        params.status !== ""
+      ) {
+        whereClause.status = Array.isArray(params.status)
+          ? { [Op.in]: params.status }
+          : params.status;
       }
 
-      // Filter by Date (checkoutdate)
-      if (params.checkoutdate !== undefined) {
+      // ✅ Date Filter
+      if (
+        params.checkoutdate !== undefined &&
+        params.checkoutdate !== null &&
+        params.checkoutdate !== ""
+      ) {
         whereClause.checkoutdate = params.checkoutdate;
       }
 
-      // Only fetch normal convoy (<= 99)
-      whereClause.conveyid = {
-        [Op.lte]: 99,
-      };
+      // ✅ Trip ID Search
+      if (params.searchTerm && params.searchTerm.trim() !== "") {
+        whereClause.tId = {
+          [Op.like]: `%${params.searchTerm.trim()}%`,
+        };
+      }
 
+      // ✅ Vehicle Search
+      if (params.vehicleSearch && params.vehicleSearch.trim() !== "") {
+        whereClause["$trip.vehicle.vNum$"] = {
+          [Op.like]: `%${params.vehicleSearch.trim()}%`,
+        };
+      }
+
+      // ✅ Approve Filter
       const approveWhere = {};
+
       if (
         params.conveyId !== undefined &&
         params.conveyId !== null &&
@@ -5251,91 +5416,118 @@ class AuthService {
       ) {
         approveWhere.convey_id = params.conveyId;
       }
-      console.log("wherease", whereClause);
 
-      // If conveyId is undefined or null, approveWhere remains empty, meaning no filter
-
-      // Fetch with associations
-      const checkOutTrips = await db.CheckoutTrip.findAll({
+      // ✅ Query
+      const queryOptions = {
         where: whereClause,
+
         include: [
           {
             model: db.OriginDestination,
             as: "checkpostLocation",
+
             attributes: ["id", "location"],
           },
+
           {
             model: db.Trip,
             as: "trip",
+
             include: [
               {
                 model: db.OriginDestination,
                 as: "originLocation",
+
                 attributes: ["id", "location"],
               },
+
               {
                 model: db.OriginDestination,
                 as: "destinationLocation",
+
                 attributes: ["id", "location"],
+              },
+
+              {
+                model: db.Vehicle,
+                as: "vehicle",
+
+                required: false,
+
+                attributes: ["vId", "vNum", "vCat"],
+              },
+
+              {
+                model: db.Driver,
+                as: "driver",
+
+                attributes: ["dId", "dFirstName", "dLastName"],
               },
             ],
           },
+
           {
             model: db.ApproveTrip,
             as: "approveTrip",
-            required: !!params.conveyId,
-            where: Object.keys(approveWhere).length ? approveWhere : undefined, // Only apply when conveyId is given
+
+            required: Object.keys(approveWhere).length > 0,
+
+            where:
+              Object.keys(approveWhere).length > 0 ? approveWhere : undefined,
+
             include: [
               {
                 model: db.TConvey,
                 as: "convey",
+
                 required: false,
               },
             ],
           },
         ],
+
         order: [["id", "DESC"]],
-      });
+      };
 
-      // ✅ Reshape response into nested JSON
-      const formatted = checkOutTrips.map((trip) => {
-        return {
-          id: trip.id,
-          tId: trip.tId,
-          checkoutdate: trip.checkoutdate,
-          checkouttime: trip.checkouttime,
-          status: trip.status,
-          remarks: trip.remarks,
+      // ✅ Pagination
+      if (usePagination) {
+        queryOptions.limit = chunkSize;
 
-          // ✅ Nested Checkpost Details
-          checkpostDetails: trip.checkpostLocation
-            ? {
-                id: trip.checkpostLocation.id,
-                location: trip.checkpostLocation.location,
-              }
-            : null,
+        queryOptions.offset = offset;
 
-          // ✅ Nested ApproveTrip Details
-          approveDetails: trip.approveTrip
-            ? {
-                id: trip.approveTrip.id,
-                tId: trip.approveTrip.tId,
-                arrdate: trip.approveTrip.arrdate,
-                arrtime: trip.approveTrip.arrtime,
-                remarks: trip.approveTrip.remarks,
-                astatus: trip.approveTrip.astatus,
-                convey: trip.approveTrip.convey || null,
-              }
-            : null,
-        };
-      });
+        queryOptions.distinct = true;
+
+        queryOptions.subQuery = false;
+      }
+
+      // ✅ Fetch Data
+      const result = usePagination
+        ? await db.CheckoutTrip.findAndCountAll(queryOptions)
+        : await db.CheckoutTrip.findAll(queryOptions);
+
+      const checkOutTrips = usePagination ? result.rows : result;
+
+      const count = usePagination ? result.count : checkOutTrips.length;
+
+      // ✅ Response DTO
+      const formatted = checkOutTrips.map(CheckoutReportResponseDTO);
 
       return {
         message: "Checkout report loaded successfully",
+
+        ...(usePagination && {
+          totalRecords: count,
+          currentPage: page,
+          totalPages: Math.ceil(count / chunkSize),
+          totalChunks: Math.ceil(count / chunkSize),
+          chunkSize,
+        }),
+
         data: formatted,
       };
     } catch (error) {
       console.error("Error loading checkout report:", error);
+
       throw new Error("Failed to load checkout report");
     }
   }

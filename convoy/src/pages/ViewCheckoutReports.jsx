@@ -14,8 +14,15 @@ const AllCheckoutTrips = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
   const rowsPerPage = 10;
+  const chunkSize = 100;
   const [filteredConvey, setFilteredConvey] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const [chunkPage, setChunkPage] = useState(1);
+  const [totalChunks, setTotalChunks] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [vehicleSearch, setVehicleSearch] = useState("");
+  const [filteredStatus, setFilteredStatus] = useState("");
   // console.log("user", user.checkpostid);
 
   // 👇 pick convey list based on checkpost
@@ -39,12 +46,19 @@ const AllCheckoutTrips = () => {
 
     try {
       setLoading(true);
+      const statusFilter =
+        filteredStatus !== "" ? [Number(filteredStatus)] : [0, 1, 2];
 
       const data = await getCheckoutReports(
         accessToken,
         user.checkpostid,
-        [0, 1, 2],
+        statusFilter,
         filteredConvey,
+        chunkPage,
+        chunkSize,
+        vehicleSearch,
+        searchTerm,
+        filteredDate,
       );
 
       const tripList = Array.isArray(data?.data?.data)
@@ -53,56 +67,107 @@ const AllCheckoutTrips = () => {
 
             return {
               tId: trip.tId || index,
+
               approveDate: trip.approveDetails?.arrdate || "N/A",
+
               approveTime: trip.approveDetails?.arrtime || "",
+
               approveConvey: approveConvey
                 ? `${approveConvey.convey_time} (${approveConvey.convey_name})`
                 : "N/A",
+
               approveCheckpost:
                 trip.approveDetails?.checkpostDetails?.location || "",
+
               checkoutDate: trip.checkoutdate || "N/A",
+
               checkoutTime: trip.checkouttime || "",
+
               checkoutCheckpost: trip.checkpostDetails?.location || "N/A",
+
               checkoutRemarks: trip.remarks || "N/A",
+
+              // ✅ Vehicle Details
+              vehicleNo: trip.vehicleDetails
+                ? `${trip.vehicleDetails.vNum || "N/A"} (${
+                    trip.vehicleDetails.vCat || "N/A"
+                  })`
+                : "N/A",
+
+              // ✅ Driver Details
+              driverName: trip.driverDetails
+                ? `${trip.driverDetails.dFirstName || ""} ${
+                    trip.driverDetails.dLastName || ""
+                  }`.trim()
+                : "N/A",
             };
           })
         : [];
 
       setTrips(tripList);
+      setTotalRecords(data?.data?.totalRecords || 0);
+      setTotalChunks(data?.data?.totalChunks || 1);
+      console.log("Chunk Page:", chunkPage);
+      console.log("Trips Length:", tripList.length);
+      console.log("Current Page:", currentPage);
+      console.log(
+        "Local Start:",
+        (currentPage - 1) * 10 - (chunkPage - 1) * 100,
+      );
     } catch (err) {
       console.error("Error fetching checkout trips:", err);
       setTrips([]);
     } finally {
       setLoading(false);
     }
-  }, [accessToken, filteredConvey, user.checkpostid]);
+  }, [
+    accessToken,
+    filteredConvey,
+    user.checkpostid,
+    chunkPage,
+    searchTerm,
+    filteredDate,
+    vehicleSearch,
+    filteredStatus,
+  ]);
 
   useEffect(() => {
     fetchTripList();
   }, [fetchTripList]);
 
-  const filteredTrips = useMemo(() => {
-    return trips.filter((t) => {
-      const searchMatch =
-        `${t.tId} ${t.approveCheckpost} ${t.approveConvey} ${t.checkoutCheckpost} ${t.checkoutRemarks}`
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-      const dateMatch = filteredDate ? t.checkoutDate === filteredDate : true;
-      return searchMatch && dateMatch;
-    });
-  }, [trips, searchTerm, filteredDate]);
+  const rowsPerChunk = chunkSize;
 
-  const indexOfLast = currentPage * rowsPerPage;
-  const indexOfFirst = indexOfLast - rowsPerPage;
-  const currentRows = filteredTrips.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredTrips.length / rowsPerPage);
+  const chunkStartIndex = (chunkPage - 1) * rowsPerChunk;
+
+  const globalStartIndex = (currentPage - 1) * rowsPerPage;
+
+  const localStartIndex = globalStartIndex - chunkStartIndex;
+
+  const localEndIndex = localStartIndex + rowsPerPage;
+
+  const currentRows =
+    localStartIndex >= 0 ? trips.slice(localStartIndex, localEndIndex) : [];
+
+  const totalPages = Math.ceil(totalRecords / rowsPerPage);
 
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [filteredDate, filteredConvey, searchTerm]);
+    setChunkPage(1);
+  }, [filteredDate, filteredConvey, searchTerm, vehicleSearch, filteredStatus]);
+
+  const pagesPerChunk = chunkSize / rowsPerPage;
+
+  useEffect(() => {
+    const requiredChunk = Math.ceil(currentPage / pagesPerChunk);
+
+    if (requiredChunk !== chunkPage) {
+      setChunkPage(requiredChunk);
+    }
+  }, [currentPage]);
 
   return (
     <DashboardLayout>
@@ -116,7 +181,7 @@ const AllCheckoutTrips = () => {
           <CardHeader />
           <CardContent>
             {/* Filter Form */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
               {/* Filter by Date */}
               <div className="w-full">
                 <label className="block text-sm font-medium mb-1">
@@ -160,6 +225,38 @@ const AllCheckoutTrips = () => {
                   className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
                 />
               </div>
+              {/* Vehicle Search */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Search by Vehicle No
+                </label>
+
+                <input
+                  type="text"
+                  value={vehicleSearch}
+                  onChange={(e) => setVehicleSearch(e.target.value)}
+                  placeholder="Enter Vehicle Number..."
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="w-full">
+                <label className="block text-sm font-medium mb-1">
+                  Filter by Status
+                </label>
+
+                <select
+                  value={filteredStatus}
+                  onChange={(e) => setFilteredStatus(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
+                >
+                  <option value="">All Status</option>
+                  <option value="0">Trip Not Arrived</option>
+                  <option value="1">Trip Arrived</option>
+                  <option value="2">Problem</option>
+                </select>
+              </div>
 
               {/* ✅ Search Button */}
               <div className="hidden sm:flex items-end">
@@ -176,7 +273,7 @@ const AllCheckoutTrips = () => {
             <div className="flex justify-between items-center mb-4">
               <h5 className="text-lg font-semibold">Trip List</h5>
               <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
-                Total Trips: {filteredTrips.length}
+                Total Trips: {totalRecords}
               </span>
             </div>
             {/* <Button
@@ -205,6 +302,8 @@ const AllCheckoutTrips = () => {
                         <tr>
                           <th className="px-4 py-2 border">S.No</th>
                           <th className="px-4 py-2 border">Trip ID</th>
+                          <th className="px-4 py-2 border">Vehicle</th>
+                          <th className="px-4 py-2 border">Driver</th>
                           <th className="px-4 py-2 border">
                             Approve Date & Time
                           </th>
@@ -228,6 +327,8 @@ const AllCheckoutTrips = () => {
                               </td>{" "}
                               {/* Serial no */}
                               <td className="text-center">{row.tId}</td>
+                              <td className="text-center">{row.vehicleNo}</td>
+                              <td className="text-center">{row.driverName}</td>
                               <td className="text-center">
                                 {row.approveDate
                                   ? new Date(
@@ -307,7 +408,7 @@ const AllCheckoutTrips = () => {
                         variant="outline"
                         size="sm"
                         onClick={handleNext}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage >= totalPages}
                       >
                         Next
                       </Button>

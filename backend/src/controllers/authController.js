@@ -725,6 +725,7 @@ class AuthController {
       res.status(500).json(BaseResponseDTO.error(error.message));
     }
   }
+  //update for backend pagination
   static async getallApproeveRejectedPendingTripDetails(req, res) {
     try {
       const filters = {

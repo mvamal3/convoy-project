@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom"; // ✅ Added useLocation
 import {
   getApproveRejectedPendingTripdetails,
-  getConveyDetails,
+  getConveyDetails, //getapproveTripdetails
 } from "@/contexts/GetApi";
 
 const AllApproveTrips = () => {
@@ -31,14 +31,14 @@ const AllApproveTrips = () => {
     const params = new URLSearchParams(location.search);
     const dateFromUrl = params.get("date");
     if (dateFromUrl) {
-      console.log("📅 Filter date from URL:", dateFromUrl);
+      //console.log("📅 Filter date from URL:", dateFromUrl);
       setFilteredDate(dateFromUrl);
     }
   }, [location.search]);
 
   const fetchTripList = useCallback(async () => {
     if (accessToken) {
-      console.log("tetstss", user.checkpostid);
+      //console.log("tetstss", user.checkpostid);
       setLoading(true);
       try {
         const data = await getApproveRejectedPendingTripdetails(
@@ -58,7 +58,7 @@ const AllApproveTrips = () => {
           vehicleSearch,
         );
 
-        console.log("Approve Fetched Trip List:", data);
+        //console.log("Approve Fetched Trip List:", data);
         setTotalChunks(data?.data?.totalChunks || 1);
         setTotalRecords(data?.data?.totalRecords || 0);
         //console.log("Approvedetails", data?.data?.trips);
@@ -174,7 +174,7 @@ const AllApproveTrips = () => {
       if (!accessToken) return;
       try {
         const res = await getConveyDetails(accessToken, user.checkpostid);
-        console.log("Fetched convey list:", res);
+        // console.log("Fetched convey list:", res);
         setConveyList(res?.data?.data || []);
       } catch {
         setConveyList([]);

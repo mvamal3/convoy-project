@@ -412,15 +412,39 @@ export const getCheckoutReports = async (
   checkpostid,
   status,
   filteredConvey,
+  page,
+  limit,
+  vehicleSearch,
+  searchTerm,
+  filteredDate,
 ) => {
   const res = await fetch(`${API_BASE_URL}/api/auth/getcheckoutreport`, {
     method: "POST",
+
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ checkpostid, status, conveyId: filteredConvey }),
+
+    body: JSON.stringify({
+      checkpostid,
+
+      status,
+
+      conveyId: filteredConvey,
+
+      page,
+
+      limit,
+
+      vehicleSearch,
+
+      searchTerm,
+
+      checkoutdate: filteredDate,
+    }),
   });
+
   return res.json();
 };
 
