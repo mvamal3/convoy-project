@@ -459,6 +459,8 @@ class AuthService {
 
   static async registerVehicle(registerData, userId) {
     // Find registration for user
+
+    //console.log("Registering new vehicle with data:", registerData);
     const regIdObj = await Registration.findOne({
       where: { userId: userId },
       attributes: ["reg_id"],

@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+//import { useNavigate } from "react-router-dom";
 import { getVehicleList } from "@/contexts/GetApi";
 import AddVehicle from "@/components/Addvehicle";
 import { deleteVehicle } from "@/contexts/PostApi";
@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 
 const ManageVehicle = () => {
   const { accessToken } = useAuth();
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
   const [vehicles, setVehicles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -165,9 +165,10 @@ const ManageVehicle = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value);
+                  setSearchTerm(e.target.value.trimStart());
                   setCurrentPage(1);
                 }}
+                maxLength={20}
                 placeholder="Search by vehicle number..."
                 className="w-full sm:w-64 border rounded px-3 py-1 text-sm focus:outline-none focus:ring focus:border-blue-400"
               />

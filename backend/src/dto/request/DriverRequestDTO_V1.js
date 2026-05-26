@@ -1,74 +1,161 @@
+const validator = require("validator");
+
 class DriverRequestDTO {
   constructor(data) {
-    console.log(data);
-    // ✅ driver_tbl fields
-    this.licenseNo = data.licenseNo;
-    this.title = data.title || null;
-    this.dFirstName = data.dFirstName;
-    this.dLastName = data.dLastName;
-    // this.age = data.age;                         // Required
-    this.gender = data.gender || null; // Optional
-    this.son_of = data.son_of; // REQUIRED
-    this.residence_of = data.residence_of;
-    this.dStatus = data.dStatus ?? "active"; // Default: 'active'
-    this.phNo = data.phNo || null;
+    // ✅ Sanitize and normalize inputs
 
-    this.status = data.status ?? this.dStatus;
+    this.licenseNo = validator.escape(
+      String(data.licenseNo || "")
+        .trim()
+        .toUpperCase(),
+    );
+
+    this.title = validator.escape(String(data.title || "").trim());
+
+    this.dFirstName = validator.escape(String(data.dFirstName || "").trim());
+
+    this.dLastName = validator.escape(String(data.dLastName || "").trim());
+
+    this.gender = validator.escape(String(data.gender || "").trim());
+
+    this.son_of = validator.escape(String(data.son_of || "").trim());
+
+    this.residence_of = validator.escape(
+      String(data.residence_of || "").trim(),
+    );
+
+    this.phNo = String(data.phNo || "").trim();
+
+    // ✅ Backend controlled status
+    this.dStatus = "active";
+    this.status = "active";
   }
 
   validate() {
     const errors = [];
 
-    /* ---------- Trimmed versions for checks ---------- */
+    /* ---------- Trimmed values ---------- */
+
     const licenseNo = this.licenseNo?.trim();
     const title = this.title?.trim();
     const dFirstName = this.dFirstName?.trim();
     const dLastName = this.dLastName?.trim();
-    // const age = this.age;                         // Age (number, no trimming)
+    const gender = this.gender?.trim();
     const dStatus = this.dStatus?.trim();
     const son_of = this.son_of?.trim();
     const residence_of = this.residence_of?.trim();
+    const phNo = this.phNo?.trim();
 
-    /* ---------- Required-field checks ---------- */
-    if (!licenseNo) errors.push("License number is required");
-    if (!dFirstName) errors.push("Driver first name is required");
-    if (!dLastName) errors.push("Driver last name is required");
-    if (!son_of) errors.push("S/O (Father or Guardian name) is required");
-    if (!residence_of) errors.push("Residence of driver is required");
-    // if (age === undefined || age === null) errors.push('Age is required');
-    // else if (typeof age !== 'number' || age < 18 || age > 100) {
-    //   errors.push('Age must be a number between 18 and 100');
-    // }
+    /* ---------- Required validations ---------- */
 
-    /* ---------- Format validations ---------- */
+    if (!licenseNo) {
+      errors.push("License number is required");
+    }
+
+    if (!title) {
+      errors.push("Title is required");
+    }
+
+    if (!dFirstName) {
+      errors.push("Driver first name is required");
+    }
+
+    if (!dLastName) {
+      errors.push("Driver last name is required");
+    }
+
+    if (!son_of) {
+      errors.push("S/O (Father or Guardian name) is required");
+    }
+
+    if (!residence_of) {
+      errors.push("Residence of driver is required");
+    }
+
+    if (!gender) {
+      errors.push("Gender is required");
+    }
+
+    if (!phNo) {
+      errors.push("Phone number is required");
+    }
+
+    /* ---------- Regex validations ---------- */
+
     const namePattern = /^[A-Za-z\s.'-]+$/;
+
     if (dFirstName && !namePattern.test(dFirstName)) {
-      errors.push(
-        "Driver first name may contain only letters and standard punctuation",
-      );
+      errors.push("Driver first name contains invalid characters");
     }
+
     if (dLastName && !namePattern.test(dLastName)) {
-      errors.push(
-        "Driver last name may contain only letters and standard punctuation",
-      );
+      errors.push("Driver last name contains invalid characters");
     }
+
     if (son_of && !namePattern.test(son_of)) {
       errors.push("S/O name contains invalid characters");
     }
 
-    // Enumerated checks
+    /* ---------- License validation ---------- */
+
+    const licensePattern = /^[A-Z0-9/-]{5,20}$/;
+
+    if (licenseNo && !licensePattern.test(licenseNo)) {
+      errors.push("Invalid license number format");
+    }
+
+    /* ---------- Phone validation ---------- */
+
+    if (phNo && !/^[0-9]{10}$/.test(phNo)) {
+      errors.push("Invalid phone number");
+    }
+
+    /* ---------- Enum validations ---------- */
+
+    const validTitles = ["Mr", "Ms", "Mrs"];
+
+    if (title && !validTitles.includes(title)) {
+      errors.push("Invalid title");
+    }
+
     const validStatuses = ["active", "inactive", "blocked"];
+
     if (dStatus && !validStatuses.includes(dStatus)) {
       errors.push(`d_status must be one of: ${validStatuses.join(", ")}`);
     }
 
-    // Gender validation (optional but must match enum if provided)
-    const validGenders = ["Male", "Female", "Other", "Prefer not to say"];
-    if (this.gender && !validGenders.includes(this.gender)) {
+    const validGenders = ["Male", "Female", "Other"];
+
+    if (gender && !validGenders.includes(gender)) {
       errors.push(`Gender must be one of: ${validGenders.join(", ")}`);
     }
 
-    return { isValid: errors.length === 0, errors };
+    /* ---------- Length validations ---------- */
+
+    if (dFirstName && dFirstName.length > 50) {
+      errors.push("Driver first name too long");
+    }
+
+    if (dLastName && dLastName.length > 50) {
+      errors.push("Driver last name too long");
+    }
+
+    if (son_of && son_of.length > 100) {
+      errors.push("S/O name too long");
+    }
+
+    if (residence_of && residence_of.length > 300) {
+      errors.push("Residence address too long");
+    }
+
+    if (licenseNo && licenseNo.length > 20) {
+      errors.push("License number too long");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 }
 

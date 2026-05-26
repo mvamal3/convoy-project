@@ -155,7 +155,7 @@ class AuthController {
   //driver_tbl registration
   static async registerDriver(req, res) {
     try {
-      console.log("Registering new driver with data:", req.body);
+      //console.log("Registering new driver with data:", req.body);
 
       const result = await AuthService.registerDriver(req.body, req.user.id);
       res

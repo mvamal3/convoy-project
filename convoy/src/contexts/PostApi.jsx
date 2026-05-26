@@ -156,7 +156,7 @@ export async function handleAddDriverAPI(
     "son_of",
     "residence_of",
   ];
-  console.log("formdata post api", formData);
+  //console.log("formdata post api", formData);
 
   const missing = requiredFields.filter((key) => !formData[key]);
   if (missing.length > 0) {

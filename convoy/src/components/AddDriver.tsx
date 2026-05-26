@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +10,9 @@ import CommonInput from "@/components/inputs/CommonInput";
 export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
   const { accessToken } = useAuth();
   const { toast } = useToast();
+
+  // 4. Added loading state to prevent double submissions
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -29,15 +31,16 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // 1. Required validation using .trim()
     if (
-      !formData.title ||
-      !formData.first_name ||
-      !formData.last_name ||
-      !formData.son_of ||
-      !formData.license_no ||
-      !formData.gender ||
-      !formData.phone_no ||
-      !formData.residence_of
+      !String(formData.title || "").trim() ||
+      !String(formData.first_name || "").trim() ||
+      !String(formData.last_name || "").trim() ||
+      !String(formData.son_of || "").trim() ||
+      !String(formData.license_no || "").trim() ||
+      !String(formData.gender || "").trim() ||
+      !String(formData.phone_no || "").trim() ||
+      !String(formData.residence_of || "").trim()
     ) {
       toast({
         title: "Please fill all required fields",
@@ -45,9 +48,29 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
       });
       return;
     }
-    //console.log("formdatsssa", formData);
 
-    handleAddDriverAPI(formData, accessToken, toast, () => {
+    // 3. Stronger Indian phone number validation
+    if (!/^[0-9]{10}$/.test(formData.phone_no)) {
+      toast({
+        title: "Please enter a valid 10-digit phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // 5. Trim string fields before sending data to the API
+    const sanitizedData = {
+      ...formData,
+      first_name: formData.first_name.trim(),
+      last_name: formData.last_name.trim(),
+      son_of: formData.son_of.trim(),
+      license_no: formData.license_no.trim(),
+      residence_of: formData.residence_of.trim(),
+    };
+
+    handleAddDriverAPI(sanitizedData, accessToken, toast, () => {
       toast({ title: "Driver added successfully" });
       setFormData({
         title: "",
@@ -60,6 +83,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
         residence_of: "",
         is_owner: false,
       });
+      setIsSubmitting(false);
       if (typeof onSuccessAdd === "function") onSuccessAdd();
     });
   };
@@ -75,7 +99,6 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
         >
           {/* Title */}
-
           <CommonDropdown
             label="Title"
             required
@@ -92,13 +115,15 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
               { value: "Mrs", label: "Mrs" },
             ]}
           />
+
           {/* First Name */}
           <CommonInput
             label="First Name"
             required
+            maxLength={20}
             value={formData.first_name}
             onChange={(e) =>
-              /^[A-Za-z\s]*$/.test(e.target.value) &&
+              /^[A-Za-z\s.-]*$/.test(e.target.value) &&
               setFormData({
                 ...formData,
                 first_name: e.target.value,
@@ -111,9 +136,10 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           <CommonInput
             label="Last Name"
             required
+            maxLength={20}
             value={formData.last_name}
             onChange={(e) =>
-              /^[A-Za-z\s]*$/.test(e.target.value) &&
+              /^[A-Za-z\s.-]*$/.test(e.target.value) &&
               setFormData({
                 ...formData,
                 last_name: e.target.value,
@@ -126,9 +152,10 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           <CommonInput
             label="S/O Of"
             required
+            maxLength={50}
             value={formData.son_of}
             onChange={(e) =>
-              /^[A-Za-z\s]*$/.test(e.target.value) &&
+              /^[A-Za-z\s.-]*$/.test(e.target.value) &&
               setFormData({
                 ...formData,
                 son_of: e.target.value,
@@ -160,10 +187,10 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
             label="License No."
             required
             value={formData.license_no}
+            maxLength={20}
             onChange={(e) => {
               const value = e.target.value.toUpperCase();
-
-              /^[A-Z0-9]{0,16}$/.test(value) &&
+              /^[A-Z0-9/-]{0,20}$/.test(value) &&
                 setFormData({
                   ...formData,
                   license_no: value,
@@ -193,13 +220,19 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
             <Label className="text-xs sm:text-sm">
               Residence of Driver <span className="text-red-600">*</span>
             </Label>
+            {/* 2. Added basic tag striping to neutralize HTML injections */}
             <textarea
               className="w-full border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm"
+              maxLength={300}
               rows={2}
               value={formData.residence_of}
-              onChange={(e) =>
-                setFormData({ ...formData, residence_of: e.target.value })
-              }
+              onChange={(e) => {
+                const value = e.target.value.replace(/[<>]/g, "");
+                setFormData({
+                  ...formData,
+                  residence_of: value,
+                });
+              }}
               placeholder="Enter Residence"
             />
           </div>
@@ -211,11 +244,17 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
               onClick={onClose}
               size="sm"
               className="text-xs sm:text-sm"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="text-xs sm:text-sm">
-              Add Driver
+            <Button
+              type="submit"
+              size="sm"
+              className="text-xs sm:text-sm"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Adding..." : "Add Driver"}
             </Button>
           </div>
         </form>
