@@ -45,6 +45,34 @@ export const getTripList = async (accessToken) => {
   return res.data;
 };
 
+// ======================= TRIPS  new for citizen report with backedn pagination=======================
+export const getTripListCitizen = async (
+  accessToken,
+  tripType,
+  page,
+  limit,
+  searchTerm,
+  selectedDate,
+) => {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/auth/get-trip-details-citizen`,
+    {
+      tripType,
+      page,
+      limit,
+      searchTerm,
+      selectedDate,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  return res.data;
+};
+
 export const getTripDetails = async (tripId, accessToken) => {
   const res = await axios.post(
     `${API_BASE_URL}/api/auth/get-trip-details-by-tId`,

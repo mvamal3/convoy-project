@@ -1431,75 +1431,238 @@ class AuthService {
 
   //----------------------
 
-  //--------get_trip_details_by_tripId----------------
-  // static async getTripDetailsbyTripId(tripData, id) {
-  //   console.log("Fetching trip details with data:", tripData);
+  static async getTripDetailsbyRegIdCItizen(tripData, id) {
+    try {
+      const { Op, fn, col, where } = require("sequelize");
 
-  //   const trips = await db.Trip.findOne({
-  //     where: {
-  //       tId: tripData.tId,
-  //     },
-  //     include: [
-  //       {
-  //         model: db.Passenger,
-  //         as: "passengers",
-  //         attributes: [
-  //           "passengerName",
-  //           "docType",
-  //           "docId",
-  //           "phoneNo",
-  //           "gender",
-  //         ],
-  //       },
-  //       {
-  //         model: db.Driver,
-  //         as: "driver",
-  //         attributes: ["dFirstName", "dLastName", "licenseNo"],
-  //         include: [
-  //           {
-  //             model: db.DriverStatus,
-  //             as: "sts", // ✅ must match Driver.hasMany alias
-  //             attributes: ["phNo", "Status"],
-  //           },
-  //         ],
-  //       },
-  //       {
-  //         model: db.Vehicle,
-  //         as: "vehicle",
-  //         attributes: ["vNum", "vCat", "ownershipType"],
-  //       },
-  //       {
-  //         model: db.OriginDestination,
-  //         as: "originLocation",
-  //         attributes: ["id", "location"], // ✅ include location name
-  //       },
-  //       {
-  //         model: db.OriginDestination,
-  //         as: "destinationLocation",
-  //         attributes: ["id", "location"], // ✅ include location name
-  //       },
-  //       {
-  //         model: db.TConvey,
-  //         as: "convey",
-  //         attributes: ["id", "convey_time", "convey_name"],
-  //       },
-  //     ],
-  //     attributes: [
-  //       "dId",
-  //       "tId",
-  //       "origin",
-  //       "destination",
-  //       "date",
-  //       "convoyTime",
-  //       "status",
-  //     ],
-  //   });
+      console.log("tripData:", tripData);
 
-  //   return {
-  //     message: "Trip details loaded successfully",
-  //     trips: trips,
-  //   };
-  // }
+      // ===============================
+      // PAGINATION
+      // ===============================
+      const page = Number(tripData.page) || 1;
+      const limit = Number(tripData.limit) || 100;
+
+      const offset = (page - 1) * limit;
+
+      // ===============================
+      // GET REG ID
+      // ===============================
+      const regIdObj = await Registration.findOne({
+        where: { userId: id },
+        attributes: ["reg_id"],
+      });
+
+      const reg_id = regIdObj ? regIdObj.get("reg_id") : null;
+
+      if (!reg_id) {
+        throw new Error("No registration ID found");
+      }
+
+      // ===============================
+      // MAIN WHERE
+      // ===============================
+      const whereClause = {
+        reg_id,
+      };
+
+      // ===============================
+      // TRIP TYPE FILTER
+      // ===============================
+      const today = new Date().toISOString().split("T")[0];
+
+      if (tripData.tripType === "todays") {
+        whereClause.date = today;
+      }
+
+      if (tripData.tripType === "upcoming") {
+        whereClause.date = {
+          [Op.gte]: today,
+        };
+
+        whereClause.status = {
+          [Op.notIn]: [2, 3],
+        };
+      }
+
+      if (tripData.tripType === "completed") {
+        whereClause.status = 2;
+      }
+
+      if (tripData.tripType === "rejected") {
+        whereClause.status = {
+          [Op.in]: [0, 3],
+        };
+      }
+      // DATE FILTER
+      if (tripData.selectedDate) {
+        whereClause.date = tripData.selectedDate;
+      }
+
+      // ===============================
+      // SEARCH FILTER
+      // ===============================
+      // ===============================
+      // SEARCH FILTER
+      // ===============================
+      if (tripData.searchTerm && tripData.searchTerm.trim() !== "") {
+        // querySearch = tripData.searchTerm.trim();
+        const querySearch = tripData.searchTerm.trim();
+        whereClause[Op.or] = [
+          {
+            tId: {
+              [Op.like]: `%${querySearch}%`,
+            },
+          },
+
+          {
+            "$vehicle.vNum$": {
+              [Op.like]: `%${querySearch}%`,
+            },
+          },
+        ];
+      }
+
+      // ===============================
+      // FETCH DATA
+      // ===============================
+      const result = await db.Trip.findAndCountAll({
+        where: whereClause,
+
+        include: [
+          {
+            model: db.Driver,
+            as: "driver",
+            attributes: ["dFirstName", "dLastName", "licenseNo"],
+          },
+
+          {
+            model: db.Vehicle,
+            as: "vehicle",
+            required: false,
+            attributes: ["vId", "vNum", "vCat"],
+          },
+
+          {
+            model: db.OriginDestination,
+            as: "originLocation",
+            attributes: ["id", "location"],
+          },
+
+          {
+            model: db.OriginDestination,
+            as: "destinationLocation",
+            attributes: ["id", "location"],
+          },
+
+          {
+            model: db.TConvey,
+            as: "convey",
+            attributes: ["id", "convey_time", "convey_name"],
+          },
+        ],
+
+        attributes: [
+          "tId",
+          "origin",
+          "destination",
+          "date",
+          "vId",
+          "dId",
+          "convoyTime",
+          "status",
+          "entrydatetime",
+          "verifiystatus",
+        ],
+
+        limit,
+        offset,
+
+        distinct: true,
+        col: "tId",
+        subQuery: false,
+
+        order: [["entrydatetime", "DESC"]],
+      });
+      const trips = result.rows;
+      const totalRecords = result.count;
+
+      console.log("=================================");
+      console.log("PAGE:", page);
+      console.log("LIMIT:", limit);
+      console.log("OFFSET:", offset);
+      console.log("TOTAL RECORDS:", totalRecords);
+      console.log("FETCHED ROWS:", trips.length);
+      console.log("=================================");
+
+      // ===============================
+      // CONVOY FIX LOGIC
+      // ===============================
+      for (let trip of trips) {
+        if (trip.convoyTime !== null) {
+          const convoyVal = Number(trip.convoyTime);
+
+          if (convoyVal >= 100 && convoyVal <= 199) {
+            const convey = await db.TConvey.findOne({
+              where: { id: 100 },
+              attributes: ["id", "convey_time", "convey_name"],
+            });
+
+            trip.dataValues.convey = convey;
+          } else if (convoyVal >= 200) {
+            const convey = await db.TConvey.findOne({
+              where: { id: 200 },
+              attributes: ["id", "convey_time", "convey_name"],
+            });
+
+            trip.dataValues.convey = convey;
+          }
+
+          if (convoyVal >= 100) {
+            const conveyControl = await db.ConveyControl.findOne({
+              where: {
+                conveyid: convoyVal,
+                checkpostid: Number(trip.origin),
+
+                [Op.and]: [where(fn("DATE", col("date")), trip.date)],
+              },
+
+              attributes: ["starttime", "closetime"],
+            });
+
+            if (conveyControl && trip.dataValues.convey) {
+              trip.dataValues.convey.dataValues = {
+                ...trip.dataValues.convey.dataValues,
+                actual_start_time: conveyControl.starttime,
+              };
+            }
+          }
+        }
+      }
+
+      // ===============================
+      // RESPONSE
+      // ===============================
+      return {
+        message: "Trip details loaded successfully",
+
+        totalRecords,
+
+        currentPage: page,
+
+        chunkSize: limit,
+
+        totalChunks: Math.ceil(totalRecords / limit),
+
+        trips,
+      };
+    } catch (error) {
+      console.error("Error:", error);
+
+      throw new Error(error.message || "Failed");
+    }
+  }
+
   static async getTripDetailsbyTripId(tripData, id) {
     console.log("Fetching trip details with data:", tripData);
 

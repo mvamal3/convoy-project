@@ -425,6 +425,20 @@ class AuthController {
   }
   //-------------------------
 
+  static async getTripDetailsbyRegIdCitizen(req, res) {
+    try {
+      const result = await AuthService.getTripDetailsbyRegIdCItizen(
+        req.body,
+        req.user.id,
+      );
+      res.json(
+        BaseResponseDTO.success(result, "Trip Details Loaded successfully"),
+      );
+    } catch (error) {
+      res.status(401).json(BaseResponseDTO.error(error.message));
+    }
+  }
+
   //get_trip_details_by_tId
   static async getTripDetailsbyTripId(req, res) {
     try {

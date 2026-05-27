@@ -103,6 +103,12 @@ router.get(
   authenticateToken,
   AuthController.getTripDetailsbyRegId,
 );
+
+router.post(
+  "/get-trip-details-citizen",
+  authenticateToken,
+  AuthController.getTripDetailsbyRegIdCitizen,
+);
 router.post("/get-trip-details-by-tId", AuthController.getTripDetailsbyTripId);
 // router.post("/get-trip-details-by-tId", AuthController.getTripDetailsbyTripId);
 
