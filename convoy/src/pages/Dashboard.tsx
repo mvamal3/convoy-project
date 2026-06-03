@@ -46,8 +46,6 @@ const Dashboard = () => {
   const [vehicleCount, setVehicleCount] = useState(0);
   const [driverCount, setDriverCount] = useState(0);
   const [tripCount, setTripcount] = useState(0);
-  const [todaysTrips, setTodaysTrips] = useState(0);
-  const [upcomingTrips, setUpcomingTrips] = useState(0);
   const [tripList, setTripList] = useState([]);
   const [serverTime, setServerTime] = useState(null);
 
@@ -55,10 +53,8 @@ const Dashboard = () => {
     const fetchVehicleCount = async () => {
       try {
         if (accessToken) {
-          const res = await getVehicleList(accessToken);
-          const count = Array.isArray(res?.data?.vehicle)
-            ? res.data.vehicle.length
-            : 0;
+          const res = await getVehicleList(accessToken, 1, 1);
+          const count = res?.data?.totalRecords || 0;
           setVehicleCount(count);
         }
       } catch (error) {
@@ -68,14 +64,13 @@ const Dashboard = () => {
 
     fetchVehicleCount();
   }, [accessToken]);
+
   useEffect(() => {
     const fetchDriverCount = async () => {
       try {
         if (accessToken) {
-          const res = await getDriverList(accessToken);
-          const count = Array.isArray(res?.data?.driver)
-            ? res.data.driver.length
-            : 0;
+          const res = await getDriverList(accessToken, 1, 1);
+          const count = res?.data?.totalRecords || 0;
           setDriverCount(count);
         }
       } catch (error) {
@@ -85,47 +80,80 @@ const Dashboard = () => {
 
     fetchDriverCount();
   }, [accessToken]);
+
+  // useEffect(() => {
+  //   const fetchTripCount = async () => {
+  //     if (!accessToken || !serverTime) return;
+
+  //     try {
+  //       const res = await getTripList(accessToken);
+
+  //       const trips = Array.isArray(res?.data?.trips) ? res.data.trips : [];
+  //       console.log("Fetched trips:", res);
+  //       setTripcount(trips.length);
+
+  //       // Parse serverTime to Date object
+  //       const serverDateObj = new Date(serverTime);
+  //       // Format to YYYY-MM-DD (server-based date)
+  //       const serverDateString = serverDateObj.toISOString().split("T")[0];
+
+  //       // Filter trips with date >= server date (future and today)
+  //       const filteredTrips = trips.filter(
+  //         (trip) => trip.date >= serverDateString,
+  //       );
+  //       setTripList(filteredTrips);
+
+  //       // Count trips for today (date === serverDateString)
+  //       const todaysTripsCount = trips.filter(
+  //         (trip) => trip.date === serverDateString,
+  //       ).length;
+
+  //       // Count upcoming trips (date > serverDateString)
+  //       const upcomingTripsCount = trips.filter(
+  //         (trip) => trip.date > serverDateString,
+  //       ).length;
+
+  //       setTodaysTrips(todaysTripsCount);
+  //       setUpcomingTrips(upcomingTripsCount);
+  //     } catch (error) {
+  //       console.error("Failed to fetch trips:", error);
+  //     }
+  //   };
+  //   fetchTripCount();
+  // }, [accessToken, serverTime]);
+
+  // Fetch server time once on mount and when accessToken changes
+
   useEffect(() => {
     const fetchTripCount = async () => {
-      if (!accessToken || !serverTime) return;
+      if (!accessToken) return;
 
       try {
         const res = await getTripList(accessToken);
 
-        const trips = Array.isArray(res?.data?.trips) ? res.data.trips : [];
-        //console.log("Fetched trips:", trips.length);
-        setTripcount(trips.length);
+        console.log("Fetched trips:", res);
 
-        // Parse serverTime to Date object
-        const serverDateObj = new Date(serverTime);
-        // Format to YYYY-MM-DD (server-based date)
-        const serverDateString = serverDateObj.toISOString().split("T")[0];
+        // =========================================
+        // TOTAL TRIPS
+        // =========================================
+        setTripcount(res?.data?.totalTrips || 0);
 
-        // Filter trips with date >= server date (future and today)
-        const filteredTrips = trips.filter(
-          (trip) => trip.date >= serverDateString,
-        );
-        setTripList(filteredTrips);
+        // =========================================
+        // FILTERED TRIP LIST
+        // =========================================
+        const tripList = Array.isArray(res?.data?.tripList)
+          ? res.data.tripList
+          : [];
 
-        // Count trips for today (date === serverDateString)
-        const todaysTripsCount = trips.filter(
-          (trip) => trip.date === serverDateString,
-        ).length;
-
-        // Count upcoming trips (date > serverDateString)
-        const upcomingTripsCount = trips.filter(
-          (trip) => trip.date > serverDateString,
-        ).length;
-
-        setTodaysTrips(todaysTripsCount);
-        setUpcomingTrips(upcomingTripsCount);
+        setTripList(tripList);
       } catch (error) {
         console.error("Failed to fetch trips:", error);
       }
     };
+
     fetchTripCount();
-  }, [accessToken, serverTime]);
-  // Fetch server time once on mount and when accessToken changes
+  }, [accessToken]);
+
   useEffect(() => {
     const fetchServerTime = async () => {
       if (!accessToken) return;
@@ -147,8 +175,6 @@ const Dashboard = () => {
     pendingApprovals: 0,
     approvedTrips: 0,
     rejectedTrips: 0,
-    todaysTrips,
-    upcomingTrips,
   };
   // ... rest of your code remains unchanged
   const CitizenDashboard = () => (

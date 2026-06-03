@@ -3,8 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-//import { useNavigate } from "react-router-dom";
+import { Plus, Search } from "lucide-react";
 import { getVehicleList } from "@/contexts/GetApi";
 import AddVehicle from "@/components/Addvehicle";
 import { deleteVehicle } from "@/contexts/PostApi";
@@ -12,22 +11,55 @@ import toast from "react-hot-toast";
 
 const ManageVehicle = () => {
   const { accessToken } = useAuth();
-  //const navigate = useNavigate();
 
   const [vehicles, setVehicles] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const rowsPerPage = 10;
 
-  // Fetch vehicle list (async)
+  // Search states
+  const [searchInput, setSearchInput] = useState("");
+  const [backendSearchTerm, setBackendSearchTerm] = useState("");
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [chunkPage, setChunkPage] = useState(1);
+
+  const [totalRecords, setTotalRecords] = useState(0);
+
+  const rowsPerPage = 10;
+  const chunkSize = 100;
+
+  // Search Trigger
+  const handleSearchTrigger = () => {
+    setCurrentPage(1);
+    setChunkPage(1);
+    setBackendSearchTerm(searchInput);
+  };
+
+  // Enter Key Search
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSearchTrigger();
+    }
+  };
+
+  // Fetch Vehicle List
   const fetchVehicleList = useCallback(async () => {
     if (!accessToken) return;
+
     try {
-      const data = await getVehicleList(accessToken);
-      // console.log("Fetched Vehicles:", data);
+      setLoading(true);
+
+      const data = await getVehicleList(
+        accessToken,
+        chunkPage,
+        chunkSize,
+        backendSearchTerm,
+      );
+
+      setTotalRecords(data?.data?.totalRecords || 0);
 
       const vehicleList = Array.isArray(data?.data?.vehicle)
         ? data.data.vehicle.map((v) => ({
@@ -47,32 +79,37 @@ const ManageVehicle = () => {
             vSeating: v.vSeating || "",
           }))
         : [];
+
       vehicleList.sort((a, b) => Number(b.v_id) - Number(a.v_id));
+
       setVehicles(vehicleList);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
-    }
-  }, [accessToken]);
 
-  // 3-second delay + data fetch
-  useEffect(() => {
-    let timeoutId;
-    setLoading(true);
-    fetchVehicleList();
-    timeoutId = setTimeout(() => {
+      toast.error("Failed to load vehicles");
+    } finally {
       setLoading(false);
-    }, 1000); // 3 seconds delay
-    return () => clearTimeout(timeoutId);
-  }, [fetchVehicleList]);
+    }
+  }, [accessToken, chunkPage, backendSearchTerm]);
 
-  // Delete useEffect
+  // Fetch data
+  useEffect(() => {
+    fetchVehicleList();
+  }, [chunkPage, backendSearchTerm, accessToken]);
+
+  // Delete Logic
   useEffect(() => {
     if (!deleteId) return;
+
     const performDelete = async () => {
       try {
         const res = await deleteVehicle(accessToken, deleteId);
+
         if (res?.success) {
           setVehicles((prev) => prev.filter((v) => v.v_id !== deleteId));
+
+          setTotalRecords((prev) => Math.max(0, prev - 1));
+
           toast.success("Vehicle deleted successfully!");
         } else {
           toast.error(
@@ -81,52 +118,72 @@ const ManageVehicle = () => {
         }
       } catch (error) {
         console.error("Delete API error:", error);
+
         toast.error("Error deleting vehicle");
       } finally {
         setDeleteId(null);
       }
     };
+
     performDelete();
   }, [deleteId, accessToken]);
 
-  // Confirmation dialog before delete
+  // Delete confirmation
   const handleDelete = (vehicleId) => {
     if (window.confirm("Are you sure you want to delete this vehicle?")) {
       setDeleteId(vehicleId);
     }
   };
 
-  const handleSuccessAdd = () => {
+  // Add Vehicle Success
+  const handleSuccessAdd = async () => {
+    setCurrentPage(1);
+    setChunkPage(1);
+
+    await fetchVehicleList();
+
     closeModal();
-    fetchVehicleList();
   };
 
+  // Modal
   const openModal = () => setShowModal(true);
   const closeModal = () => setShowModal(false);
 
-  // Filtering & Pagination
-  const filteredVehicles = vehicles.filter((v) =>
-    v.v_number.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-  const indexOfLast = currentPage * rowsPerPage;
-  const indexOfFirst = indexOfLast - rowsPerPage;
-  const currentRows = filteredVehicles.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredVehicles.length / rowsPerPage);
+  // Total pages
+  const totalPages = Math.ceil(totalRecords / rowsPerPage);
 
+  // Slice current rows from chunk
+  const relativeIndexStart = ((currentPage - 1) * rowsPerPage) % chunkSize;
+
+  const currentRows = vehicles.slice(
+    relativeIndexStart,
+    relativeIndexStart + rowsPerPage,
+  );
+
+  // Chunk switching
+  useEffect(() => {
+    const requiredChunk =
+      Math.floor(((currentPage - 1) * rowsPerPage) / chunkSize) + 1;
+
+    if (requiredChunk !== chunkPage) {
+      setChunkPage(requiredChunk);
+    }
+  }, [currentPage]);
+
+  // Pagination buttons
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
 
-  // Modal logic
+  // Auto open modal if empty DB
   useEffect(() => {
-    if (vehicles.length === 0) {
+    if (!loading && totalRecords === 0 && backendSearchTerm === "") {
       setShowModal(true);
-    } else {
-      setShowModal(false);
     }
-  }, [vehicles]);
+  }, [loading, totalRecords, backendSearchTerm]);
 
-  // Loading spinner UI
+  // Loading UI
   if (loading) {
     return (
       <DashboardLayout>
@@ -146,35 +203,46 @@ const ManageVehicle = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Manage Vehicles</h1>
+
           <Button onClick={openModal} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Add Vehicle
           </Button>
         </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Registered Vehicle List</CardTitle>
           </CardHeader>
+
           <CardContent>
             {/* Search */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <p className="text-sm text-muted-foreground">
-                Showing {filteredVehicles.length} vehicle(s)
+                Showing {currentRows.length} of {totalRecords} vehicle(s)
               </p>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value.trimStart());
-                  setCurrentPage(1);
-                }}
-                maxLength={20}
-                placeholder="Search by vehicle number..."
-                className="w-full sm:w-64 border rounded px-3 py-1 text-sm focus:outline-none focus:ring focus:border-blue-400"
-              />
+
+              <div className="flex w-full sm:w-auto gap-2">
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search by vehicle number..."
+                  className="w-full sm:w-64 border rounded px-3 py-1 text-sm focus:outline-none focus:ring focus:border-blue-400"
+                />
+
+                <Button
+                  size="sm"
+                  onClick={handleSearchTrigger}
+                  disabled={loading}
+                  className="px-4 bg-blue-700 hover:bg-blue-800 text-white"
+                >
+                  <Search className="w-4 h-4 mr-1" />
+                  Search
+                </Button>
+              </div>
             </div>
-            {/* Table */}
-            {/* Replace ONLY the Table section with this */}
 
             {/* Desktop Table */}
             <div className="hidden md:block">
@@ -202,20 +270,26 @@ const ManageVehicle = () => {
                           <td className="px-4 py-2 border">
                             {(currentPage - 1) * rowsPerPage + i + 1}
                           </td>
+
                           <td className="px-4 py-2 border">{row.v_number}</td>
+
                           <td className="px-4 py-2 border">
                             {row.v_owner_name}
                           </td>
+
                           <td className="px-4 py-2 border">{row.v_category}</td>
+
                           <td className="px-4 py-2 border">
                             {row.commercial_type}
                             {row.department_name
                               ? ` (${row.department_name})`
                               : ""}
                           </td>
+
                           <td className="px-4 py-2 border">
                             {row.vSeating} Person
                           </td>
+
                           <td className="px-4 py-2 border">
                             <Button
                               size="sm"
@@ -242,7 +316,7 @@ const ManageVehicle = () => {
               </div>
             </div>
 
-            {/* Mobile Card View */}
+            {/* Mobile View */}
             <div className="md:hidden space-y-3">
               {currentRows.length > 0 ? (
                 currentRows.map((row, i) => (
@@ -254,6 +328,7 @@ const ManageVehicle = () => {
                       <span className="font-semibold text-blue-800">
                         {row.v_number}
                       </span>
+
                       <span className="text-xs text-gray-500">
                         #{(currentPage - 1) * rowsPerPage + i + 1}
                       </span>
@@ -263,13 +338,16 @@ const ManageVehicle = () => {
                       <p>
                         <strong>Owner:</strong> {row.v_owner_name}
                       </p>
+
                       <p>
                         <strong>Category:</strong> {row.v_category}
                       </p>
+
                       <p>
                         <strong>Ownership:</strong> {row.commercial_type}
                         {row.department_name ? ` (${row.department_name})` : ""}
                       </p>
+
                       <p>
                         <strong>Capacity:</strong> {row.vSeating} Person
                       </p>
@@ -291,10 +369,40 @@ const ManageVehicle = () => {
                 </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-between mt-4 text-sm items-center">
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrev}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNext}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-      {/* Add Modal */}
+
+      {/* Modal */}
       {showModal && (
         <AddVehicle
           isOpen={showModal}

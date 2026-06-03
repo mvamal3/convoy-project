@@ -124,7 +124,7 @@ const AddTripComponent = () => {
         setServerTime(currentTimeData?.time); // format "HH:mm"
         setServerDate(currentTimeData?.date); // format "YYYY-MM-DD"
         console.log("Fetched server time:", currentTimeData?.time);
-        console.log("Fetched server date:", currentTimeData?.date);
+        // console.log("Fetched server date:", currentTimeData?.date);
       } catch (error) {
         console.error("Failed to fetch server time:", error);
       }

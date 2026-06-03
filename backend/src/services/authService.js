@@ -662,56 +662,223 @@ class AuthService {
 
   // =============get_driver_list_by_regId========================
   static async getDriveListbyRegId(registerData, id) {
-    console.log("Registering new driver with data:", registerData);
-    // const registerDTO = new DriverRequestDTO_V1(registerData);
-
-    // const validation = registerDTO.validate();
-
-    // if (!validation.isValid) {
-
-    //   throw new Error(validation.errors.join(', '));
-    // }
-
-    let regIdObj = await Registration.findOne({
-      where: { userId: id },
-      attributes: ["reg_id"],
-    });
-    let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
-
-    console.log("Registration ID found:", reg_id);
-    const drivers = await db.Driver.findAll({
-      where: {
-        dStatus: "active", // <-- Added this condition
-      },
-      include: [
-        {
-          model: db.DriverStatus,
-          as: "sts",
-          attributes: ["reg_id", "phNo"],
-          where: {
-            reg_id: reg_id, // 🔍 Filter by this registration ID
-          },
-        },
-      ],
-      attributes: ["dId", "dFirstName", "dLastName", "licenseNo", "title"],
-    });
-
-    return {
-      message: "Driver List Loaded successfully",
-      driver: drivers,
-    };
-  }
-
-  // =============get_Vehicle_list_by_regId========================
-  static async getVehicleListbyRegId(registerData, id) {
     try {
-      // 🔍 Fetch registration ID for given user
+      const { Op } = require("sequelize");
+
+      console.log("=================================");
+      console.log("REGISTER DATA:", registerData);
+
+      // ===============================
+      // OPTIONAL PAGINATION
+      // ===============================
+      const usePagination =
+        registerData.page !== undefined && registerData.limit !== undefined;
+      const page = usePagination ? Number(registerData.page) : null;
+
+      const limit = usePagination ? Number(registerData.limit) : null;
+
+      const offset = usePagination ? (page - 1) * limit : null;
+      // ===============================
+      // GET REG ID
+      // ===============================
       const regIdObj = await Registration.findOne({
         where: { userId: id },
         attributes: ["reg_id"],
       });
 
       const reg_id = regIdObj ? regIdObj.get("reg_id") : null;
+
+      //console.log("REG ID:", reg_id);
+
+      if (!reg_id) {
+        throw new Error("Registration ID not found");
+      }
+      // ===============================
+      // MAIN WHERE
+      // ===============================
+      const whereClause = {
+        dStatus: "active",
+      };
+      // ===============================
+      // SEARCH FILTER
+      // ===============================
+      if (registerData.searchTerm && registerData.searchTerm.trim() !== "") {
+        const querySearch = registerData.searchTerm.trim();
+
+        console.log("SEARCH TERM:", querySearch);
+
+        whereClause[Op.or] = [
+          {
+            dFirstName: {
+              [Op.like]: `%${querySearch}%`,
+            },
+          },
+          {
+            dLastName: {
+              [Op.like]: `%${querySearch}%`,
+            },
+          },
+          {
+            licenseNo: {
+              [Op.like]: `%${querySearch}%`,
+            },
+          },
+        ];
+      }
+
+      console.log("WHERE CLAUSE:", whereClause);
+      // ===============================
+      // QUERY OPTIONS
+      // ===============================
+      const queryOptions = {
+        where: whereClause,
+
+        include: [
+          {
+            model: db.DriverStatus,
+            as: "sts",
+
+            required: true,
+
+            attributes: ["reg_id", "phNo"],
+
+            where: {
+              reg_id,
+            },
+          },
+        ],
+
+        attributes: ["dId", "dFirstName", "dLastName", "licenseNo", "title"],
+
+        order: [["dId", "DESC"]],
+      };
+
+      // ===============================
+      // APPLY PAGINATION
+      // ===============================
+      if (usePagination) {
+        queryOptions.limit = limit;
+
+        queryOptions.offset = offset;
+
+        queryOptions.distinct = true;
+
+        queryOptions.col = "dId";
+      }
+
+      console.log("QUERY OPTIONS:", queryOptions);
+
+      // ===============================
+      // FETCH DATA
+      // ===============================
+      const result = usePagination
+        ? await db.Driver.findAndCountAll(queryOptions)
+        : await db.Driver.findAll(queryOptions);
+
+      const drivers = usePagination ? result.rows : result;
+
+      const totalRecords = usePagination ? result.count : drivers.length;
+      // ===============================
+      // RESPONSE
+      // ===============================
+      return {
+        message: "Driver List Loaded successfully",
+
+        ...(usePagination && {
+          totalRecords,
+
+          currentPage: page,
+
+          chunkSize: limit,
+
+          totalChunks: Math.ceil(totalRecords / limit),
+        }),
+
+        driver: drivers,
+      };
+    } catch (error) {
+      console.error("ERROR:", error);
+
+      throw new Error(error.message || "Failed");
+    }
+  }
+
+  // =============get_Vehicle_list_by_regId========================
+  // static async getVehicleListbyRegId(registerData, id) {
+  //   try {
+  //     // 🔍 Fetch registration ID for given user
+  //     const regIdObj = await Registration.findOne({
+  //       where: { userId: id },
+  //       attributes: ["reg_id"],
+  //     });
+
+  //     const reg_id = regIdObj ? regIdObj.get("reg_id") : null;
+  //     console.log("Registration ID found:", reg_id);
+
+  //     if (!reg_id) {
+  //       return {
+  //         success: false,
+  //         message: "No registration ID found for this user",
+  //         vehicle: [],
+  //       };
+  //     }
+
+  //     // ✅ Fetch only active vehicles (status = 1)
+  //     const vehicles = await db.Vehicle.findAll({
+  //       include: [
+  //         {
+  //           model: db.VehicleStatus,
+  //           as: "sts",
+  //           attributes: ["reg_id"],
+  //           where: { reg_id }, // Filter by registration ID
+  //         },
+  //       ],
+  //       where: {
+  //         status: 1, // ✅ Only active vehicles
+  //       },
+  //       attributes: [
+  //         "vId",
+  //         "vNum",
+  //         "vOwnName",
+  //         "vCat",
+  //         "otherCat",
+  //         "ownershipType",
+  //         "deptName",
+  //         "vPurpose",
+  //         "otherPurpose",
+  //         "vSeating",
+  //       ],
+  //       order: [["vId", "DESC"]],
+  //     });
+
+  //     return {
+  //       success: true,
+  //       message: "Vehicle list loaded successfully",
+  //       vehicle: vehicles,
+  //     };
+  //   } catch (error) {
+  //     console.error("Error fetching vehicle list by regId:", error);
+  //     return {
+  //       success: false,
+  //       message: "Error loading vehicle list",
+  //       error: error.message,
+  //     };
+  //   }
+  // }
+
+  static async getVehicleListbyRegId(registerData, id) {
+    try {
+      // =========================================
+      // FETCH REGISTRATION ID
+      // =========================================
+      const { Op } = require("sequelize");
+      const regIdObj = await Registration.findOne({
+        where: { userId: id },
+        attributes: ["reg_id"],
+      });
+
+      const reg_id = regIdObj ? regIdObj.get("reg_id") : null;
+
       console.log("Registration ID found:", reg_id);
 
       if (!reg_id) {
@@ -722,19 +889,54 @@ class AuthService {
         };
       }
 
-      // ✅ Fetch only active vehicles (status = 1)
-      const vehicles = await db.Vehicle.findAll({
+      // =========================================
+      // OPTIONAL PAGINATION
+      // =========================================
+      const usePagination =
+        registerData.page !== undefined && registerData.limit !== undefined;
+
+      const page = Number(registerData.page) || 1;
+      const limit = Number(registerData.limit) || 100;
+
+      const offset = (page - 1) * limit;
+
+      // =========================================
+      // COMMON QUERY
+      // =========================================
+      // =========================================
+      // SEARCH FILTER
+      // =========================================
+      const whereClause = {
+        status: 1,
+      };
+
+      if (registerData.searchTerm && registerData.searchTerm.trim() !== "") {
+        const querySearch = registerData.searchTerm.trim();
+
+        console.log("VEHICLE SEARCH TERM:", querySearch);
+
+        whereClause.vNum = {
+          [Op.like]: `%${querySearch}%`,
+        };
+      }
+
+      // =========================================
+      // COMMON QUERY
+      // =========================================
+      const queryOptions = {
+        distinct: true,
+
         include: [
           {
             model: db.VehicleStatus,
             as: "sts",
             attributes: ["reg_id"],
-            where: { reg_id }, // Filter by registration ID
+            where: { reg_id },
           },
         ],
-        where: {
-          status: 1, // ✅ Only active vehicles
-        },
+
+        where: whereClause,
+
         attributes: [
           "vId",
           "vNum",
@@ -747,9 +949,48 @@ class AuthService {
           "otherPurpose",
           "vSeating",
         ],
-        order: [["vId", "DESC"]],
-      });
 
+        order: [["vId", "DESC"]],
+      };
+
+      // =========================================
+      // APPLY PAGINATION IF REQUIRED
+      // =========================================
+      if (usePagination) {
+        queryOptions.limit = limit;
+        queryOptions.offset = offset;
+      }
+
+      // =========================================
+      // FETCH DATA
+      // =========================================
+      const vehicles = usePagination
+        ? await db.Vehicle.findAndCountAll(queryOptions)
+        : await db.Vehicle.findAll(queryOptions);
+
+      // =========================================
+      // PAGINATION RESPONSE
+      // =========================================
+      if (usePagination) {
+        return {
+          success: true,
+          message: "Vehicle list loaded successfully",
+
+          vehicle: vehicles.rows,
+
+          totalRecords: vehicles.count,
+
+          pagination: {
+            currentPage: page,
+            limit: limit,
+            totalPages: Math.ceil(vehicles.count / limit),
+          },
+        };
+      }
+
+      // =========================================
+      // NORMAL RESPONSE (OLD FLOW)
+      // =========================================
       return {
         success: true,
         message: "Vehicle list loaded successfully",
@@ -757,6 +998,7 @@ class AuthService {
       };
     } catch (error) {
       console.error("Error fetching vehicle list by regId:", error);
+
       return {
         success: false,
         message: "Error loading vehicle list",
@@ -1314,58 +1556,71 @@ class AuthService {
 
   static async getTripDetailsbyRegId(tripData, id) {
     console.log("Fetching trip details with data:", tripData);
+
     console.log("fetch trip details with data:", id);
 
-    // Get reg_id associated with the userId
+    // =========================================
+    // GET REGISTRATION ID
+    // =========================================
     let regIdObj = await Registration.findOne({
       where: { userId: id },
       attributes: ["reg_id"],
     });
 
     let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
+
     console.log("Registration ID found:", reg_id);
 
     if (!reg_id) {
       throw new Error("No registration ID found for the given user.");
     }
 
-    // Fetch trip details by reg_id
+    // =========================================
+    // FETCH TRIPS
+    // =========================================
     const trips = await db.Trip.findAll({
       where: {
         reg_id: reg_id,
       },
+
       include: [
         {
           model: db.Driver,
           as: "driver",
           attributes: ["dFirstName", "dLastName", "licenseNo"],
         },
+
         {
           model: db.Vehicle,
           as: "vehicle",
           attributes: ["vId", "vNum"],
         },
+
         {
           model: db.Passenger,
           as: "passengers",
           attributes: ["passengerName", "phoneNo", "docId"],
         },
+
         {
           model: db.OriginDestination,
           as: "originLocation",
-          attributes: ["id", "location"], // ✅ include location name
+          attributes: ["id", "location"],
         },
+
         {
           model: db.OriginDestination,
           as: "destinationLocation",
-          attributes: ["id", "location"], // ✅ include location name
+          attributes: ["id", "location"],
         },
+
         {
           model: db.TConvey,
           as: "convey",
           attributes: ["id", "convey_time", "convey_name"],
-        }, // add convey include here
+        },
       ],
+
       attributes: [
         "tId",
         "origin",
@@ -1378,44 +1633,60 @@ class AuthService {
         "entrydatetime",
         "verifiystatus",
       ],
+
       order: [["entrydatetime", "DESC"]],
     });
+
     const { Op, fn, col, where } = require("sequelize");
 
-    // ===== LOOP ALL TRIPS =====
+    // =========================================
+    // LOOP ALL TRIPS
+    // =========================================
     for (let trip of trips) {
       if (trip.convoyTime !== null) {
         const convoyVal = Number(trip.convoyTime);
 
-        // ===== FIX TCONVEY (100 / 200) =====
+        // =========================================
+        // FIX TCONVEY
+        // =========================================
         if (convoyVal >= 100 && convoyVal <= 199) {
           const convey = await db.TConvey.findOne({
             where: { id: 100 },
+
             attributes: ["id", "convey_time", "convey_name"],
           });
+
           trip.dataValues.convey = convey;
         } else if (convoyVal >= 200) {
           const convey = await db.TConvey.findOne({
             where: { id: 200 },
+
             attributes: ["id", "convey_time", "convey_name"],
           });
+
           trip.dataValues.convey = convey;
         }
 
-        // ===== GET START TIME =====
+        // =========================================
+        // GET START TIME
+        // =========================================
         if (convoyVal >= 100) {
           const conveyControl = await db.ConveyControl.findOne({
             where: {
               conveyid: convoyVal,
+
               checkpostid: Number(trip.origin),
+
               [Op.and]: [where(fn("DATE", col("date")), trip.date)],
             },
+
             attributes: ["starttime", "closetime"],
           });
 
           if (conveyControl && trip.dataValues.convey) {
             trip.dataValues.convey.dataValues = {
               ...trip.dataValues.convey.dataValues,
+
               actual_start_time: conveyControl.starttime,
             };
           }
@@ -1423,9 +1694,32 @@ class AuthService {
       }
     }
 
+    // =========================================
+    // TOTAL TRIPS
+    // =========================================
+    const totalTrips = trips.length;
+
+    // =========================================
+    // TODAY DATE
+    // =========================================
+    const todayDate = new Date().toISOString().split("T")[0];
+
+    // =========================================
+    // FILTERED TRIP LIST
+    // =========================================
+    const tripList = trips.filter((trip) => trip.date >= todayDate);
+
+    // =========================================
+    // RESPONSE
+    // =========================================
     return {
       message: "Trip details loaded successfully",
-      trips: trips,
+
+      totalTrips,
+
+      tripList,
+
+      trips,
     };
   }
 

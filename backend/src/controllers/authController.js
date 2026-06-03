@@ -292,7 +292,7 @@ class AuthController {
   static async getVehicleListbyRegId(req, res) {
     try {
       const result = await AuthService.getVehicleListbyRegId(
-        req.body,
+        req.query,
         req.user.id,
       );
       res.json(

@@ -23,20 +23,64 @@ export const getVillages = async (subdistrict_code) => {
 };
 
 // ======================= VEHICLE / DRIVER =======================
-export const getVehicleList = async (accessToken) => {
+// export const getVehicleList = async (accessToken) => {
+//   const res = await axios.get(`${API_BASE_URL}/api/auth/get-vehicle-list`, {
+//     headers: { Authorization: `Bearer ${accessToken}` },
+//   });
+//   return res.data;
+// };
+export const getVehicleList = async (
+  accessToken,
+  page = null,
+  limit = null,
+  searchTerm = "",
+) => {
+  const params = {};
+
+  // Optional pagination
+  if (page !== null && limit !== null) {
+    params.page = page;
+    params.limit = limit;
+  }
+
+  // Search term
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+
   const res = await axios.get(`${API_BASE_URL}/api/auth/get-vehicle-list`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    params,
   });
+
   return res.data;
 };
+// export const getDriverList = async (accessToken) => {
+//   const res = await axios.get(`${API_BASE_URL}/api/auth/get-driver-list`, {
+//     headers: { Authorization: `Bearer ${accessToken}` },
+//   });
+//   return res.data;
+// };
 
-export const getDriverList = async (accessToken) => {
-  const res = await axios.get(`${API_BASE_URL}/api/auth/get-driver-list`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+export const getDriverList = async (accessToken, page, limit, searchTerm) => {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/auth/get-driver-list`,
+    {
+      page,
+      limit,
+      searchTerm,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
   return res.data;
 };
-
 // ======================= TRIPS =======================
 export const getTripList = async (accessToken) => {
   const res = await axios.get(`${API_BASE_URL}/api/auth/get-trip-details`, {

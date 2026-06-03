@@ -85,7 +85,7 @@ router.post("/driverstatus", authenticateToken, AuthController.driverstatus);
 router.post("/vehiclestatus", AuthController.vehiclestatus);
 router.get("/getlicense", AuthController.getByLicense);
 router.get("/getdriver", AuthController.getByMobilenumber);
-router.get(
+router.post(
   "/get-driver-list",
   authenticateToken,
   AuthController.getDriveListbyRegId,

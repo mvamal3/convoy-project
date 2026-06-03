@@ -15,7 +15,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
-    title: "",
+    title: "Mr",
     first_name: "",
     last_name: "",
     license_no: "",
@@ -31,7 +31,9 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Required validation using .trim()
+    if (isSubmitting) return;
+
+    // Required validation
     if (
       !String(formData.title || "").trim() ||
       !String(formData.first_name || "").trim() ||
@@ -49,7 +51,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
       return;
     }
 
-    // 3. Stronger Indian phone number validation
+    // Phone validation
     if (!/^[0-9]{10}$/.test(formData.phone_no)) {
       toast({
         title: "Please enter a valid 10-digit phone number",
@@ -60,32 +62,43 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
 
     setIsSubmitting(true);
 
-    // 5. Trim string fields before sending data to the API
-    const sanitizedData = {
-      ...formData,
-      first_name: formData.first_name.trim(),
-      last_name: formData.last_name.trim(),
-      son_of: formData.son_of.trim(),
-      license_no: formData.license_no.trim(),
-      residence_of: formData.residence_of.trim(),
-    };
+    try {
+      const sanitizedData = {
+        ...formData,
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
+        son_of: formData.son_of.trim(),
+        license_no: formData.license_no.trim(),
+        residence_of: formData.residence_of.trim(),
+      };
 
-    handleAddDriverAPI(sanitizedData, accessToken, toast, () => {
-      toast({ title: "Driver added successfully" });
-      setFormData({
-        title: "",
-        first_name: "",
-        last_name: "",
-        license_no: "",
-        son_of: "",
-        gender: "",
-        phone_no: "",
-        residence_of: "",
-        is_owner: false,
+      await handleAddDriverAPI(sanitizedData, accessToken, toast, () => {
+        toast({ title: "Driver added successfully" });
+
+        setFormData({
+          title: "Mr",
+          first_name: "",
+          last_name: "",
+          license_no: "",
+          son_of: "",
+          gender: "",
+          phone_no: "",
+          residence_of: "",
+          is_owner: false,
+        });
+
+        if (typeof onSuccessAdd === "function") {
+          onSuccessAdd();
+        }
       });
+    } catch (error) {
+      toast({
+        title: "Failed to add driver",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-      if (typeof onSuccessAdd === "function") onSuccessAdd();
-    });
+    }
   };
 
   return (
@@ -98,24 +111,6 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           onSubmit={handleSubmit}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
         >
-          {/* Title */}
-          <CommonDropdown
-            label="Title"
-            required
-            value={formData.title}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                title: e.target.value,
-              })
-            }
-            options={[
-              { value: "Mr", label: "Mr" },
-              { value: "Ms", label: "Ms" },
-              { value: "Mrs", label: "Mrs" },
-            ]}
-          />
-
           {/* First Name */}
           <CommonInput
             label="First Name"
@@ -216,7 +211,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
           />
 
           {/* Residence */}
-          <div className="space-y-1 sm:space-y-2 sm:col-span-2 lg:col-span-4">
+          <div className="space-y-1 sm:space-y-2 sm:col-span-2 lg:col-span-2">
             <Label className="text-xs sm:text-sm">
               Residence of Driver <span className="text-red-600">*</span>
             </Label>
