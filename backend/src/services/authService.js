@@ -6469,20 +6469,32 @@ class AuthService {
      1️⃣ DATE HANDLING
      ========================= */
 
-    let today = null;
+    /* =========================
+1️⃣ DATE HANDLING
+========================= */
 
+    let fromDate = null;
+    let toDate = null;
+
+    /* ===== SINGLE DATE ===== */
     if (payload?.date) {
       if (typeof payload.date === "string") {
-        // handles "2026-01-09" and ISO strings
-        today = payload.date.split("T")[0];
+        fromDate = payload.date.split("T")[0];
+        toDate = payload.date.split("T")[0];
       } else if (typeof payload.date === "object" && payload.date.date) {
-        // handles { date: "2026-01-09" }
-        today = payload.date.date;
+        fromDate = payload.date.date;
+        toDate = payload.date.date;
       }
-    }
+    } else if (payload?.fromDate && payload?.toDate) {
+      /* ===== DATE RANGE ===== */
+      fromDate = payload.fromDate.split("T")[0];
+      toDate = payload.toDate.split("T")[0];
+    } else {
+      /* ===== DEFAULT TODAY ===== */
+      const today = new Date().toISOString().split("T")[0];
 
-    if (!today) {
-      today = new Date().toISOString().split("T")[0];
+      fromDate = today;
+      toDate = today;
     }
 
     /* =========================
@@ -6491,14 +6503,19 @@ class AuthService {
 
     const checkpostId = payload?.checkpostId || payload?.checkpost_id || null;
 
-    console.log("FINAL DATE USED:", today);
+    console.log("FROM DATE:", fromDate);
+    console.log("TO DATE:", toDate);
     console.log("CHECKPOST ID:", checkpostId);
 
     /* =========================
      3️⃣ CONVEY CONTROL (START / END TIME)
      ========================= */
 
-    const conveyControlWhere = { date: today };
+    const conveyControlWhere = {
+      date: {
+        [Op.between]: [fromDate, toDate],
+      },
+    };
 
     if (checkpostId) {
       conveyControlWhere.checkpostid = checkpostId;
@@ -6538,7 +6555,11 @@ class AuthService {
           "verificationPendingCount",
         ],
       ],
-      where: { date: today },
+      where: {
+        date: {
+          [Op.between]: [fromDate, toDate],
+        },
+      },
       group: ["convoyTime"],
       raw: true,
     });
@@ -6556,7 +6577,11 @@ class AuthService {
      ========================= */
 
     const approveTripWhere = {
-      [Op.and]: [where(fn("DATE", col("approvedTrips.arrdate")), today)],
+      [Op.and]: [
+        where(fn("DATE", col("approvedTrips.arrdate")), {
+          [Op.between]: [fromDate, toDate],
+        }),
+      ],
     };
 
     if (checkpostId) {
@@ -6829,7 +6854,9 @@ class AuthService {
     const specialTrips = await db.Trip.findAll({
       attributes: ["tId", "convoyTime", "isTourist"],
       where: {
-        date: today,
+        date: {
+          [Op.between]: [fromDate, toDate],
+        },
         status: 2,
         origin: checkpostId ? checkpostId : { [Op.in]: [1, 2] },
         [Op.and]: [

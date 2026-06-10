@@ -62,6 +62,7 @@ import Specialconvoyarrival from "@/pages/Specialconvoyarrival"; //
 import SpecialConvoyApprovedTrips from "@/pages/SpecialConvoyApprovedTrips";
 import SpecialConvoyReports from "@/pages/SpecialConvoyReports"; //
 import SpecialConvoyArrivalReport from "@/pages/SpecialConvoyArrivalReport"; //
+import MonthlyVehicleReport from "@/pages/MonthlyVehicleReport"; //
 
 import GenerateReport1 from "@/pages/GenerateReport"; //
 
@@ -105,6 +106,7 @@ const AppRoutes = () => {
       <Route path="/SearchTrip" element={<SearchTrip />} />
       <Route path="/SpDashboard" element={<SpDashboard />} />
       <Route path="/SpecialConvoyReports" element={<SpecialConvoyReports />} />
+      <Route path="/MonthlyVehicleReport" element={<MonthlyVehicleReport />} />
       <Route
         path="/SpecialConvoyArrivalReport"
         element={<SpecialConvoyArrivalReport />}

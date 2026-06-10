@@ -114,6 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         { label: "Arrival List", path: "/ArrivalList" },
         { label: "Arrival Reports", path: "/ViewCheckoutReport" },
         { label: "Today Vehicle Reports", path: "/TodayVehicleReport" },
+        //{ label: "Monthly Reports", path: "/MonthlyVehicleReport" },
       ],
     },
     { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },

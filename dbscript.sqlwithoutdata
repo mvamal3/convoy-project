@@ -1,0 +1,203 @@
+Table users {
+  id char(36) [pk]
+  email varchar(255) [unique]
+  password varchar(255)
+  role varchar(20)
+  isActive boolean
+  lastLoginAt datetime
+  refreshToken text
+  createdAt datetime
+  updatedAt datetime
+}
+
+Table registration_tbl {
+  reg_id varchar(20) [pk]
+  userId char(36)
+  title varchar(10)
+  firstName varchar(255)
+  lastName varchar(255)
+  orgName varchar(255)
+  deptSubCat varchar(255)
+  deptName varchar(255)
+  docId varchar(100)
+  docIdtype varchar(100)
+  ownContact varchar(20)
+  ownAddress text
+  village_code int
+  subdistrict_code int
+  district_code int
+  isOrg int
+  status int
+}
+
+Ref: registration_tbl.userId > users.id
+
+Table vehicle {
+  vId int [pk, increment]
+  vOwnName varchar(100)
+  vNum varchar(20)
+  vCat varchar(50)
+  otherCat varchar(50)
+  vPurpose varchar(50)
+  otherPurpose varchar(50)
+  regDate date
+  createdAt datetime
+  status int
+  ownershipType varchar(50)
+  deptName varchar(50)
+  vSeating varchar(50)
+  loadCapacity varchar(50)
+}
+
+Table vehicle_status_tbl {
+  id int [pk, increment]
+  vId int [unique]
+  reg_id varchar(20)
+  start_date date
+  end_date date
+  status varchar(10)
+}
+
+Ref: vehicle_status_tbl.vId - vehicle.vId
+
+Ref: vehicle_status_tbl.reg_id > registration_tbl.reg_id
+Table driver_tbl {
+  dId int [pk, increment]
+  licenseNo varchar(50) [unique]
+  title varchar(50)
+  dFirstName varchar(255)
+  dLastName varchar(255)
+  son_of varchar(255)
+  gender varchar(255)
+  phone_no varchar(15)
+  residence_of text
+  dStatus varchar(50)
+}
+
+Table driver_status_tbl {
+  id int [pk, increment]
+  reg_id varchar(20)
+  dId int [unique]
+  phNo varchar(10)
+  Status varchar(20)
+}
+
+Ref: driver_status_tbl.reg_id > registration_tbl.reg_id
+
+Ref: driver_status_tbl.dId - driver_tbl.dId
+Table otp {
+  id int [pk, increment]
+  otp int
+  regid varchar(50)
+  userid char(36)
+  datetime datetime
+  status int
+}
+
+Ref: otp.regid > registration_tbl.reg_id
+
+Ref: otp.userid > users.id
+
+Table trip_tbl {
+  tId varchar(50) [pk]
+  reg_id varchar(50)
+  vId varchar(50)
+  dId varchar(50)
+  origin int
+  destination int
+  date date
+  convoyTime varchar(50)
+  status varchar(50)
+  entrydatetime datetime
+  updatedate datetime
+  verifiystatus int
+  isTourist boolean
+  verifiedtime time
+  remarks longtext
+}
+
+Table approve_trip {
+  id int [pk, increment]
+  tId varchar(50) [unique]
+  arrdate date
+  arrtime time
+  convey_id int
+  checkpost_id int
+  approveby varchar(50)
+  remarks varchar(50)
+  astatus int
+}
+
+Ref: approve_trip.tId - trip_tbl.tId
+
+Ref: trip_tbl.reg_id > registration_tbl.reg_id
+
+Ref: trip_tbl.vId > vehicle.vId
+
+Ref: trip_tbl.dId > driver_tbl.dId
+Table checkout_trip {
+  id int [pk, increment]
+  tId varchar(100) [unique]
+  conveyid int
+  checkoutdate date
+  checkouttime time
+  checkpostid int
+  remarks varchar(100)
+  status int
+}
+
+Ref: checkout_trip.tId - trip_tbl.tId
+
+Table tconvey {
+  id int [pk, increment]
+  convey_time time
+  convey_name varchar(50)
+  loc_id int
+  status int
+}
+
+Ref: approve_trip.convey_id > tconvey.id
+
+Ref: checkout_trip.conveyid > tconvey.id
+
+Ref: trip_tbl.convoyTime > tconvey.id
+Table origin_destination {
+  id int [pk, increment]
+  location varchar(50)
+  loc_id int
+  status int
+}
+
+Ref: trip_tbl.origin > origin_destination.id
+
+Ref: trip_tbl.destination > origin_destination.id
+Table passenger_tbl {
+  pId int [pk, increment]
+  passengerName varchar(50)
+  isForeigner boolean
+  fatherName varchar(50)
+  nationality varchar(50)
+  visaNumber varchar(50)
+  residence varchar(255)
+  phoneNo varchar(50)
+  gender varchar(50)
+  age int
+  docType varchar(50)
+  docId varchar(50)
+}
+
+Table trip_relation_tbl {
+  id int [pk, increment]
+  tId varchar(50)
+  pId int
+  status int
+}
+
+Ref: trip_relation_tbl.tId > trip_tbl.tId
+
+Ref: trip_relation_tbl.pId > passenger_tbl.pId
+
+
+
+
+
