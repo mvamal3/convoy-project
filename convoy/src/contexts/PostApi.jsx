@@ -458,7 +458,7 @@ export const updateCheckoutTripAPI = async (
 };
 export const updateTripAPI = async (accessToken, payload) => {
   try {
-    console.log("Updating trip with payloadaaa:", payload);
+    console.log("Updating trip with payload:", payload);
 
     const res = await fetch(`${BASE_URL}/update-trip`, {
       method: "POST",

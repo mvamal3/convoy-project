@@ -1262,6 +1262,8 @@ class AuthService {
       nationality: p.isForeigner ? p.Nationality : null,
       visaNumber: p.isForeigner ? p.VisaNo : null,
       residence: p.Residence || null,
+      lastStayInAndaman: p.LastStayInAndaman || null,
+      isIslander: p.isForeigner === 1 ? 0 : p.isIslander,
     }));
 
     createdPassengers = await Passenger.bulkCreate(passengersToCreate);
@@ -1329,6 +1331,8 @@ class AuthService {
             nationality: p.isForeigner ? p.Nationality : null,
             visaNumber: p.isForeigner ? p.VisaNo : null,
             residence: p.Residence || null,
+            lastStayInAndaman: p.LastStayInAndaman || null,
+            isIslander: p.isForeigner === 1 ? 0 : p.isIslander,
           })),
         );
       }
@@ -5125,6 +5129,8 @@ class AuthService {
               "nationality",
               "visaNumber",
               "residence",
+              "lastStayInAndaman",
+              "isIslander",
             ],
           },
         ],
@@ -5177,6 +5183,8 @@ class AuthService {
           nationality: p.nationality || "",
           visaNumber: p.visaNumber || "",
           residence: p.residence || "",
+          lastStayInAndaman: p.lastStayInAndaman || "",
+          isIslander: p.isIslander || 0,
         })),
       };
 
@@ -5259,6 +5267,10 @@ class AuthService {
 
   static async updateTripPolice(tripDataArray) {
     try {
+      console.log(
+        "Updating trip and passenger details with payload:",
+        tripDataArray,
+      );
       // 🔁 helper to normalize frontend payload (PascalCase / camelCase safe)
       const normalizePassengerData = (data = {}) => ({
         passengerName:
@@ -5272,7 +5284,7 @@ class AuthService {
 
         gender: data.gender || data.Gender || null,
 
-        isForeigner: data.isForeigner === 1 ? 1 : 0,
+        isForeigner: data.isForeigner === 1 || data.isForeigner === "1" ? 1 : 0,
 
         docType: data.docType || data.documentType || data.DocumentType || null,
 
@@ -5283,6 +5295,15 @@ class AuthService {
         visaNumber: data.visaNumber || data.VisaNo || null,
 
         residence: data.residence || data.Residence || null,
+        lastStayInAndaman:
+          data.lastStayInAndaman || data.LastStayInAndaman || null,
+        isIslander:
+          data.isIslander === 1 ||
+          data.isIslander === "1" ||
+          data.IsIslander === 1 ||
+          data.IsIslander === "1"
+            ? 1
+            : 0,
       });
 
       for (const item of tripDataArray) {
@@ -5335,6 +5356,8 @@ class AuthService {
             nationality: pdata.isForeigner ? pdata.nationality : null,
             visaNumber: pdata.isForeigner ? pdata.visaNumber : null,
             residence: pdata.residence,
+            lastStayInAndaman: pdata.lastStayInAndaman,
+            isIslander: pdata.isForeigner === 1 ? 0 : pdata.isIslander,
           });
 
           await tripRelation.create({
@@ -5362,6 +5385,8 @@ class AuthService {
             nationality: pdata.isForeigner ? pdata.nationality : null,
             visaNumber: pdata.isForeigner ? pdata.visaNumber : null,
             residence: pdata.residence,
+            lastStayInAndaman: pdata.lastStayInAndaman,
+            isIslander: pdata.isForeigner === 1 ? 0 : pdata.isIslander,
           });
 
           await tripRelation.create({

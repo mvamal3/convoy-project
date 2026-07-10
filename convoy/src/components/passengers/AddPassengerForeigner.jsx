@@ -80,6 +80,10 @@ export default function AddPassengerForeigner({
       alert("Nationality is required");
       return false;
     }
+    if (!passenger.lastStayInAndaman?.trim()) {
+      alert("Last Stay in Andaman is required");
+      return false;
+    }
 
     return true;
   };
@@ -198,13 +202,23 @@ export default function AddPassengerForeigner({
       </div>
 
       {/* Row 3 */}
-      <div className="md:col-span-2">
+      <div>
         <Label>
           Residence <span className="text-red-500">*</span>
         </Label>
         <Input
           name="residence"
           value={passenger.residence || ""}
+          onChange={handleChange}
+        />
+      </div>
+      <div>
+        <Label>
+          Last Stay in Andaman <span className="text-red-500">*</span>
+        </Label>
+        <Input
+          name="lastStayInAndaman"
+          value={passenger.lastStayInAndaman || ""}
           onChange={handleChange}
         />
       </div>

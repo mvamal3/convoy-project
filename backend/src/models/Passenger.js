@@ -63,6 +63,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(255),
         allowNull: true,
       },
+      lastStayInAndaman: {
+        type: DataTypes.TEXT("long"),
+        allowNull: true,
+      },
+      isIslander: {
+        type: DataTypes.TINYINT,
+        allowNull: false,
+        defaultValue: 0,
+      },
     },
     {
       tableName: "passenger_tbl",

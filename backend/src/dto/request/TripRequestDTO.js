@@ -48,7 +48,11 @@ class TripRequestDTO {
 
             Nationality: p.Nationality ?? p.nationality ?? null,
             VisaNo: p.VisaNo ?? p.visaNo ?? null,
+
             Residence: p.Residence ?? p.residence ?? null,
+            LastStayInAndaman:
+              p.LastStayInAndaman ?? p.lastStayInAndaman ?? null,
+            isIslander: p.isIslander === 1 || p.isIslander === "1" ? 1 : 0,
           };
         })
       : [];
@@ -121,10 +125,19 @@ class TripRequestDTO {
       } else if (!genderPattern.test(p.Gender)) {
         errors.push(`${prefix}: Invalid gender`);
       }
+      if (p.isForeigner === 0) {
+        if (![0, 1].includes(p.isIslander)) {
+          errors.push(`${prefix}: isIslander must be 0 or 1`);
+        }
+      }
 
       // Residence
       if (!p.Residence?.trim()) {
         errors.push(`${prefix}: Residence is required`);
+      }
+      // Last Stay in Andaman
+      if (p.isForeigner === 1 && !p.LastStayInAndaman?.trim()) {
+        errors.push(`${prefix}: Last Stay in Andaman is required`);
       }
 
       /* ---------- Foreigner vs Indian ---------- */

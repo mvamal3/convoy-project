@@ -105,6 +105,16 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
+        <Label>Last Stay in Andaman (Tourists Only)</Label>
+        <Input
+          name="lastStayInAndaman"
+          value={passenger.lastStayInAndaman || ""}
+          onChange={handleChange}
+          placeholder="Enter last stay in Andaman (optional)"
+        />
+      </div>
+
+      <div>
         <Label>Is Islander *</Label>
         <select
           value={isIslander}

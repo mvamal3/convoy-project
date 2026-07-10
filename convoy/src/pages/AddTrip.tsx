@@ -110,6 +110,7 @@ export default function AddTrip() {
     passportNo: "",
     nationality: "",
     visaNo: "",
+    lastStayInAndaman: "", // New field for Foreigner
   });
 
   const getSeatRequiredCount = (passengers) => {
@@ -138,6 +139,7 @@ export default function AddTrip() {
       VisaNo: isPassengerForeigner ? p.visaNo || p.VisaNo : null,
 
       Residence: p.residence || p.Residence,
+      LastStayInAndaman: p.lastStayInAndaman || p.LastStayInAndaman || null,
     };
   };
 
@@ -462,7 +464,8 @@ export default function AddTrip() {
         !passenger.passportNo ||
         !passenger.nationality ||
         !passenger.visaNo ||
-        !passenger.residence
+        !passenger.residence ||
+        !passenger.lastStayInAndaman?.trim()
       ) {
         MySwal.fire({
           icon: "error",
@@ -611,6 +614,7 @@ export default function AddTrip() {
             passportNo: "",
             nationality: "",
             visaNo: "",
+            lastStayInAndaman: "",
           }
         : {
             name: "",
@@ -637,6 +641,7 @@ export default function AddTrip() {
       passportNo: p.passportNo || "",
       nationality: p.nationality || "",
       visaNo: p.visaNo || "",
+      lastStayInAndaman: p.lastStayInAndaman || "",
     });
 
     // 🔥 CRITICAL FIX
@@ -722,7 +727,7 @@ export default function AddTrip() {
             best of my knowledge.
           </li>
           <li>
-            I have apprised the passengers of the prosecution to be taken under
+            I have apprised the passengers of the precaution to be taken under
             PAT Regulation.
           </li>
           <li>
@@ -1370,6 +1375,7 @@ Check console for details.
     passportNo: "",
     nationality: "",
     visaNo: "",
+    lastStayInAndaman: "",
   });
 
   return (
@@ -1802,6 +1808,7 @@ Check console for details.
                           passportNo: "",
                           nationality: "",
                           visaNo: "",
+                          lastStayInAndaman: "",
                         });
                       } else {
                         // ✅ Indian

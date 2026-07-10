@@ -64,6 +64,7 @@ export default function CitizenEditTrip() {
     gender: "",
     phone: "",
     residence: "",
+    lastStayInAndaman: "",
     documentType: "",
     documentId: "",
     passportNo: "",
@@ -158,12 +159,14 @@ export default function CitizenEditTrip() {
               gender: p.gender,
               phone: p.phoneNo,
               residence: p.residence || "",
+              lastStayInAndaman: p.lastStayInAndaman || "",
               documentType: p.docType || "",
               documentId: p.docId || "",
               passportNo: p.docType === "PASSPORT" ? p.docId : "",
               nationality: p.nationality || "",
               visaNo: p.visaNumber || "",
               isForeigner: p.isForeigner || 0,
+              isIslander: p.isIslander || 0,
               isNew: false,
               isModified: false,
             }));
@@ -371,6 +374,7 @@ export default function CitizenEditTrip() {
     let passengerToSave = {
       ...passenger,
       isForeigner: isForeigner === "yes" ? 1 : 0,
+      isIslander: isForeigner === "yes" ? 0 : isIslander === "yes" ? 1 : 0,
       isNew: editingPassengerIndex === null,
       isModified: editingPassengerIndex !== null,
     };
@@ -388,7 +392,8 @@ export default function CitizenEditTrip() {
         !passenger.phone ||
         !passenger.documentType ||
         !passenger.documentId ||
-        !passenger.residence
+        !passenger.residence ||
+        !passenger.lastStayInAndaman?.trim()
       ) {
         MySwal.fire({
           icon: "error",
@@ -409,7 +414,8 @@ export default function CitizenEditTrip() {
         !passenger.passportNo ||
         !passenger.nationality ||
         !passenger.visaNo ||
-        !passenger.residence
+        !passenger.residence ||
+        !passenger.lastStayInAndaman?.trim()
       ) {
         MySwal.fire({
           icon: "error",
@@ -511,6 +517,7 @@ export default function CitizenEditTrip() {
             passportNo: "",
             nationality: "",
             visaNo: "",
+            lastStayInAndaman: "",
           }
         : {
             name: "",
@@ -521,6 +528,7 @@ export default function CitizenEditTrip() {
             residence: "",
             documentType: "",
             documentId: "",
+            lastStayInAndaman: "",
           },
     );
 
@@ -533,9 +541,11 @@ export default function CitizenEditTrip() {
     setPassenger({
       ...p,
       documentType: p.documentType || "PASSPORT",
+      lastStayInAndaman: p.lastStayInAndaman || "",
     });
 
     setIsForeigner(p.isForeigner === 1 ? "yes" : "no");
+    setIsIslander(p.isIslander === 1 ? "yes" : "no");
     setEditingPassengerIndex(index);
   };
 
@@ -566,6 +576,7 @@ export default function CitizenEditTrip() {
         passportNo: "",
         nationality: "",
         visaNo: "",
+        lastStayInAndaman: "",
       });
       setIsForeigner("");
       setIsIslander("");
@@ -790,7 +801,9 @@ export default function CitizenEditTrip() {
               Nationality: p.nationality || null,
               VisaNo: p.visaNo || null,
               Residence: p.residence,
+              LastStayInAndaman: p.lastStayInAndaman || null,
               PassengerPANId: "ABCDE1234F",
+              isIslander: p.isIslander,
             },
           },
         });
@@ -813,6 +826,8 @@ export default function CitizenEditTrip() {
               Nationality: p.nationality || null,
               VisaNo: p.visaNo || null,
               Residence: p.residence,
+              LastStayInAndaman: p.lastStayInAndaman || null,
+              isIslander: p.isIslander,
             },
           },
         });
@@ -1301,6 +1316,7 @@ export default function CitizenEditTrip() {
                         passportNo: "",
                         nationality: "",
                         visaNo: "",
+                        lastStayInAndaman: "",
                       });
                     } else {
                       setPassenger({
@@ -1312,6 +1328,7 @@ export default function CitizenEditTrip() {
                         residence: "",
                         documentType: "",
                         documentId: "",
+                        lastStayInAndaman: "",
                       });
                     }
                   }}
@@ -1324,7 +1341,7 @@ export default function CitizenEditTrip() {
               </div>
 
               {/* Excel Upload */}
-              {isForeigner === "no" && (
+              {/* {isForeigner === "no" && (
                 <div className="mb-6">
                   <Label htmlFor="excelUpload" className="block mb-2">
                     Upload Passengers via Excel (Indian Only)
@@ -1338,10 +1355,10 @@ export default function CitizenEditTrip() {
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Upload Excel file with columns: Name, Age, Gender, Phone,
-                    DocumentType, DocumentId, Residence
+                    DocumentType, DocumentId, Residence, LastStayInAndaman
                   </p>
                 </div>
-              )}
+              )} */}
 
               {/* Passenger Entry (Indian / Foreigner) */}
               {isForeigner === "no" && (
