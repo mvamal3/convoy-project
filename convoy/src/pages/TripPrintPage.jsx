@@ -270,8 +270,8 @@ const TripPrintPreview = () => {
             the best of my knowledge.
           </p>
           <p style={styles.declarationItem}>
-            • I have apprised the passengers of the prosecution to be taken
-            under PAT Regulation.
+            • I have apprised the passengers of the precaution to be taken under
+            PAT Regulation.
           </p>
           <p style={styles.declarationItem}>
             • In the event of any information found to be incorrect, fraudulent

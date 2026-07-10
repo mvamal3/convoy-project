@@ -1508,6 +1508,7 @@ class AuthService {
         nationality: p.isForeigner ? p.Nationality : null,
         visaNumber: p.isForeigner ? p.VisaNo : null,
         residence: p.Residence || null,
+        lastStayInAndaman: p.LastStayInAndaman || null,
       }));
 
       const createdPassengers =

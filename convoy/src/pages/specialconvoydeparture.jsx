@@ -73,6 +73,7 @@ export default function specialConvoyDeparture() {
     gender: "",
     phone: "",
     residence: "",
+    lastStayInAndaman: "",
     // Indian
     documentType: "",
     documentId: "",
@@ -108,6 +109,7 @@ export default function specialConvoyDeparture() {
       VisaNo: isPassengerForeigner ? p.visaNo || p.VisaNo : null,
 
       Residence: p.residence || p.Residence,
+      LastStayInAndaman: p.lastStayInAndaman || p.LastStayInAndaman || null,
     };
   };
 
@@ -309,7 +311,8 @@ export default function specialConvoyDeparture() {
         !passenger.passportNo ||
         !passenger.nationality ||
         !passenger.visaNo ||
-        !passenger.residence
+        !passenger.residence ||
+        !passenger.lastStayInAndaman
       ) {
         MySwal.fire({
           icon: "error",
@@ -406,6 +409,7 @@ export default function specialConvoyDeparture() {
             gender: "",
             phone: "",
             residence: "",
+            lastStayInAndaman: "",
             documentType: "PASSPORT",
             documentId: "",
             passportNo: "",
@@ -421,6 +425,7 @@ export default function specialConvoyDeparture() {
             residence: "",
             documentType: "",
             documentId: "",
+            lastStayInAndaman: "",
           },
     );
 
@@ -434,6 +439,7 @@ export default function specialConvoyDeparture() {
       passportNo: p.passportNo || "",
       nationality: p.nationality || "",
       visaNo: p.visaNo || "",
+      lastStayInAndaman: p.lastStayInAndaman || "",
     });
 
     // 🔥 CRITICAL FIX
@@ -512,7 +518,7 @@ export default function specialConvoyDeparture() {
             best of my knowledge.
           </li>
           <li>
-            I have apprised the passengers of the prosecution to be taken under
+            I have apprised the passengers of the precaution to be taken under
             PAT Regulation.
           </li>
           <li>

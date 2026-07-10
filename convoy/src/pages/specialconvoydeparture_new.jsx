@@ -457,7 +457,7 @@ export default function specialConvoyDeparture() {
             best of my knowledge.
           </li>
           <li>
-            I have apprised the passengers of the prosecution to be taken under
+            I have apprised the passengers of the precaution to be taken under
             PAT Regulation.
           </li>
           <li>

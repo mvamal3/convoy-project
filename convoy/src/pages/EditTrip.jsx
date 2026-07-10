@@ -68,6 +68,7 @@ export default function EditTrip() {
     passportNo: "",
     nationality: "",
     visaNo: "",
+    lastStayInAndaman: "",
   });
 
   // Fetch server time
@@ -125,6 +126,7 @@ export default function EditTrip() {
       try {
         const res = await getEditTripDetails(accessToken, tripId);
         console.log("Edit Trip API Response:", res);
+        console.log(res.data.selecteddata.data.passengers);
 
         if (res?.data) {
           // Set vehicle list
@@ -153,6 +155,8 @@ export default function EditTrip() {
               nationality: p.nationality || "",
               passportNo: p.docType === "PASSPORT" ? p.docId : "",
               visaNo: p.visaNumber || "",
+              lastStayInAndaman: p.lastStayInAndaman || "",
+              isIslander: p.isIslander || 0,
 
               isForeigner: p.isForeigner || 0,
               isNew: false,
@@ -361,6 +365,8 @@ export default function EditTrip() {
     let passengerToSave = {
       ...passenger,
       isForeigner: isForeigner === "yes" ? 1 : 0,
+      isIslander: isForeigner === "yes" ? 0 : isIslander === "yes" ? 1 : 0,
+      lastStayInAndaman: passenger.lastStayInAndaman || null,
       isNew: editingPassengerIndex === null,
       isModified: editingPassengerIndex !== null,
     };
@@ -399,7 +405,8 @@ export default function EditTrip() {
         !passenger.passportNo ||
         !passenger.nationality ||
         !passenger.visaNo ||
-        !passenger.residence
+        !passenger.residence ||
+        !passenger.lastStayInAndaman
       ) {
         MySwal.fire({
           icon: "error",
@@ -501,6 +508,7 @@ export default function EditTrip() {
             passportNo: "",
             nationality: "",
             visaNo: "",
+            lastStayInAndaman: "",
           }
         : {
             name: "",
@@ -520,12 +528,21 @@ export default function EditTrip() {
   // Edit passenger
   const handleEditPassenger = (index) => {
     const p = formData.Passengers[index];
+
     setPassenger({
       ...p,
       documentType: p.documentType || "PASSPORT",
+      lastStayInAndaman: p.lastStayInAndaman || "",
     });
 
     setIsForeigner(p.isForeigner === 1 ? "yes" : "no");
+
+    if (p.isForeigner === 0) {
+      setIsIslander(p.isIslander === 1 ? "yes" : "no");
+    } else {
+      setIsIslander("");
+    }
+
     setEditingPassengerIndex(index);
   };
 
@@ -739,6 +756,10 @@ export default function EditTrip() {
           //isTouristTrip: isTouristTrip === "yes" ? 1 : 0,
           isTourist: isTouristTrip === "yes" ? 1 : 0,
           remarks: formData.remarks || null,
+          lastStayInAndaman:
+            isForeigner === "yes"
+              ? formData.Passengers[0]?.lastStayInAndaman
+              : null,
         },
       },
     });
@@ -764,6 +785,8 @@ export default function EditTrip() {
               VisaNo: p.visaNo || null,
               Residence: p.residence,
               PassengerPANId: "ABCDE1234F",
+              LastStayInAndaman: p.lastStayInAndaman || null,
+              isIslander: p.isIslander,
             },
           },
         });
@@ -786,6 +809,8 @@ export default function EditTrip() {
               Nationality: p.nationality || null,
               VisaNo: p.visaNo || null,
               Residence: p.residence,
+              LastStayInAndaman: p.lastStayInAndaman || null,
+              isIslander: p.isIslander,
             },
           },
         });
@@ -1238,6 +1263,7 @@ export default function EditTrip() {
                         passportNo: "",
                         nationality: "",
                         visaNo: "",
+                        lastStayInAndaman: "",
                       });
                     } else {
                       setPassenger({
@@ -1249,6 +1275,7 @@ export default function EditTrip() {
                         residence: "",
                         documentType: "",
                         documentId: "",
+                        lastStayInAndaman: "",
                       });
                     }
                   }}
@@ -1261,7 +1288,7 @@ export default function EditTrip() {
               </div>
 
               {/* Excel Upload */}
-              {isForeigner === "no" && (
+              {/* {isForeigner === "no" && (
                 <div className="mb-6">
                   <Label htmlFor="excelUpload" className="block mb-2">
                     Upload Passengers via Excel (Indian Only)
@@ -1278,7 +1305,7 @@ export default function EditTrip() {
                     DocumentType, DocumentId, Residence
                   </p>
                 </div>
-              )}
+              )} */}
 
               {/* Passenger Entry (Indian / Foreigner) */}
               {isForeigner === "no" && (

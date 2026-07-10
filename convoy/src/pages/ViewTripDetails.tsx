@@ -132,7 +132,7 @@ const TripViewDetails = () => {
                   to the best of my knowledge.
                 </li>
                 <li>
-                  I have apprised the passengers of the prosecution to be taken
+                  I have apprised the passengers of the precaution to be taken
                   under PAT Regulation.
                 </li>
                 <li>
