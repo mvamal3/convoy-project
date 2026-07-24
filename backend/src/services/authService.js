@@ -1313,10 +1313,7 @@ class AuthService {
         passengersForReturn = createdPassengers;
       } else {
         // 🔁 DIFFERENT passengers
-        const returnPassengersSource =
-          tripDTO.returnPassengers?.length > 0
-            ? tripDTO.returnPassengers
-            : tripDTO.Passengers;
+        const returnPassengersSource = tripDTO.returnPassengers;
 
         passengersForReturn = await Passenger.bulkCreate(
           returnPassengersSource.map((p) => ({

@@ -1038,11 +1038,11 @@ Check console for details.
                   id="date"
                   name="date"
                   className="border rounded px-2 sm:px-3 py-1.5 sm:py-2 w-full text-xs sm:text-sm max-w-full"
-                  min={minDate}
-                  max={maxDate}
+                  // min={minDate}
+                  // max={maxDate}
                   value={formData.date}
                   onChange={handleChange}
-                  disabled={!serverDate} // prevent use before API loads
+                  // disabled={!serverDate} // prevent use before API loads
                 />
               </div>
 

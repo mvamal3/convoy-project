@@ -523,119 +523,99 @@ const CheckoutTrip = () => {
             )}
           </CardHeader>
 
-          <CardContent>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {filteredTrips.length} trip(s)
-              </p>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="Search by Vehicle Number"
-                className="w-full sm:w-64 border rounded px-3 py-1 text-sm focus:outline-none focus:ring focus:border-blue-400"
-              />
-            </div>
-
-            {/* Mobile View */}
-            <div className="block sm:hidden space-y-4">
-              {currentRows.length > 0 ? (
-                currentRows.map((row, i) => (
-                  <div
-                    key={row.trip_id}
-                    className="border rounded-lg p-4 shadow-sm bg-gray-50"
-                  >
-                    <div className="text-sm font-medium text-gray-800">
-                      #{(currentPage - 1) * rowsPerPage + i + 1} -{" "}
-                      {row.vehicle_number}
-                    </div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      Driver: {row.driver_name}
-                      <br />
-                      Origin: {row.origin} → {row.destination}
-                      <br />
-                      Convoy: {row.convoy_time}, Arrived: {row.arr_time}
-                      <br />
-                      Passengers: {row.total_passengers}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-center text-gray-500 text-sm">
-                  {trips.length > 0
-                    ? `No data found for "${searchTerm}".`
-                    : "No trips found."}
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div>
+                <p className="text-sm text-slate-600">
+                  Showing{" "}
+                  <span className="font-semibold">{filteredTrips.length}</span>{" "}
+                  trip(s)
                 </p>
-              )}
+                <p className="text-xs text-slate-500 mt-1">
+                  Use the search field to quickly find a vehicle, driver, or
+                  route.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search vehicle, driver or route"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:w-72"
+                />
+              </div>
             </div>
 
-            {/* Desktop View */}
-            <div className="hidden sm:block">
-              <div className="w-full overflow-x-auto">
-                <table className="min-w-full text-sm text-left text-gray-700 border">
-                  <thead className="bg-gray-100 text-xs uppercase">
-                    <tr>
-                      <th className="px-4 py-2 border">#</th>
-                      <th className="px-4 py-2 border">Trip Id</th>
-                      <th className="px-4 py-2 border">Vehicle</th>
-                      <th className="px-4 py-2 border">Driver</th>
-                      <th className="px-4 py-2 border">Route</th>
-                      <th className="px-4 py-2 border">Convoy Time</th>
-                      <th className="px-4 py-2 border">Approve time</th>
-                      <th className="px-4 py-2 border">Approve By</th>
-                      <th className="px-4 py-2 border">Passengers</th>
-                      <th className="px-4 py-2 border">View Details</th>{" "}
-                      {/* ✅ NEW */}
-                      <th className="px-4 py-2 border">Action</th>{" "}
-                      {/* ✅ NEW */}
-                    </tr>
-                  </thead>
-                  <tbody>
+            <div className="grid gap-4">
+              {currentRows.length > 0 ? (
+                <div className="space-y-4 sm:space-y-0">
+                  <div className="block sm:hidden space-y-4">
                     {currentRows.map((row, i) => (
-                      <tr
+                      <div
                         key={row.trip_id}
-                        className="hover:bg-gray-50 border-b"
+                        className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
                       >
-                        <td className="px-4 py-2 border">
-                          {(currentPage - 1) * rowsPerPage + i + 1}
-                        </td>
-                        <td className="px-4 py-2 border">{row.trip_id}</td>
-                        <td className="px-4 py-2 border">
-                          {row.vehicle_number}
-                        </td>
-                        <td className="px-4 py-2 border whitespace-nowrap">
-                          {row.driver_name}
-                        </td>
-                        <td className="px-4 py-2 border whitespace-nowrap">
-                          {row.origin} → {row.destination}
-                        </td>
-                        <td className="px-4 py-2 border">{row.convoy_time}</td>
-                        <td className="px-4 py-2 border">{row.arr_time}</td>
-                        <td className="px-4 py-2 border">{row.approveby}</td>
-                        <td className="px-4 py-2 border">
-                          {row.total_passengers}
-                        </td>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-base font-semibold text-slate-900">
+                              {row.vehicle_number}
+                            </div>
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-500">
+                              #{(currentPage - 1) * rowsPerPage + i + 1}
+                            </div>
+                          </div>
+                          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                            {row.total_passengers} pax
+                          </span>
+                        </div>
 
-                        {/* ✅ View button now inside <td> */}
-                        <td className="px-3 py-2 border">
+                        <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                          <div className="flex justify-between gap-2">
+                            <span className="font-semibold text-slate-800">
+                              Driver
+                            </span>
+                            <span>{row.driver_name}</span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="font-semibold text-slate-800">
+                              Route
+                            </span>
+                            <span className="text-right">
+                              {row.origin} → {row.destination}
+                            </span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="font-semibold text-slate-800">
+                              Convoy
+                            </span>
+                            <span className="text-right">
+                              {row.convoy_time}
+                            </span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="font-semibold text-slate-800">
+                              Arrived
+                            </span>
+                            <span>{row.arr_time}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() =>
                               navigate(`/ViewCheckoutTrip/${row.trip_id}`)
                             }
+                            className="w-full"
                           >
-                            View
+                            View Details
                           </Button>
-                        </td>
-
-                        {/* ✅ Action buttons also inside <td> */}
-                        <td className="px-3 py-2 border">
-                          <div className="flex gap-2 whitespace-nowrap">
-                            {/* Checked OK */}
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             <Button
                               size="sm"
                               variant="success"
@@ -643,10 +623,10 @@ const CheckoutTrip = () => {
                               onClick={() =>
                                 handleAction(1, row.trip_id, "Trip checked OK")
                               }
+                              className="w-full"
                             >
                               Checked OK
                             </Button>
-
                             <Button
                               size="sm"
                               variant="warning"
@@ -663,10 +643,10 @@ const CheckoutTrip = () => {
                                 }
                                 handleAction(2, row.trip_id, remarks);
                               }}
+                              className="w-full"
                             >
                               Check Problem
                             </Button>
-
                             <Button
                               size="sm"
                               variant="destructive"
@@ -674,24 +654,139 @@ const CheckoutTrip = () => {
                               onClick={() =>
                                 handleAction(0, row.trip_id, "Trip not arrived")
                               }
+                              className="w-full"
                             >
                               Non-arrival
                             </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+
+                  <div className="hidden sm:block">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                      <table className="min-w-full divide-y divide-slate-200 text-sm text-slate-700">
+                        <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500">
+                          <tr>
+                            <th className="px-5 py-3 text-left">#</th>
+                            <th className="px-5 py-3 text-left">Trip ID</th>
+                            <th className="px-5 py-3 text-left">Vehicle</th>
+                            <th className="px-5 py-3 text-left">Driver</th>
+                            <th className="px-5 py-3 text-left">Route</th>
+                            <th className="px-5 py-3 text-left">Convoy</th>
+                            <th className="px-5 py-3 text-left">Arrived</th>
+                            <th className="px-5 py-3 text-left">Approved By</th>
+                            <th className="px-5 py-3 text-left">Passengers</th>
+                            <th className="px-5 py-3 text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {currentRows.map((row, i) => (
+                            <tr key={row.trip_id} className="hover:bg-slate-50">
+                              <td className="px-5 py-4 font-medium text-slate-900">
+                                {(currentPage - 1) * rowsPerPage + i + 1}
+                              </td>
+                              <td className="px-5 py-4 break-words max-w-[150px]">
+                                {row.trip_id}
+                              </td>
+                              <td className="px-5 py-4">
+                                {row.vehicle_number}
+                              </td>
+                              <td className="px-5 py-4">{row.driver_name}</td>
+                              <td className="px-5 py-4 max-w-[220px] break-words">
+                                {row.origin} → {row.destination}
+                              </td>
+                              <td className="px-5 py-4">{row.convoy_time}</td>
+                              <td className="px-5 py-4">{row.arr_time}</td>
+                              <td className="px-5 py-4">{row.approveby}</td>
+                              <td className="px-5 py-4">
+                                {row.total_passengers}
+                              </td>
+                              <td className="px-5 py-4">
+                                <div className="flex flex-wrap gap-2 justify-end">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      navigate(
+                                        `/ViewCheckoutTrip/${row.trip_id}`,
+                                      )
+                                    }
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="success"
+                                    disabled={!actionAllowed}
+                                    onClick={() =>
+                                      handleAction(
+                                        1,
+                                        row.trip_id,
+                                        "Trip checked OK",
+                                      )
+                                    }
+                                  >
+                                    OK
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="warning"
+                                    disabled={!actionAllowed}
+                                    onClick={() => {
+                                      let remarks = "";
+                                      while (!remarks.trim()) {
+                                        remarks = window.prompt(
+                                          "🚨 Please enter remarks for the problem:",
+                                        );
+                                        if (remarks === null) return;
+                                        if (!remarks.trim())
+                                          alert("Remarks are required!");
+                                      }
+                                      handleAction(2, row.trip_id, remarks);
+                                    }}
+                                  >
+                                    Problem
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={!actionAllowed}
+                                    onClick={() =>
+                                      handleAction(
+                                        0,
+                                        row.trip_id,
+                                        "Trip not arrived",
+                                      )
+                                    }
+                                  >
+                                    No-Show
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
+                  {trips.length > 0
+                    ? `No data found for "${searchTerm}".`
+                    : "No trips found."}
+                </div>
+              )}
             </div>
 
             {filteredTrips.length > rowsPerPage && (
-              <div className="flex justify-between mt-4 text-sm items-center">
-                <span>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
+                <span className="text-slate-600">
                   Page {currentPage} of {totalPages}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"

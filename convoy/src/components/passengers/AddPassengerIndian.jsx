@@ -36,12 +36,15 @@ export default function AddPassengerIndian({
 
     setPassenger({ ...passenger, [name]: value });
   };
+  const Required = () => <span className="text-red-500">*</span>;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 w-full">
       {/* Row 1 */}
       <div>
-        <Label>Passenger Name *</Label>
+        <Label>
+          Passenger Name <Required />
+        </Label>
         <Input
           name="name"
           value={passenger.name || ""}
@@ -50,7 +53,9 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
-        <Label>Father Name *</Label>
+        <Label>
+          Father Name <Required />
+        </Label>
         <Input
           name="fatherName"
           value={passenger.fatherName || ""}
@@ -59,7 +64,9 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
-        <Label>Age *</Label>
+        <Label>
+          Age <Required />
+        </Label>
         <Input
           name="age"
           inputMode="numeric"
@@ -69,7 +76,9 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
-        <Label>Gender *</Label>
+        <Label>
+          Gender <Required />
+        </Label>
         <select
           name="gender"
           value={passenger.gender || ""}
@@ -84,7 +93,9 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
-        <Label>Phone *</Label>
+        <Label>
+          Phone <Required />
+        </Label>
         <Input
           name="phone"
           inputMode="numeric"
@@ -96,7 +107,9 @@ export default function AddPassengerIndian({
 
       {/* Row 2 */}
       <div>
-        <Label>Residence *</Label>
+        <Label>
+          Residence <Required />
+        </Label>
         <Input
           name="residence"
           value={passenger.residence || ""}
@@ -115,7 +128,9 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
-        <Label>Is Islander *</Label>
+        <Label>
+          Is Islander <Required />
+        </Label>
         <select
           value={isIslander}
           onChange={(e) => setIsIslander(e.target.value)}
@@ -128,7 +143,9 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
-        <Label>Id Type *</Label>
+        <Label>
+          Id Type <Required />
+        </Label>
         <select
           name="documentType"
           value={passenger.documentType || ""}
@@ -143,7 +160,9 @@ export default function AddPassengerIndian({
       </div>
 
       <div>
-        <Label>Last 4 Characters of Id *</Label>
+        <Label>
+          Last 4 Characters of Id <Required />
+        </Label>
         <Input
           name="documentId"
           maxLength={4}

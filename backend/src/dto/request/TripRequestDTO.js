@@ -185,11 +185,6 @@ class TripRequestDTO {
       }
 
       // 🔥 FIXED LOCATION
-      if (this.returnType !== "same") {
-        if (!this.returnPassengers.length) {
-          errors.push("Return passengers required for modified return");
-        }
-      }
     }
 
     return {

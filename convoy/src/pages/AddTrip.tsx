@@ -1151,24 +1151,24 @@ export default function AddTrip() {
   }, [location.state]);
 
   const handleFileUpload = (e) => {
-    if (isForeigner === "yes") {
-      MySwal.fire({
-        icon: "warning",
-        title: "Excel Upload Disabled",
-        text: "Passenger upload via Excel is allowed only for Indian passengers.",
-      });
-      e.target.value = null;
-      return;
-    }
-    if (!isForeigner) {
-      MySwal.fire({
-        icon: "warning",
-        title: "Select Passenger Type",
-        text: "Please select Indian passengers before uploading.",
-      });
-      e.target.value = null;
-      return;
-    }
+    // if (isForeigner === "yes") {
+    //   MySwal.fire({
+    //     icon: "warning",
+    //     title: "Excel Upload Disabled",
+    //     text: "Passenger upload via Excel is allowed only for Indian passengers.",
+    //   });
+    //   e.target.value = null;
+    //   return;
+    // }
+    // if (!isForeigner) {
+    //   MySwal.fire({
+    //     icon: "warning",
+    //     title: "Select Passenger Type",
+    //     text: "Please select Indian passengers before uploading.",
+    //   });
+    //   e.target.value = null;
+    //   return;
+    // }
 
     if (!formData.vId) {
       e.target.value = null;
@@ -1229,62 +1229,114 @@ export default function AddTrip() {
         const invalidPassengers = [];
 
         for (let p of jsonData) {
-          const name = (p["Name"] || "").trim();
+          const isForeigner =
+            (p["IsForeigner"] || "").toString().trim().toLowerCase() === "yes";
+
+          const name = (p["PassengerName"] || "").trim();
           const fatherName = (p["FatherName"] || "").trim();
           const age = Number(p["Age"]);
-          const genderRaw = (p["Gender"] || "").trim();
-          const gender =
-            genderRaw.charAt(0).toUpperCase() +
-            genderRaw.slice(1).toLowerCase();
+          const gender = (p["Gender"] || "").trim();
+
           const phone = (p["Phone"] || "").toString().trim();
           const residence = (p["Residence"] || "").trim();
 
-          const documentType = (p["DocumentType"] || "").trim().toUpperCase();
-          const documentIdRaw = (p["DocumentId"] || "").toString().trim();
-          const isIslanderVal = (p["IsIslander"] || "")
-            .toString()
-            .trim()
-            .toLowerCase();
-
           const errors = [];
 
-          if (!name) errors.push("Name required");
-          if (!age || isNaN(age) || age < 0 || age > 120)
+          if (!name) errors.push("Passenger Name required");
+          if (!fatherName) errors.push("Father Name required");
+
+          if (isNaN(age) || age < 0 || age > 120)
             errors.push("Valid Age required");
 
-          if (!allowedGenders.includes(gender)) errors.push("Invalid Gender");
+          if (!["Male", "Female", "Other"].includes(gender))
+            errors.push("Invalid Gender");
 
           if (!/^\d{10}$/.test(phone)) errors.push("Phone must be 10 digits");
 
           if (!residence) errors.push("Residence required");
 
-          if (!allowedDocs.includes(documentType))
-            errors.push("Invalid DocumentType");
+          if (isForeigner) {
+            // Foreigner fields
+            const passportNo = (p["PassportNo"] || "").toString().trim();
+            const nationality = (p["Nationality"] || "").trim();
+            const visaNo = (p["VisaNo"] || "").trim();
+            const lastStayInAndaman = (p["LastStayInAndaman"] || "").trim();
 
-          if (!documentIdRaw) {
-            errors.push("DocumentId required");
-          } else if (documentIdRaw.length !== 4) {
-            errors.push("DocumentId must be exactly 4 characters");
+            if (!passportNo) errors.push("PassportNo required");
+            if (!nationality) errors.push("Nationality required");
+            if (!visaNo) errors.push("VisaNo required");
+            if (!lastStayInAndaman) errors.push("LastStayInAndaman required");
+
+            if (errors.length === 0) {
+              validPassengers.push({
+                name,
+                fatherName,
+                age,
+                gender,
+                phone,
+                residence,
+
+                isForeigner: 1,
+                isIslander: null,
+
+                documentType: "PASSPORT",
+                documentId: "",
+
+                passportNo,
+                nationality,
+                visaNo,
+                lastStayInAndaman,
+              });
+            }
+          } else {
+            // Indian fields
+            const documentType = (p["DocumentType"] || "")
+              .toString()
+              .trim()
+              .toUpperCase();
+
+            const documentId = (p["DocumentId"] || "").toString().trim();
+
+            const isIslander =
+              (p["IsIslander"] || "").toString().trim().toLowerCase() === "yes"
+                ? 1
+                : 0;
+
+            if (!documentType) errors.push("DocumentType required");
+
+            if (!documentId) errors.push("DocumentId required");
+
+            if (documentId.length !== 4)
+              errors.push("DocumentId must be 4 characters");
+
+            if (errors.length === 0) {
+              validPassengers.push({
+                name,
+                fatherName,
+                age,
+                gender,
+                phone,
+                residence,
+
+                isForeigner: 0,
+                isIslander,
+
+                documentType,
+                documentId,
+
+                passportNo: "",
+                nationality: "",
+                visaNo: "",
+                lastStayInAndaman: (p["LastStayInAndaman"] || "").trim(),
+              });
+            }
           }
 
-          if (!["yes", "no"].includes(isIslanderVal))
-            errors.push("IsIslander must be yes or no");
-
-          if (errors.length === 0) {
-            validPassengers.push({
-              name,
-              fatherName,
-              age,
-              gender,
-              phone,
-              residence,
-              documentType,
-              documentId: documentIdRaw.slice(-4),
-              isIslander: isIslanderVal === "yes" ? 1 : 0,
-              isForeigner: 0,
+          if (errors.length > 0) {
+            invalidPassengers.push({
+              ...p,
+              errors,
             });
-          } else {
-            invalidPassengers.push({ ...p, errors });
           }
         }
         e.target.value = null;
@@ -1854,23 +1906,53 @@ Check console for details.
                   />
                 )}
 
-                {/* Excel Upload - only for usertype 2 */}
-                {user?.usertype === 2 && isForeigner === "no" && (
-                  <div className="mb-3 sm:mb-4">
-                    <Label className="font-semibold text-xs sm:text-sm">
-                      Upload Passengers (Excel)
+                {/* Bulk Passenger Upload */}
+                {user?.usertype !== 0 && (
+                  <div className="mb-4 rounded-lg border border-dashed border-gray-300 p-4 bg-gray-50">
+                    <Label className="font-semibold text-sm">
+                      Bulk Passenger Upload
                     </Label>
 
-                    <input
-                      type="file"
-                      accept=".xlsx, .xls"
-                      onChange={handleFileUpload}
-                      className="mt-1 sm:mt-2 block w-full text-xs border rounded p-1.5 sm:p-2 bg-white"
-                    />
-
-                    <p className="text-xs text-gray-500 mt-1">
-                      Upload Excel file with passenger details.
+                    <p className="text-xs text-gray-500 mt-1 mb-3">
+                      Download the sample Excel, fill the passenger details, and
+                      upload it here. Imported passengers will be added to the
+                      passenger table.
                     </p>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = `${window.location.origin}/convoy/sample/Passenger_Upload_Sample.xlsx`;
+                          link.download = "Passenger_Upload_Sample.xlsx";
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      >
+                        Download Excel Format
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          document.getElementById("passengerExcel")?.click()
+                        }
+                      >
+                        📤 Upload Excel
+                      </Button>
+
+                      <input
+                        id="passengerExcel"
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </div>
                   </div>
                 )}
 
