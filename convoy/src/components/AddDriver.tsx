@@ -19,7 +19,7 @@ export default function AddDriver({ isOpen, onClose, onSuccessAdd }) {
     first_name: "",
     last_name: "",
     license_no: "",
-    son_of: ""
+    son_of: "",
     gender: "",
     phone_no: "",
     residence_of: "",
