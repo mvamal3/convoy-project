@@ -184,7 +184,7 @@ const Dashboard = () => {
         {/* Today's Trips */}
         <Card
           onClick={() => navigate("/MyTrips")}
-          className="h-[130px] w-full sm:w-[280px] bg-blue-50 rounded-xl shadow-md border-0 
+          className="h-[130px]  bg-blue-50 rounded-xl shadow-md border-0 
      cursor-pointer transition-transform duration-200 hover:scale-105 hover:shadow-lg"
         >
           <CardHeader className="flex items-center justify-between pb-2">
