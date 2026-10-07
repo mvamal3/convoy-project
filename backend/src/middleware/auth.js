@@ -5,9 +5,15 @@ const BaseResponseDTO = require("../dto/response/BaseResponseDTO");
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers["authorization"];
-    //console.log("Auth Headersssssssssssssssssssss:", authHeader);
-    const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
-    console.log("tokennnn", token);
+
+    // Authorization header is required
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Access token required"));
+    }
+
+    const token = authHeader.substring(7).trim();
 
     if (!token) {
       return res
@@ -15,13 +21,17 @@ const authenticateToken = async (req, res, next) => {
         .json(BaseResponseDTO.error("Access token required"));
     }
 
+    // Verify signature, issuer, audience and expiration
     const decoded = JWTConfig.verifyAccessToken(token);
-    //console.log("Decoded token:", decoded);
-    // Get user from database
+
+    // Get current user from database
     const user = await db.User.findByPk(decoded.userId, {
-      attributes: { exclude: ["password", "refreshToken"] },
+      attributes: {
+        exclude: ["password", "refreshToken"],
+      },
     });
 
+    // User must exist and be active
     if (!user || !user.isActive) {
       return res
         .status(401)
@@ -29,8 +39,17 @@ const authenticateToken = async (req, res, next) => {
     }
 
     req.user = user;
+
     next();
   } catch (error) {
+    // JWT expired
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Session expired. Please login again."));
+    }
+
+    // Invalid JWT / invalid signature / invalid issuer / invalid audience
     return res
       .status(401)
       .json(BaseResponseDTO.error("Invalid or expired token"));
@@ -44,6 +63,7 @@ const authorizeRoles = (...roles) => {
         .status(403)
         .json(BaseResponseDTO.error("Insufficient permissions"));
     }
+
     next();
   };
 };
@@ -51,7 +71,15 @@ const authorizeRoles = (...roles) => {
 const authenticatePoliceToken = async (req, res, next) => {
   try {
     const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
+
+    // Authorization header is required
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Access token required"));
+    }
+
+    const token = authHeader.substring(7).trim();
 
     if (!token) {
       return res
@@ -59,15 +87,21 @@ const authenticatePoliceToken = async (req, res, next) => {
         .json(BaseResponseDTO.error("Access token required"));
     }
 
+    // Verify signature, issuer, audience and expiration
     const decoded = JWTConfig.verifyAccessToken(token);
 
-    // 🚨 BLOCK NON-POLICE TOKENS
+    // Only police tokens are allowed
     if (decoded.role !== "police") {
-      return res.status(403).json(BaseResponseDTO.error("Police access only"));
+      return res
+        .status(403)
+        .json(BaseResponseDTO.error("Police access only"));
     }
 
+    // Get current police user from database
     const user = await db.PoliceUser.findByPk(decoded.userId, {
-      attributes: { exclude: ["password", "refreshToken"] },
+      attributes: {
+        exclude: ["password", "refreshToken"],
+      },
       include: [
         {
           model: db.PoliceRegistration,
@@ -76,6 +110,7 @@ const authenticatePoliceToken = async (req, res, next) => {
       ],
     });
 
+    // User must exist and be active
     if (!user || !user.isActive) {
       return res
         .status(401)
@@ -83,8 +118,17 @@ const authenticatePoliceToken = async (req, res, next) => {
     }
 
     req.user = user;
+
     next();
   } catch (error) {
+    // JWT expired
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Session expired. Please login again."));
+    }
+
+    // Invalid JWT / invalid signature / invalid issuer / invalid audience
     return res
       .status(401)
       .json(BaseResponseDTO.error("Invalid or expired token"));

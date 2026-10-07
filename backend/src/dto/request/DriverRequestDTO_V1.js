@@ -1,32 +1,68 @@
 const validator = require("validator");
 
 class DriverRequestDTO {
-  constructor(data) {
-    // ✅ Sanitize and normalize inputs
+  constructor(data = {}) {
 
-    this.licenseNo = validator.escape(
-      String(data.licenseNo || "")
-        .trim()
-        .toUpperCase(),
-    );
+    // ---------- Helper functions ----------
 
-    this.title = validator.escape(String(data.title || "").trim());
+    const cleanText = (value) => {
+      if (typeof value !== "string") return "";
 
-    this.dFirstName = validator.escape(String(data.dFirstName || "").trim());
+      return validator
+        .stripLow(value.trim())
+        .replace(/\s+/g, " ");
+    };
 
-    this.dLastName = validator.escape(String(data.dLastName || "").trim());
+    const escapeText = (value) => {
+      return validator.escape(cleanText(value));
+    };
 
-    this.gender = validator.escape(String(data.gender || "").trim());
+    const cleanName = (value) => {
+      if (typeof value !== "string") return "";
 
-    this.son_of = validator.escape(String(data.son_of || "").trim());
+      return cleanText(value)
+        .replace(/[^A-Za-z\s.'-]/g, "");
+    };
 
-    this.residence_of = validator.escape(
-      String(data.residence_of || "").trim(),
-    );
+    const cleanPhone = (value) => {
+      if (typeof value !== "string" && typeof value !== "number") {
+        return "";
+      }
 
-    this.phNo = String(data.phNo || "").trim();
+      return String(value).replace(/\D/g, "").slice(0, 10);
+    };
 
-    // ✅ Backend controlled status
+    const cleanLicense = (value) => {
+      if (typeof value !== "string") return "";
+
+      return cleanText(value)
+        .toUpperCase()
+        .replace(/[^A-Z0-9/-]/g, "")
+        .slice(0, 20);
+    };
+
+
+    // ---------- Input sanitization ----------
+
+    this.licenseNo = cleanLicense(data.licenseNo);
+
+    this.title = escapeText(data.title);
+
+    this.dFirstName = escapeText(cleanName(data.dFirstName));
+
+    this.dLastName = escapeText(cleanName(data.dLastName));
+
+    this.gender = escapeText(data.gender);
+
+    this.son_of = escapeText(cleanName(data.son_of));
+
+    this.residence_of = escapeText(data.residence_of);
+
+    this.phNo = cleanPhone(data.phNo);
+
+
+    // ---------- Backend controlled values ----------
+
     this.dStatus = "active";
     this.status = "active";
   }
@@ -34,19 +70,18 @@ class DriverRequestDTO {
   validate() {
     const errors = [];
 
-    /* ---------- Trimmed values ---------- */
+    // ---------- Values ----------
 
-    const licenseNo = this.licenseNo?.trim();
-    const title = this.title?.trim();
-    const dFirstName = this.dFirstName?.trim();
-    const dLastName = this.dLastName?.trim();
-    const gender = this.gender?.trim();
-    const dStatus = this.dStatus?.trim();
-    const son_of = this.son_of?.trim();
-    const residence_of = this.residence_of?.trim();
-    const phNo = this.phNo?.trim();
+    const licenseNo = this.licenseNo.trim();
+    const title = this.title.trim();
+    const dFirstName = this.dFirstName.trim();
+    const dLastName = this.dLastName.trim();
+    const gender = this.gender.trim();
+    const son_of = this.son_of.trim();
+    const residence_of = this.residence_of.trim();
+    const phNo = this.phNo.trim();
 
-    /* ---------- Required validations ---------- */
+    // ---------- Required validations ----------
 
     if (!licenseNo) {
       errors.push("License number is required");
@@ -80,7 +115,8 @@ class DriverRequestDTO {
       errors.push("Phone number is required");
     }
 
-    /* ---------- Regex validations ---------- */
+
+    // ---------- Name validation ----------
 
     const namePattern = /^[A-Za-z\s.'-]+$/;
 
@@ -96,7 +132,8 @@ class DriverRequestDTO {
       errors.push("S/O name contains invalid characters");
     }
 
-    /* ---------- License validation ---------- */
+
+    // ---------- License validation ----------
 
     const licensePattern = /^[A-Z0-9/-]{5,20}$/;
 
@@ -104,13 +141,15 @@ class DriverRequestDTO {
       errors.push("Invalid license number format");
     }
 
-    /* ---------- Phone validation ---------- */
+
+    // ---------- Phone validation ----------
 
     if (phNo && !/^[0-9]{10}$/.test(phNo)) {
       errors.push("Invalid phone number");
     }
 
-    /* ---------- Enum validations ---------- */
+
+    // ---------- Enum validation ----------
 
     const validTitles = ["Mr", "Ms", "Mrs"];
 
@@ -118,39 +157,37 @@ class DriverRequestDTO {
       errors.push("Invalid title");
     }
 
-    const validStatuses = ["active", "inactive", "blocked"];
-
-    if (dStatus && !validStatuses.includes(dStatus)) {
-      errors.push(`d_status must be one of: ${validStatuses.join(", ")}`);
-    }
-
     const validGenders = ["Male", "Female", "Other"];
 
     if (gender && !validGenders.includes(gender)) {
-      errors.push(`Gender must be one of: ${validGenders.join(", ")}`);
+      errors.push(
+        `Gender must be one of: ${validGenders.join(", ")}`
+      );
     }
 
-    /* ---------- Length validations ---------- */
 
-    if (dFirstName && dFirstName.length > 50) {
+    // ---------- Length validation ----------
+
+    if (dFirstName.length > 50) {
       errors.push("Driver first name too long");
     }
 
-    if (dLastName && dLastName.length > 50) {
+    if (dLastName.length > 50) {
       errors.push("Driver last name too long");
     }
 
-    if (son_of && son_of.length > 100) {
+    if (son_of.length > 100) {
       errors.push("S/O name too long");
     }
 
-    if (residence_of && residence_of.length > 300) {
+    if (residence_of.length > 300) {
       errors.push("Residence address too long");
     }
 
-    if (licenseNo && licenseNo.length > 20) {
+    if (licenseNo.length > 20) {
       errors.push("License number too long");
     }
+
 
     return {
       isValid: errors.length === 0,

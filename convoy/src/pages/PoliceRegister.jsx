@@ -10,6 +10,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 
 import { toast } from "sonner";
 import { PostPoliceRegister } from "@/contexts/PostApi";
+import { useAuth } from "@/contexts/AuthContext";
+
 import {
   getOriginDestinationsPolice,
   getPolicedesignation,
@@ -22,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+  
+
 
 const PoliceRegister = () => {
   const [formData, setFormData] = useState({
@@ -42,6 +46,9 @@ const PoliceRegister = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [designations, setDesignations] = useState([]);
+  const { accessToken, user } = useAuth();
+
+ 
 
   const navigate = useNavigate();
 
@@ -54,7 +61,8 @@ const PoliceRegister = () => {
     const fetchCheckposts = async () => {
       try {
         const data = await getOriginDestinationsPolice();
-        console.log("Fetched Checkposts:", data);
+       
+        
         setCheckposts(data);
       } catch (err) {
         toast.error("Failed to load checkposts");
@@ -66,7 +74,7 @@ const PoliceRegister = () => {
     const fetchDesignations = async () => {
       try {
         const res = await getPolicedesignation(); // no payload needed
-        console.log("Fetched Designations:", res);
+        //console.log("Fetched Designations:", res);
 
         if (res?.success) {
           setDesignations(res.data);
@@ -109,7 +117,7 @@ const PoliceRegister = () => {
     try {
       setLoading(true);
       //console.log("Submitting payload:", payload);
-      const res = await PostPoliceRegister(payload);
+      const res = await PostPoliceRegister(payload, accessToken);
 
       if (res?.success) {
         toast.success(res.message || "Registered successfully!");
@@ -124,6 +132,7 @@ const PoliceRegister = () => {
       setLoading(false);
     }
   };
+ 
 
   return (
     <DashboardLayout>

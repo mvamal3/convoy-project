@@ -14,7 +14,7 @@ module.exports = {
 
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || "your-super-secret-key",
-  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "24h",
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "10s",
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "refresh-secret",
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
 

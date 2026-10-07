@@ -48,11 +48,12 @@ router.post("/register", AuthController.registerNew);
 // Apply create account rate limiter to registration createAccountLimiter
 router.post("/policeregister", AuthController.registerPolice);
 
+
 //////////police login
 router.post("/Policelogin", AuthController.loginPolice);
 
 //////////////logout
-router.post("/logout", AuthController.logout);
+//router.post("/logout", AuthController.logout);
 
 //router.post("/checkauth", authenticatePoliceToken, AuthController.checkAuth);
 

@@ -52,9 +52,9 @@ export default function AddTrip() {
   const [mode, setMode] = useState("forward"); // forward | return
 
   useEffect(() => {
-    console.log("STATE:", location.state?.returnConvoyTime);
-    console.log("OPTIONS:", returnConveyList);
-    console.log("SELECT VALUE:", returnConvoyTime);
+    //console.log("STATE:", location.state?.returnConvoyTime);
+    //console.log("OPTIONS:", returnConveyList);
+    //console.log("SELECT VALUE:", returnConvoyTime);
     if (
       isReturn &&
       returnConveyList.length > 0 &&

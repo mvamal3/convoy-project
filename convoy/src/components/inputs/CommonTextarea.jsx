@@ -1,6 +1,10 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 
+const sanitizeInput = (value) => {
+  return value.replace(/[<>]/g, "");
+};
+
 const CommonTextarea = ({
   label,
   required = false,
@@ -12,19 +16,31 @@ const CommonTextarea = ({
   className = "",
   rows = 3,
 }) => {
+  const handleChange = (e) => {
+    const sanitizedValue = sanitizeInput(e.target.value);
+
+    // Create a new event-like object with sanitized value
+    onChange({
+      ...e,
+      target: {
+        ...e.target,
+        value: sanitizedValue,
+      },
+    });
+  };
+
   return (
     <div className="w-full space-y-1">
       {label && (
         <Label className="text-sm font-medium text-gray-700">
           {label}
-
           {required && <span className="text-red-600"> *</span>}
         </Label>
       )}
 
       <textarea
         value={value}
-        onChange={onChange}
+        onChange={handleChange}
         placeholder={placeholder}
         maxLength={maxLength}
         disabled={disabled}

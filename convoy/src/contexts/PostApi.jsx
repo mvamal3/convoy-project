@@ -343,6 +343,8 @@ export const PostPoliceRegister = async (payload) => {
   }
 };
 
+
+
 export const postCitizenOtpVerify = async (payload) => {
   try {
     const res = await fetch(`${BASE_URL}/verify-citizen-otp`, {

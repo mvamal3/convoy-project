@@ -82,9 +82,8 @@ const AppRoutes = () => {
       <Route path="/ApprovedTrips" element={<AllApproveTrips />} />
       <Route path="/RejectedTrips" element={<AllRejectedTrips />} />
       <Route path="/PendingTrips" element={<AllPendingTrips />} />
-      <Route path="/ConveyWiseReport" element={<ConveyWise />} />
       <Route path="/OtpVerification" element={<OtpVerification />} />
-      <Route path="/PoliceRegister" element={<PoliceRegister />} />
+      
       <Route path="/qr" element={<Qr />} />
       <Route path="/PoliceProfile" element={<PoliceProfile />} />
       <Route path="/TestTripForm" element={<TestTripForm />} />
@@ -93,38 +92,98 @@ const AppRoutes = () => {
       <Route path="/EditTrip/:tripId" element={<EditTrip />} />
       <Route path="/CitizenEditTrip/:tripId" element={<CitizenEditTrip />} />
       <Route path="/MyTrips" element={<MyTrips />} />
-      <Route path="/ArrivalList" element={<ArrivalList />} />
       <Route path="/ManageTrip/CheckoutPrint" element={<CheckoutPrint />} />
       <Route path="/trip-report" element={<TripReport />} />
-      <Route path="/generate-report" element={<GenerateReport />} />
       <Route path="/ViewAllVerifiedTrips" element={<ViewAllVerifiedTrips />} />
       <Route path="/AdminLogin" element={<AdminLogin />} />
-      <Route path="/AdminDashboard" element={<AdminDashboard />} />
-      <Route path="/TodaysTripDetails" element={<TodaysTripDetails />} />
-      <Route path="/RegisteredPolice" element={<RegisteredPolice />} />
-      <Route path="/FreezPolice" element={<FreezPolice />} />
-      <Route path="/SearchTrip" element={<SearchTrip />} />
+      
+  
+     
       <Route path="/SpDashboard" element={<SpDashboard />} />
-      <Route path="/SpecialConvoyReports" element={<SpecialConvoyReports />} />
       <Route path="/MonthlyVehicleReport" element={<MonthlyVehicleReport />} />
-      <Route
-        path="/SpecialConvoyArrivalReport"
-        element={<SpecialConvoyArrivalReport />}
+
+      <Route path="/TodayVehicleReport" 
+      element={
+          <ProtectedRoute requiredRole="police">
+            <TodayVehicleReport />
+          </ProtectedRoute>
+        }
       />
+
+      <Route path="/ArrivalList" 
+      element={
+          <ProtectedRoute requiredRole="police">
+            <ArrivalList />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/ConveyWiseReport" 
+      element={
+          <ProtectedRoute requiredRole="police">
+            <ConveyWise />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/SpecialConvoyReports"
+        element={
+          <ProtectedRoute requiredRole="police">
+            <SpecialConvoyReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/generate-report"
+        element={
+          <ProtectedRoute requiredRole="police">
+            <GenerateReport />
+          </ProtectedRoute>
+        }
+      />
+    
+
+        <Route
+        path="/SpecialConvoyArrivalReport"
+        element={
+          <ProtectedRoute requiredRole="police">
+            <SpecialConvoyArrivalReport />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/SpecialConvoyApprovedTrips"
-        element={<SpecialConvoyApprovedTrips />}
+        element={
+          <ProtectedRoute requiredRole="scs">
+            <SpecialConvoyApprovedTrips />
+          </ProtectedRoute>
+        }
       />
+   
       <Route
         path="/specialConvoydeparture"
-        element={<SpecialConvoyDeparture />}
+        element={
+          <ProtectedRoute requiredRole="scs">
+            <SpecialConvoyDeparture />
+          </ProtectedRoute>
+        }
       />
-      <Route path="/Specialconvoyarrival" element={<Specialconvoyarrival />} />
+
+        <Route
+        path="/Specialconvoyarrival"
+        element={
+          <ProtectedRoute requiredRole="police">
+            <Specialconvoyarrival />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/generate-checkout-report/:conveyId/:checkpostId"
         element={<GenerateCheckoutReport />}
       />
-      <Route path="/TodayVehicleReport" element={<TodayVehicleReport />} />
+      
       <Route
         path="/ManageTrip/PoliceViewTrip/:tripId"
         element={<Viewtripdetailspolice />}
@@ -151,6 +210,60 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/PoliceRegister"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <PoliceRegister />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/AdminDashboard"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+        <Route
+        path="/RegisteredPolice"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <RegisteredPolice />
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="/SearchTrip"
+        element={
+          <ProtectedRoute requiredRole={["police", "admin"]}>
+            <SearchTrip />
+          </ProtectedRoute>
+        }
+      />
+        <Route
+        path="/TodaysTripDetails"
+        element={
+          <ProtectedRoute requiredRole={["police", "admin"]}>
+            <TodaysTripDetails />
+          </ProtectedRoute>
+        }
+      />
+
+       <Route
+        path="/FreezPolice"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <FreezPolice />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* <Route path="/PoliceRegister" element={<PoliceRegister />} /> */}
       <Route
         path="/checkout"
         element={

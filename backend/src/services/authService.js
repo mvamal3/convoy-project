@@ -343,13 +343,54 @@ class AuthService {
     };
   }
 
-  static async refreshToken(token) {
-    if (!token) {
-      throw new Error("Refresh token required");
-    }
+  // static async refreshToken(token) {
+  //   if (!token) {
+  //     throw new Error("Refresh token required");
+  //   }
 
+  //   const decoded = JWTConfig.verifyRefreshToken(token);
+
+  //   const user = await User.findOne({
+  //     where: {
+  //       id: decoded.userId,
+  //       refreshToken: token,
+  //       isActive: true,
+  //     },
+  //   });
+
+  //   if (!user) {
+  //     throw new Error("Invalid refresh token");
+  //   }
+
+  //   // Generate new tokens
+  //   const accessToken = JWTConfig.generateAccessToken({
+  //     userId: user.id,
+  //     email: user.email,
+  //     role: user.role,
+  //   });
+
+  //   const newRefreshToken = JWTConfig.generateRefreshToken({
+  //     userId: user.id,
+  //   });
+
+  //   // Update refresh token
+  //   user.refreshToken = newRefreshToken;
+  //   await user.save();
+
+  //   return new AuthResponseDTO(user, accessToken, newRefreshToken);
+  // }
+
+  static async refreshToken(token) {
+  if (!token) {
+    throw new Error("Refresh token required");
+  }
+
+  try {
+    // Verify signature, expiration, issuer and audience
     const decoded = JWTConfig.verifyRefreshToken(token);
 
+    // Check that the refresh token is still the
+    // currently active token for this user
     const user = await User.findOne({
       where: {
         id: decoded.userId,
@@ -362,23 +403,36 @@ class AuthService {
       throw new Error("Invalid refresh token");
     }
 
-    // Generate new tokens
+    // Generate new access token
     const accessToken = JWTConfig.generateAccessToken({
       userId: user.id,
       email: user.email,
       role: user.role,
     });
 
+    // Rotate refresh token
     const newRefreshToken = JWTConfig.generateRefreshToken({
       userId: user.id,
     });
 
-    // Update refresh token
+    // Invalidate the old refresh token
+    // and store the new one
     user.refreshToken = newRefreshToken;
     await user.save();
 
-    return new AuthResponseDTO(user, accessToken, newRefreshToken);
+    return new AuthResponseDTO(
+      user,
+      accessToken,
+      newRefreshToken
+    );
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      throw new Error("Refresh token expired. Please login again.");
+    }
+
+    throw new Error("Invalid refresh token");
   }
+}
 
   static async logout(userId) {
     await User.update({ refreshToken: null }, { where: { id: userId } });
