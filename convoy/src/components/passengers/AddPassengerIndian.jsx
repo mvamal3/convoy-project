@@ -1,6 +1,8 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { sanitizeInput } from "@/utils/inputSanitizer";
+
 
 export default function AddPassengerIndian({
   passenger,
@@ -9,33 +11,54 @@ export default function AddPassengerIndian({
   setIsIslander,
   onAdd,
 }) {
-  const namePattern = /^[A-Za-z\s.'-]*$/;
-  const phonePattern = /^\d{0,10}$/;
-  const agePattern = /^\d{0,3}$/;
-  const docIdPattern = /^[A-Za-z0-9]{0,4}$/;
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+const namePattern = /^[A-Za-z\s.'-]*$/;
+const phonePattern = /^\d{0,10}$/;
+const agePattern = /^\d{0,3}$/;
+const docIdPattern = /^[A-Za-z0-9]{0,4}$/;
 
-    if (name === "name" || name === "fatherName") {
-      if (!namePattern.test(value)) return;
-    }
+const handleChange = (e) => {
+  const { name, value } = e.target;
 
-    if (name === "phone") {
-      if (!phonePattern.test(value)) return;
-    }
+  if (name === "name" || name === "fatherName") {
+    if (!namePattern.test(value)) return;
+  }
 
-    if (name === "age") {
-      if (!agePattern.test(value)) return;
-      if (Number(value) > 120) return;
-    }
+  if (name === "phone") {
+    if (!phonePattern.test(value)) return;
+  }
 
-    if (name === "documentId") {
-      if (!docIdPattern.test(value)) return;
-    }
+  if (name === "age") {
+    if (!agePattern.test(value)) return;
+    if (Number(value) > 120) return;
+  }
 
-    setPassenger({ ...passenger, [name]: value });
-  };
+  if (name === "documentId") {
+    if (!docIdPattern.test(value)) return;
+  }
+
+  if (name === "residence" || name === "lastStayInAndaman") {
+    const maxLength = 300;
+
+    const sanitizedValue = sanitizeInput(value, {
+      maxLength,
+      trim: false,
+    });
+
+    setPassenger((prev) => ({
+      ...prev,
+      [name]: sanitizedValue,
+    }));
+
+    return;
+  }
+
+  setPassenger((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
+};
+
   const Required = () => <span className="text-red-500">*</span>;
 
   return (
@@ -110,21 +133,24 @@ export default function AddPassengerIndian({
         <Label>
           Residence <Required />
         </Label>
-        <Input
-          name="residence"
-          value={passenger.residence || ""}
-          onChange={handleChange}
-        />
+       <Input
+  name="residence"
+  value={passenger.residence || ""}
+  maxLength={300}
+  onChange={handleChange}
+  placeholder="Enter residence"
+/>
       </div>
 
       <div>
         <Label>Last Stay in Andaman (Tourists Only)</Label>
         <Input
-          name="lastStayInAndaman"
-          value={passenger.lastStayInAndaman || ""}
-          onChange={handleChange}
-          placeholder="Enter last stay in Andaman (optional)"
-        />
+  name="lastStayInAndaman"
+  value={passenger.lastStayInAndaman || ""}
+  maxLength={300}
+  onChange={handleChange}
+  placeholder="Enter last stay in Andaman (optional)"
+/>
       </div>
 
       <div>

@@ -8,6 +8,7 @@ import * as XLSX from "xlsx";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import { formatDateDDMMYY, formatTimeHHMM } from "@/utils/dateUtils";
+import { sanitizeInput } from "@/utils/inputSanitizer";
 
 import {
   getDriverList,
@@ -229,6 +230,10 @@ export default function AddTrip() {
       }));
     }
   };
+
+
+
+
 
   useEffect(() => {
     const fetchConveyTimes = async () => {
@@ -602,30 +607,30 @@ export default function AddTrip() {
     setPassenger(
       isForeigner === "yes"
         ? {
-            title: "",
-            name: "",
-            fatherName: "",
-            age: "",
-            gender: "",
-            phone: "",
-            residence: "",
-            documentType: "PASSPORT",
-            documentId: "",
-            passportNo: "",
-            nationality: "",
-            visaNo: "",
-            lastStayInAndaman: "",
-          }
+          title: "",
+          name: "",
+          fatherName: "",
+          age: "",
+          gender: "",
+          phone: "",
+          residence: "",
+          documentType: "PASSPORT",
+          documentId: "",
+          passportNo: "",
+          nationality: "",
+          visaNo: "",
+          lastStayInAndaman: "",
+        }
         : {
-            name: "",
-            fatherName: "",
-            age: "",
-            gender: "",
-            phone: "",
-            residence: "",
-            documentType: "",
-            documentId: "",
-          },
+          name: "",
+          fatherName: "",
+          age: "",
+          gender: "",
+          phone: "",
+          residence: "",
+          documentType: "",
+          documentId: "",
+        },
     );
 
     setTimeout(() => setPassengerSuccess(""), 3000);
@@ -852,9 +857,8 @@ export default function AddTrip() {
           </div>
         </div>
 
-        ${
-          returnTrip?.tId
-            ? `
+        ${returnTrip?.tId
+              ? `
           <!-- Return Journey -->
           <div style="
             background:#eff6ff;
@@ -894,8 +898,8 @@ export default function AddTrip() {
             </div>
           </div>
         `
-            : ""
-        }
+              : ""
+            }
 
       </div>
     `,
@@ -962,7 +966,7 @@ export default function AddTrip() {
       const isModified =
         returnTripData.Passengers.length !== formData.Passengers.length ||
         JSON.stringify(returnTripData.Passengers) !==
-          JSON.stringify(formData.Passengers);
+        JSON.stringify(formData.Passengers);
 
       if (isModified || returnType === "modified") {
         const accepted = await showTripRulesModal();
@@ -1639,18 +1643,27 @@ Check console for details.
               <div className="w-full">
                 <Label className="text-xs sm:text-sm">Remarks</Label>
 
+
+
                 <textarea
                   name="remarks"
                   value={formData.remarks}
-                  onChange={(e) =>
+                  maxLength={10000}
+                  onChange={(e) => {
+                    const value = sanitizeInput(e.target.value, {
+                      maxLength: 10000,
+                    });
+
                     setFormData((prev) => ({
                       ...prev,
-                      remarks: e.target.value,
-                    }))
-                  }
+                      remarks: value,
+                    }));
+                  }}
                   placeholder="Enter remarks (optional)"
                   className="border rounded px-2 sm:px-3 py-2 w-full text-xs sm:text-sm h-16 resize-none"
                 />
+
+
               </div>
 
               <div className="space-y-1 sm:space-y-2">
