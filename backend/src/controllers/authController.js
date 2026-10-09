@@ -666,18 +666,34 @@ class AuthController {
       res.status(500).json(BaseResponseDTO.error(error.message));
     }
   }
-  static async updateTripPolice(req, res) {
-    try {
-      console.log("entire bdy", req.body);
-      const result = await AuthService.updateTripPolice(req.body);
-      res.json(
-        BaseResponseDTO.success(result, "Trip police updated successfully"),
-      );
-    } catch (error) {
-      console.error("Error updating trip police:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+  
+static async updateTripPolice(req, res) {
+  try {
+    const result = await AuthService.updateTripPolice(req.body);
+
+    // IMPORTANT: Do not wrap a failed service result as success.
+    if (!result || result.success !== true) {
+      return res.status(400).json({
+        success: false,
+        message: result?.message || "Invalid format",
+        errors: result?.errors || [],
+      });
     }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message || "Trip police updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating trip police:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update trip",
+    });
   }
+}
+
 
   static async getCheckOutReport(req, res) {
     try {

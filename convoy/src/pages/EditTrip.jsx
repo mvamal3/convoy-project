@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import * as XLSX from "xlsx";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import { sanitizeInput } from "@/utils/inputSanitizer";
+
 import {
   getEditTripDetails,
   getOriginDestinations,
@@ -1169,12 +1171,16 @@ export default function EditTrip() {
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      remarks: e.target.value,
+                      remarks: sanitizeInput(e.target.value, {
+                        maxLength: 300,
+                        trim: false,
+                        rejectHtml: true,
+                      }),
                     }))
                   }
                   placeholder="Enter remarks"
                   rows={1}
-                  className="border rounded px-3 py-2 w-full text-sm bg-gray-100 text-gray-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  className="border rounded px-3 py-2 w-full text-sm bg-gray-100 text-gray-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
               </div>
             </div>

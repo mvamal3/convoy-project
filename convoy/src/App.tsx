@@ -90,7 +90,14 @@ const AppRoutes = () => {
       <Route path="/ViewCheckoutTrip/:tripId" element={<ViewCheckoutTrip />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/EditTrip/:tripId" element={<EditTrip />} />
-      <Route path="/CitizenEditTrip/:tripId" element={<CitizenEditTrip />} />
+      <Route
+  path="/CitizenEditTrip/:tripId"
+  element={
+    <ProtectedRoute requiredRole={["user", "scs"]}>
+      <CitizenEditTrip />
+    </ProtectedRoute>
+  }
+/>
       <Route path="/MyTrips" element={<MyTrips />} />
       <Route path="/ManageTrip/CheckoutPrint" element={<CheckoutPrint />} />
       <Route path="/trip-report" element={<TripReport />} />

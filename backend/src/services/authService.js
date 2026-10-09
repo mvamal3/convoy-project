@@ -5317,158 +5317,413 @@ class AuthService {
     }
   }
 
-  static async updateTripPolice(tripDataArray) {
-    try {
-      console.log(
-        "Updating trip and passenger details with payload:",
-        tripDataArray,
+
+static async updateTripPolice(tripDataArray) {
+  let transaction;
+
+  try {
+    // 1. Detect HTML tags, event handlers, and control characters.
+    const hasUnsafeContent = (value) => {
+      if (typeof value !== "string") return false;
+
+      return (
+        /<\s*\/?\s*[a-z][^>]*>/i.test(value) ||
+        /<\s*![\s\S]*?>/.test(value) ||
+        /<\s*\?[\s\S]*?\?>/.test(value) ||
+        /\bon[a-z]+\s*=/i.test(value) ||
+        /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value)
       );
-      // 🔁 helper to normalize frontend payload (PascalCase / camelCase safe)
-      const normalizePassengerData = (data = {}) => ({
-        passengerName:
-          data.name || data.passengerName || data.PassengerName || null,
+    };
 
-        fatherName: data.fatherName || data.FatherName || null,
+    // 2. Recursively inspect all strings in nested objects and arrays.
+    const findUnsafePath = (value, path = "payload") => {
+      if (typeof value === "string") {
+        return hasUnsafeContent(value) ? path : null;
+      }
 
-        phoneNo: data.phone || data.phoneNo || data.PhoneNo || null,
-
-        age: data.age || data.Age || null,
-
-        gender: data.gender || data.Gender || null,
-
-        isForeigner: data.isForeigner === 1 || data.isForeigner === "1" ? 1 : 0,
-
-        docType: data.docType || data.documentType || data.DocumentType || null,
-
-        docId: data.docId || data.documentId || data.DocumentId || null,
-
-        nationality: data.nationality || data.Nationality || null,
-
-        visaNumber: data.visaNumber || data.VisaNo || null,
-
-        residence: data.residence || data.Residence || null,
-        lastStayInAndaman:
-          data.lastStayInAndaman || data.LastStayInAndaman || null,
-        isIslander:
-          data.isIslander === 1 ||
-          data.isIslander === "1" ||
-          data.IsIslander === 1 ||
-          data.IsIslander === "1"
-            ? 1
-            : 0,
-      });
-
-      for (const item of tripDataArray) {
-        const { payload } = item;
-        if (!payload) continue;
-
-        const { action, tId, pId, data } = payload;
-
-        /* ============================
-         CASE 1: UPDATE TRIP
-      ============================ */
-        if (action === "updateTrip") {
-          console.log("🛠️ updateTrip action detected");
-
-          await Trip.update(
-            {
-              vId: data.vId,
-              dId: data.dId,
-              origin: data.origin,
-              destination: data.destination,
-              date: data.date,
-              convoyTime: data.convoyTime,
-              remarks: data.remarks,
-
-              // ✅ tourist flag fix
-              isTourist: data.isTourist ?? undefined,
-            },
-            { where: { tId } },
+      if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+          const result = findUnsafePath(
+            value[i],
+            `${path}[${i}]`
           );
-        } else if (action === "updatePassenger") {
-          /* ============================
-         CASE 2: UPDATE PASSENGER
-      ============================ */
-          console.log("✏️ updatePassenger action detected");
 
-          // soft-disable old passenger relation
-          await tripRelation.update({ status: 0 }, { where: { tId, pId } });
+          if (result) return result;
+        }
+      } else if (value && typeof value === "object") {
+        for (const [key, child] of Object.entries(value)) {
+          const result = findUnsafePath(
+            child,
+            `${path}.${key}`
+          );
 
-          const pdata = normalizePassengerData(data);
-
-          const newPassenger = await Passenger.create({
-            passengerName: pdata.passengerName,
-            fatherName: pdata.fatherName,
-            phoneNo: pdata.phoneNo,
-            age: pdata.age,
-            gender: pdata.gender,
-            isForeigner: pdata.isForeigner,
-            docType: pdata.docType,
-            docId: pdata.docId,
-            nationality: pdata.isForeigner ? pdata.nationality : null,
-            visaNumber: pdata.isForeigner ? pdata.visaNumber : null,
-            residence: pdata.residence,
-            lastStayInAndaman: pdata.lastStayInAndaman,
-            isIslander: pdata.isForeigner === 1 ? 0 : pdata.isIslander,
-          });
-
-          await tripRelation.create({
-            tId,
-            pId: newPassenger.pId,
-            status: 1,
-          });
-        } else if (action === "addPassenger") {
-          /* ============================
-         CASE 3: ADD PASSENGER
-      ============================ */
-          console.log("🆕 addPassenger action detected");
-
-          const pdata = normalizePassengerData(data);
-
-          const newPassenger = await Passenger.create({
-            passengerName: pdata.passengerName,
-            fatherName: pdata.fatherName,
-            phoneNo: pdata.phoneNo,
-            age: pdata.age,
-            gender: pdata.gender,
-            isForeigner: pdata.isForeigner,
-            docType: pdata.docType,
-            docId: pdata.docId,
-            nationality: pdata.isForeigner ? pdata.nationality : null,
-            visaNumber: pdata.isForeigner ? pdata.visaNumber : null,
-            residence: pdata.residence,
-            lastStayInAndaman: pdata.lastStayInAndaman,
-            isIslander: pdata.isForeigner === 1 ? 0 : pdata.isIslander,
-          });
-
-          await tripRelation.create({
-            tId,
-            pId: newPassenger.pId,
-            status: 1,
-          });
-        } else if (action === "deletePassenger") {
-          /* ============================
-         CASE 4: DELETE PASSENGER
-      ============================ */
-          console.log("🗑️ deletePassenger action detected");
-
-          await tripRelation.update({ status: 0 }, { where: { tId, pId } });
+          if (result) return result;
         }
       }
 
-      return {
-        success: true,
-        message: "Trip and passenger details updated successfully",
-      };
-    } catch (error) {
-      console.error("❌ updateTripPolice failed:", error);
+      return null;
+    };
+
+    // 3. Validate the request structure.
+    if (
+      !Array.isArray(tripDataArray) ||
+      tripDataArray.length === 0
+    ) {
       return {
         success: false,
-        message: "Failed to update trip data",
-        error: error.message,
+        message: "Invalid format",
+        errors: ["Invalid or empty request payload"],
       };
     }
+
+    const allowedActions = [
+      "updateTrip",
+      "updatePassenger",
+      "addPassenger",
+      "deletePassenger",
+    ];
+
+    // Validate EVERY item before making database changes.
+    for (let index = 0; index < tripDataArray.length; index++) {
+      const item = tripDataArray[index];
+      const payload = item?.payload;
+
+      if (
+        !payload ||
+        typeof payload !== "object" ||
+        Array.isArray(payload)
+      ) {
+        return {
+          success: false,
+          message: "Invalid format",
+          errors: [`Item ${index + 1}: Invalid payload`],
+        };
+      }
+
+      // Reject unsafe content anywhere inside the payload.
+      const unsafePath = findUnsafePath(payload);
+
+      if (unsafePath) {
+        return {
+          success: false,
+          message: "Invalid format",
+          errors: [
+            `Item ${index + 1}: HTML tags or unsafe content are not allowed`,
+          ],
+        };
+      }
+
+      const { action, tId, pId, data } = payload;
+
+      if (!allowedActions.includes(action)) {
+        return {
+          success: false,
+          message: "Invalid format",
+          errors: [
+            `Item ${index + 1}: Unsupported action`,
+          ],
+        };
+      }
+
+      // Every action requires a trip ID.
+      if (
+        tId === undefined ||
+        tId === null ||
+        String(tId).trim() === ""
+      ) {
+        return {
+          success: false,
+          message: "Invalid format",
+          errors: [
+            `Item ${index + 1}: Missing trip ID`,
+          ],
+        };
+      }
+
+      // Passenger update/delete actions require a passenger ID.
+      if (
+        ["updatePassenger", "deletePassenger"].includes(action) &&
+        (
+          pId === undefined ||
+          pId === null ||
+          String(pId).trim() === ""
+        )
+      ) {
+        return {
+          success: false,
+          message: "Invalid format",
+          errors: [
+            `Item ${index + 1}: Missing passenger ID`,
+          ],
+        };
+      }
+
+      // Trip and passenger create/update actions require data.
+      if (action !== "deletePassenger") {
+        if (
+          !data ||
+          typeof data !== "object" ||
+          Array.isArray(data)
+        ) {
+          return {
+            success: false,
+            message: "Invalid format",
+            errors: [
+              `Item ${index + 1}: Invalid action data`,
+            ],
+          };
+        }
+      }
+    }
+
+    // 4. Normalize passenger fields from frontend payloads.
+    const normalizePassengerData = (data = {}) => ({
+      passengerName:
+        data.name ||
+        data.passengerName ||
+        data.PassengerName ||
+        null,
+
+      fatherName:
+        data.fatherName ||
+        data.FatherName ||
+        null,
+
+      phoneNo:
+        data.phone ||
+        data.phoneNo ||
+        data.PhoneNo ||
+        null,
+
+      age: data.age ?? data.Age ?? null,
+
+      gender:
+        data.gender ||
+        data.Gender ||
+        null,
+
+      isForeigner:
+        data.isForeigner === 1 ||
+        data.isForeigner === "1"
+          ? 1
+          : 0,
+
+      docType:
+        data.docType ||
+        data.documentType ||
+        data.DocumentType ||
+        null,
+
+      docId:
+        data.docId ||
+        data.documentId ||
+        data.DocumentId ||
+        null,
+
+      nationality:
+        data.nationality ||
+        data.Nationality ||
+        null,
+
+      visaNumber:
+        data.visaNumber ||
+        data.VisaNo ||
+        null,
+
+      residence:
+        data.residence ||
+        data.Residence ||
+        null,
+
+      lastStayInAndaman:
+        data.lastStayInAndaman ||
+        data.LastStayInAndaman ||
+        null,
+
+      isIslander:
+        data.isIslander === 1 ||
+        data.isIslander === "1" ||
+        data.IsIslander === 1 ||
+        data.IsIslander === "1"
+          ? 1
+          : 0,
+    });
+
+    // 5. Start a transaction using the Trip model's Sequelize instance.
+    transaction = await Trip.sequelize.transaction();
+
+    // 6. Execute all database changes inside the transaction.
+    for (const item of tripDataArray) {
+      const { action, tId, pId, data } = item.payload;
+
+      if (action === "updateTrip") {
+        await Trip.update(
+          {
+            vId: data.vId,
+            dId: data.dId,
+            origin: data.origin,
+            destination: data.destination,
+            date: data.date,
+            convoyTime: data.convoyTime,
+            remarks: data.remarks,
+            isTourist: data.isTourist ?? undefined,
+          },
+          {
+            where: { tId },
+            transaction,
+          }
+        );
+      } else if (action === "updatePassenger") {
+        // Deactivate the existing passenger relation.
+        const [disabledCount] = await tripRelation.update(
+          { status: 0 },
+          {
+            where: {
+              tId,
+              pId,
+              status: 1,
+            },
+            transaction,
+          }
+        );
+
+        if (disabledCount === 0) {
+          throw new Error(
+            "Active passenger relation not found"
+          );
+        }
+
+        const pdata = normalizePassengerData(data);
+
+        // Create the replacement passenger.
+        const newPassenger = await Passenger.create(
+          {
+            passengerName: pdata.passengerName,
+            fatherName: pdata.fatherName,
+            phoneNo: pdata.phoneNo,
+            age: pdata.age,
+            gender: pdata.gender,
+            isForeigner: pdata.isForeigner,
+            docType: pdata.docType,
+            docId: pdata.docId,
+            nationality: pdata.isForeigner
+              ? pdata.nationality
+              : null,
+            visaNumber: pdata.isForeigner
+              ? pdata.visaNumber
+              : null,
+            residence: pdata.residence,
+            lastStayInAndaman: pdata.lastStayInAndaman,
+            isIslander: pdata.isForeigner === 1
+              ? 0
+              : pdata.isIslander,
+          },
+          { transaction }
+        );
+
+        // Link the replacement passenger to the trip.
+        await tripRelation.create(
+          {
+            tId,
+            pId: newPassenger.pId,
+            status: 1,
+          },
+          { transaction }
+        );
+      } else if (action === "addPassenger") {
+        const pdata = normalizePassengerData(data);
+
+        const newPassenger = await Passenger.create(
+          {
+            passengerName: pdata.passengerName,
+            fatherName: pdata.fatherName,
+            phoneNo: pdata.phoneNo,
+            age: pdata.age,
+            gender: pdata.gender,
+            isForeigner: pdata.isForeigner,
+            docType: pdata.docType,
+            docId: pdata.docId,
+            nationality: pdata.isForeigner
+              ? pdata.nationality
+              : null,
+            visaNumber: pdata.isForeigner
+              ? pdata.visaNumber
+              : null,
+            residence: pdata.residence,
+            lastStayInAndaman: pdata.lastStayInAndaman,
+            isIslander: pdata.isForeigner === 1
+              ? 0
+              : pdata.isIslander,
+          },
+          { transaction }
+        );
+
+        await tripRelation.create(
+          {
+            tId,
+            pId: newPassenger.pId,
+            status: 1,
+          },
+          { transaction }
+        );
+      } else if (action === "deletePassenger") {
+        const [disabledCount] = await tripRelation.update(
+          { status: 0 },
+          {
+            where: {
+              tId,
+              pId,
+              status: 1,
+            },
+            transaction,
+          }
+        );
+
+        if (disabledCount === 0) {
+          throw new Error(
+            "Active passenger relation not found"
+          );
+        }
+      }
+    }
+
+    // 7. Commit only after every operation succeeds.
+    await transaction.commit();
+    transaction = null;
+
+    return {
+      success: true,
+      message: "Trip and passenger details updated successfully",
+    };
+  } catch (error) {
+    // 8. Roll back all changes if any operation fails.
+    if (transaction && !transaction.finished) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error(
+          "Transaction rollback failed:",
+          rollbackError.message
+        );
+      }
+    }
+
+    console.error(
+      "updateTripPolice failed:",
+      error.message
+    );
+
+    return {
+      success: false,
+      message:
+        error.message === "Active passenger relation not found"
+          ? error.message
+          : "Failed to update trip data",
+      errors: [],
+    };
   }
+}
+
 
   static async updateProfile(profileData) {
     try {

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { getNationalityList } from "@/contexts/GetApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
+import { sanitizeInput } from "@/utils/inputSanitizer";
 
 export default function AddPassengerForeigner({
   passenger,
@@ -36,6 +37,7 @@ export default function AddPassengerForeigner({
     if (accessToken) fetchNationalities();
   }, [accessToken]);
 
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -56,14 +58,30 @@ export default function AddPassengerForeigner({
       if (!alphaNumPattern.test(value)) return;
     }
 
-    setPassenger({
-      ...passenger,
+    // Reusable sanitization for address and free-text fields
+    if (["residence", "lastStayInAndaman"].includes(name)) {
+      const sanitizedValue = sanitizeInput(value, {
+        maxLength: 300,
+        trim: false,
+      });
+
+      setPassenger((prev) => ({
+        ...prev,
+        [name]: sanitizedValue,
+      }));
+
+      return;
+    }
+
+    setPassenger((prev) => ({
+      ...prev,
       [name]:
         name === "passportNo" || name === "visaNo"
           ? value.toUpperCase()
           : value,
-    });
+    }));
   };
+
 
   const validateForeignerPassenger = () => {
     if (!passportPattern.test(passenger.passportNo || "")) {
@@ -202,6 +220,7 @@ export default function AddPassengerForeigner({
       </div>
 
       {/* Row 3 */}
+
       <div>
         <Label>
           Residence <span className="text-red-500">*</span>
@@ -209,9 +228,13 @@ export default function AddPassengerForeigner({
         <Input
           name="residence"
           value={passenger.residence || ""}
+          maxLength={300}
           onChange={handleChange}
+          placeholder="Enter residence"
         />
       </div>
+
+
       <div>
         <Label>
           Last Stay in Andaman <span className="text-red-500">*</span>
@@ -219,9 +242,12 @@ export default function AddPassengerForeigner({
         <Input
           name="lastStayInAndaman"
           value={passenger.lastStayInAndaman || ""}
+          maxLength={300}
           onChange={handleChange}
+          placeholder="Enter last stay in Andaman"
         />
       </div>
+
 
       <div className="md:col-span-5 flex justify-end mt-4">
         <Button
