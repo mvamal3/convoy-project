@@ -8,7 +8,7 @@ const BASE_URL = `${API_BASE_URL}/api/auth`;
 // Centralized registration function
 
 export async function PostRegister(data, navigate) {
-  console.log("Registering with data000:", data);
+  //console.log("Registering with data000:", data);
 
   try {
     const response = await fetch(`${BASE_URL}/register`, {
@@ -325,11 +325,15 @@ export async function approveTripAPI(payload, accessToken, onSuccess) {
   }
 }
 
-export const PostPoliceRegister = async (payload) => {
+export const PostPoliceRegister = async (payload,accessToken) => {
   try {
+    console.log("Police register payload:", accessToken);
     const res = await fetch(`${BASE_URL}/policeregister`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`, 
+      },
       body: JSON.stringify(payload),
     });
 

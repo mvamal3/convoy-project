@@ -3336,69 +3336,157 @@ class AuthService {
 
   ///////////////Police Registration
 
-  static async registerPolice(registerData) {
-    const registerDTO = new PoliceRegistrationDto(registerData);
-    const validation = registerDTO.validate();
+  // static async registerPolice(registerData) {
+  //   const registerDTO = new PoliceRegistrationDto(registerData);
+  //   const validation = registerDTO.validate();
 
-    if (!validation.isValid) {
-      throw new Error(validation.errors.join(", "));
-    }
+  //   if (!validation.isValid) {
+  //     throw new Error(validation.errors.join(", "));
+  //   }
 
-    const existingUser = await PoliceUser.findOne({
-      where: { email: registerDTO.email },
-    });
+  //   const existingUser = await PoliceUser.findOne({
+  //     where: { email: registerDTO.email },
+  //   });
 
-    if (existingUser) {
-      throw new Error("Police user already exists with this email");
-    }
+  //   if (existingUser) {
+  //     throw new Error("Police user already exists with this email");
+  //   }
 
-    const user = await PoliceUser.create({
-      email: registerDTO.email,
-      password: registerDTO.password,
-      isActive: registerDTO.isActive,
-      status: 1,
-    });
+  //   const user = await PoliceUser.create({
+  //     email: registerDTO.email,
+  //     password: registerDTO.password,
+  //     isActive: registerDTO.isActive,
+  //     status: 1,
+  //   });
 
-    const reg_id = `POLREG_${Math.random()
-      .toString(36)
-      .substr(2, 8)
-      .toUpperCase()}`;
+  //   const reg_id = `POLREG_${Math.random()
+  //     .toString(36)
+  //     .substr(2, 8)
+  //     .toUpperCase()}`;
 
-    const registration = await PoliceRegistration.create({
-      reg_id: reg_id,
-      userId: user.id,
-      title: registerDTO.title,
-      firstName: registerDTO.firstName,
-      lastName: registerDTO.lastName,
-      designation: registerDTO.designation,
-      emp_id: registerDTO.emp_id,
-      checkpost: registerDTO.checkpost,
-      contact: registerDTO.contact,
-      status: registerDTO.status,
-    });
+  //   const registration = await PoliceRegistration.create({
+  //     reg_id: reg_id,
+  //     userId: user.id,
+  //     title: registerDTO.title,
+  //     firstName: registerDTO.firstName,
+  //     lastName: registerDTO.lastName,
+  //     designation: registerDTO.designation,
+  //     emp_id: registerDTO.emp_id,
+  //     checkpost: registerDTO.checkpost,
+  //     contact: registerDTO.contact,
+  //     status: registerDTO.status,
+  //   });
 
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: registerDTO.role,
-    });
+  //   const accessToken = JWTConfig.generateAccessToken({
+  //     userId: user.id,
+  //     email: user.email,
+  //     role: registerDTO.role,
+  //   });
 
-    const refreshToken = JWTConfig.generateRefreshToken({
-      userId: user.id,
-    });
+  //   const refreshToken = JWTConfig.generateRefreshToken({
+  //     userId: user.id,
+  //   });
 
-    user.refreshToken = refreshToken;
-    await user.save();
+  //   user.refreshToken = refreshToken;
+  //   await user.save();
 
-    await registration.reload({
-      include: [{ model: PoliceUser, as: "user" }],
-    });
+  //   await registration.reload({
+  //     include: [{ model: PoliceUser, as: "user" }],
+  //   });
 
-    return new AuthResponseDTO(registration, accessToken, refreshToken);
+  //   return new AuthResponseDTO(registration, accessToken, refreshToken);
+  // }
+
+static async registerPolice(registerData) {
+  const registerDTO = new PoliceRegistrationDto(registerData);
+  const validation = registerDTO.validate();
+
+  if (!validation.isValid) {
+    throw new Error(validation.errors.join(", "));
   }
 
+  try {
+    return await PoliceUser.sequelize.transaction(async (t) => {
+      const existingUser = await PoliceUser.findOne({
+        where: { email: registerDTO.email },
+        transaction: t,
+      });
+
+      if (existingUser) {
+        throw new Error("Police user already exists with this email");
+      }
+
+      const user = await PoliceUser.create(
+        {
+          email: registerDTO.email,
+          password: registerDTO.password,
+          role: "police",
+          isActive: true,
+          status: 1,
+        },
+        { transaction: t }
+      );
+
+      const reg_id = `POLREG_${Math.random()
+        .toString(36)
+        .substr(2, 8)
+        .toUpperCase()}`;
+
+      const registration = await PoliceRegistration.create(
+        {
+          reg_id: reg_id,
+          userId: user.id,
+          title: registerDTO.title,
+          firstName: registerDTO.firstName,
+          lastName: registerDTO.lastName,
+          designation: registerDTO.designation,
+          emp_id: registerDTO.emp_id,
+          checkpost: registerDTO.checkpost,
+          contact: registerDTO.contact,
+          status: 1,
+        },
+        { transaction: t }
+      );
+
+      const accessToken = JWTConfig.generateAccessToken({
+        userId: user.id,
+        email: user.email,
+        role: "police",
+      });
+
+      const refreshToken = JWTConfig.generateRefreshToken({
+        userId: user.id,
+      });
+
+      user.refreshToken = refreshToken;
+      await user.save({ transaction: t });
+
+      await registration.reload({
+        include: [
+          {
+            model: PoliceUser,
+            as: "user",
+            attributes: { exclude: ["password", "refreshToken"] },
+          },
+        ],
+        transaction: t,
+      });
+
+      return new AuthResponseDTO(registration, accessToken, refreshToken);
+    });
+  } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      throw new Error("Police user already exists with this email");
+    }
+    if (error.name === "SequelizeForeignKeyConstraintError") {
+      throw new Error("Invalid checkpost selected");
+    }
+    throw error;
+  }
+}
+
   static async loginPolice(loginData, req) {
-    //console.log("SESSION ID:", req.sessionID);
+    console.log("SESSION ID:", req.sessionID);
 
     //console.log("req", req.session.captcha);
     const userCaptcha = String(loginData.captcha || "").trim();
@@ -3513,13 +3601,13 @@ class AuthService {
   // }
 
   static async loginAdmin(loginData, req) {
-    console.log("🔹 Admin login request received:", loginData);
+    //console.log("🔹 Admin login request received:", loginData);
 
     const userCaptcha = String(loginData.captcha || "").trim();
     const sessionCaptcha = String(req.session.captcha || "").trim();
 
-    console.log("🔹 User captcha:", userCaptcha);
-    console.log("🔹 Session captcha:", sessionCaptcha);
+    //console.log("🔹 User captcha:", userCaptcha);
+    //console.log("🔹 Session captcha:", sessionCaptcha);
 
     if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
       throw new Error("Invalid captcha");
@@ -3527,18 +3615,18 @@ class AuthService {
 
     // Prevent captcha reuse
     req.session.captcha = null;
-    console.log("✅ Captcha validated");
+    //console.log("✅ Captcha validated");
 
     const loginDTO = new AdminLoginRequestDTO(loginData);
     const validation = loginDTO.validate();
 
-    console.log("🔹 DTO validation:", validation);
+    //console.log("🔹 DTO validation:", validation);
 
     if (!validation.isValid) {
       throw new Error(validation.errors.join(", "));
     }
 
-    console.log("🔍 Searching admin with userid:", loginDTO.userid);
+    //console.log("🔍 Searching admin with userid:", loginDTO.userid);
 
     // Find admin
     const admin = await db.Admin.findOne({
@@ -3548,7 +3636,7 @@ class AuthService {
       },
     });
 
-    console.log("🔹 Admin found:", admin ? admin.userid : "NOT FOUND");
+    //console.log("🔹 Admin found:", admin ? admin.userid : "NOT FOUND");
 
     if (!admin) {
       console.error("❌ Admin not found or inactive");
@@ -3585,14 +3673,14 @@ class AuthService {
       userId: admin.id,
     });
 
-    console.log("🔹 Access Token:", accessToken);
-    console.log("🔹 Refresh Token:", refreshToken);
+    //console.log("🔹 Access Token:", accessToken);
+    //console.log("🔹 Refresh Token:", refreshToken);
 
     // Store refresh token
     admin.refreshToken = refreshToken;
     await admin.save();
 
-    console.log("✅ Admin login successful:", admin.userid);
+    //console.log("✅ Admin login successful:", admin.userid);
 
     const response = {
       user: {

@@ -135,8 +135,91 @@ const authenticatePoliceToken = async (req, res, next) => {
   }
 };
 
+const authenticateAdmin = async (req, res, next) => {
+  try {
+    const authHeader = req.headers["authorization"];
+    console.log("🔍 Authenticating admin with header:", authHeader);
+
+    // Authorization header is required
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Access token required00"));
+    }
+
+    const token = authHeader.substring(7).trim();
+
+    if (!token) {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Access token required0000"));
+    }
+
+    // Verify signature, issuer, audience and expiration
+    const decoded = JWTConfig.verifyAccessToken(token);
+    console.log("🔍 Decoded admin token:", decoded);
+
+    // Token must have been issued for an admin (set in loginAdmin)
+    if (decoded.role !== "admin") {
+      return res
+        .status(403)
+        .json(BaseResponseDTO.error("Admin access required0000"));
+    }
+
+    // Get current admin from database (token payload uses userId = admin.id)
+    const admin = await db.Admin.findOne({
+      where: {
+        id: decoded.userId,
+        isActive: 1,
+      },
+      attributes: {
+        exclude: ["password", "refreshToken"],
+      },
+    });
+
+    // Admin must exist and be active (isActive = 1)
+    if (!admin || Number(admin.isActive) !== 1) {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Invalid or expired token"));
+    }
+
+    // Re-check admin privileges from DB (same rule as loginAdmin),
+    // so a demoted admin can't keep using an old token
+    if (admin.role !== "admin" && admin.isadmin !== 1) {
+      return res
+        .status(403)
+        .json(BaseResponseDTO.error("Unauthorized admin access"));
+    }
+
+    req.admin = admin;
+    req.user = admin; // optional: keeps code that reads req.user working
+
+    next();
+  } catch (error) {
+    // JWT expired
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Session expired. Please login again."));
+    }
+
+    // Invalid JWT / invalid signature / invalid issuer / invalid audience
+    return res
+      .status(401)
+      .json(BaseResponseDTO.error("Invalid or expired token"));
+  }
+};
+
+
+
+
+
+
+
 module.exports = {
   authenticateToken,
   authorizeRoles,
   authenticatePoliceToken,
+  authenticateAdmin
 };

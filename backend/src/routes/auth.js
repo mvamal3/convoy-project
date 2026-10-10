@@ -5,7 +5,8 @@ const svgCaptcha = require("svg-captcha");
 const {
   authenticateToken,
   authenticatePoliceToken,
-} = require("../middleware/auth");
+  authenticateAdmin
+} = require("../middleware/auth");  
 const {
   authLimiter,
   highLimitApiLimiter,
@@ -46,12 +47,11 @@ router.post("/login", authLimiter, AuthController.login);
 router.post("/register", AuthController.registerNew);
 
 // Apply create account rate limiter to registration createAccountLimiter
-router.post("/policeregister", AuthController.registerPolice);
+router.post("/policeregister", authenticateAdmin,AuthController.registerPolice);
 
 
 //////////police login
 router.post("/Policelogin", AuthController.loginPolice);
-
 //////////////logout
 //router.post("/logout", AuthController.logout);
 

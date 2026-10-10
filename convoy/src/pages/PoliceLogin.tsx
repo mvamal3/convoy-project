@@ -56,12 +56,10 @@ const PoliceLogin = () => {
       navigate("/PoliceDashboard");
     } else if (user.role === "sp") {
       navigate("/SpDashboard");
-    } else if (user.role === "admin") {
-      navigate("/AdminDashboard");
     } else if (user.role === "scs") {
       navigate("/PoliceDashboard");
     } else {
-      navigate("/login");
+      navigate("/PoliceLogin");
     }
   }, [user, navigate]);
 

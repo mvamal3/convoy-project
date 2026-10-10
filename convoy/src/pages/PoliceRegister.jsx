@@ -24,8 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-  
 
+import { validatePoliceForm, MAX } from "@/utils/policeRegisterValidation";
+
+const FieldError = ({ message }) =>
+  message ? <p className="text-xs text-red-600 mt-1">{message}</p> : null;
 
 const PoliceRegister = () => {
   const [formData, setFormData] = useState({
@@ -41,6 +44,7 @@ const PoliceRegister = () => {
     confirmPassword: "",
   });
 
+  const [errors, setErrors] = useState({});
   const [checkposts, setCheckposts] = useState([]); // ✅ store API values
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,12 +52,12 @@ const PoliceRegister = () => {
   const [designations, setDesignations] = useState([]);
   const { accessToken, user } = useAuth();
 
- 
-
   const navigate = useNavigate();
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // clear the error of the field being edited
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   };
 
   // ✅ Fetch checkpost list from API
@@ -61,8 +65,6 @@ const PoliceRegister = () => {
     const fetchCheckposts = async () => {
       try {
         const data = await getOriginDestinationsPolice();
-       
-        
         setCheckposts(data);
       } catch (err) {
         toast.error("Failed to load checkposts");
@@ -70,11 +72,11 @@ const PoliceRegister = () => {
     };
     fetchCheckposts();
   }, []);
+
   useEffect(() => {
     const fetchDesignations = async () => {
       try {
         const res = await getPolicedesignation(); // no payload needed
-        //console.log("Fetched Designations:", res);
 
         if (res?.success) {
           setDesignations(res.data);
@@ -93,31 +95,21 @@ const PoliceRegister = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !formData.firstName ||
-      !formData.email ||
-      !formData.password ||
-      !formData.designation ||
-      !formData.emp_id
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
+    // Same rules as the backend DTO; returns cleaned values
+    const { errors: validationErrors, values } = validatePoliceForm(formData);
+    setErrors(validationErrors);
+
+    const firstError = Object.values(validationErrors)[0];
+    if (firstError) {
+      toast.error(firstError);
       return;
     }
 
-    const payload = {
-      ...formData,
-      status: 1,
-      isActive: true,
-    };
-
+    // Only the cleaned, whitelisted fields are sent
+    // (no confirmPassword; server sets status / isActive / role itself)
     try {
       setLoading(true);
-      //console.log("Submitting payload:", payload);
-      const res = await PostPoliceRegister(payload, accessToken);
+      const res = await PostPoliceRegister(values, accessToken);
 
       if (res?.success) {
         toast.success(res.message || "Registered successfully!");
@@ -132,7 +124,6 @@ const PoliceRegister = () => {
       setLoading(false);
     }
   };
- 
 
   return (
     <DashboardLayout>
@@ -149,7 +140,7 @@ const PoliceRegister = () => {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+          <form onSubmit={handleSubmit} noValidate className="p-8 space-y-8">
             {/* Personal Details */}
             <div>
               <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">
@@ -174,22 +165,27 @@ const PoliceRegister = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FieldError message={errors.title} />
                 </div>
 
                 <div>
                   <Label>First Name *</Label>
                   <Input
                     value={formData.firstName}
+                    maxLength={MAX.name}
                     onChange={(e) => handleChange("firstName", e.target.value)}
                   />
+                  <FieldError message={errors.firstName} />
                 </div>
 
                 <div>
-                  <Label>Last Name</Label>
+                  <Label>Last Name *</Label>
                   <Input
                     value={formData.lastName}
+                    maxLength={MAX.name}
                     onChange={(e) => handleChange("lastName", e.target.value)}
                   />
+                  <FieldError message={errors.lastName} />
                 </div>
               </div>
             </div>
@@ -219,14 +215,17 @@ const PoliceRegister = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FieldError message={errors.designation} />
                 </div>
 
                 <div>
                   <Label>Employee ID *</Label>
                   <Input
                     value={formData.emp_id}
+                    maxLength={MAX.emp_id}
                     onChange={(e) => handleChange("emp_id", e.target.value)}
                   />
+                  <FieldError message={errors.emp_id} />
                 </div>
               </div>
             </div>
@@ -253,19 +252,25 @@ const PoliceRegister = () => {
                       <SelectItem value="2">Middle Strait</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FieldError message={errors.checkpost} />
                 </div>
 
                 <div>
-                  <Label>Contact Number</Label>
+                  <Label>Contact Number *</Label>
                   <Input
                     value={formData.contact}
-                    onChange={(e) => handleChange("contact", e.target.value)}
+                    inputMode="numeric"
+                    maxLength={MAX.contact}
+                    placeholder="10 digit mobile number"
+                    onChange={(e) =>
+                      handleChange("contact", e.target.value.replace(/\D/g, ""))
+                    }
                   />
+                  <FieldError message={errors.contact} />
                 </div>
               </div>
             </div>
 
-            {/* Login Details */}
             {/* Login Details */}
             <div>
               <h2 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">
@@ -279,9 +284,11 @@ const PoliceRegister = () => {
                   <Input
                     type="email"
                     value={formData.email}
+                    maxLength={MAX.email}
                     onChange={(e) => handleChange("email", e.target.value)}
                     placeholder="Enter email address"
                   />
+                  <FieldError message={errors.email} />
                 </div>
 
                 {/* Password */}
@@ -290,6 +297,7 @@ const PoliceRegister = () => {
                   <Input
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
+                    maxLength={MAX.password}
                     onChange={(e) => handleChange("password", e.target.value)}
                     placeholder="Enter password"
                   />
@@ -299,6 +307,7 @@ const PoliceRegister = () => {
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </span>
+                  <FieldError message={errors.password} />
                 </div>
 
                 {/* Confirm Password */}
@@ -307,6 +316,7 @@ const PoliceRegister = () => {
                   <Input
                     type={showConfirmPassword ? "text" : "password"}
                     value={formData.confirmPassword}
+                    maxLength={MAX.password}
                     onChange={(e) =>
                       handleChange("confirmPassword", e.target.value)
                     }
@@ -322,6 +332,7 @@ const PoliceRegister = () => {
                       <Eye size={18} />
                     )}
                   </span>
+                  <FieldError message={errors.confirmPassword} />
                 </div>
               </div>
             </div>
