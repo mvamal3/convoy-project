@@ -269,7 +269,7 @@ router.post(
 
 router.post(
   "/update-police-profile",
-  // authenticatePoliceToken,
+  authenticateAdmin,
   AuthController.updatePoliceProfile,
 );
 
@@ -330,12 +330,12 @@ router.post(
   AuthController.changePolicePassword,
 );
 
-router.post("/freeze-police-user", AuthController.freezePoliceUser);
+router.post("/freeze-police-user", authenticateAdmin,AuthController.freezePoliceUser);
 
-router.post("/Unfreeze-police-user", AuthController.unfreezePoliceUser);
+router.post("/Unfreeze-police-user", authenticateAdmin, AuthController.unfreezePoliceUser);
 
-router.post("/get-frozen-police-users", AuthController.getFrozenPoliceUsers);
-router.post("/get-registered-police", AuthController.getRegisteredPolice);
+router.post("/get-frozen-police-users", authenticateAdmin,AuthController.getFrozenPoliceUsers);
+router.post("/get-registered-police", authenticateAdmin,AuthController.getRegisteredPolice);
 
 router.post("/generate-checkout-report", AuthController.generateCheckoutReport);
 

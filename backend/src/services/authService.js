@@ -7928,9 +7928,9 @@ static async updateTripPolice(tripDataArray) {
     try {
       const { policeId } = body;
 
-      console.log("🔥 FREEZE SERVICE CALLED");
-      console.log("Requested PoliceUser ID:", policeId);
-      console.log("Requested by:", loggedInUser?.reg_id);
+      //console.log("🔥 FREEZE SERVICE CALLED");
+      //.log("Requested PoliceUser ID:", policeId);
+      //console.log("Requested by:", loggedInUser?.reg_id);
 
       if (!policeId) {
         throw new Error("policeId is required");

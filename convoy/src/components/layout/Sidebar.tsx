@@ -128,16 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     { icon: Users, label: "Show Registered User", path: "/RegisteredPolice" },
     { icon: Search, label: "View Trip", path: "/SearchTrip" },
     { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },
-    {
-      icon: Route,
-      label: "Reports",
-      path: "#",
-      children: [
-        { label: "Approved", path: "/ApprovedTrips" },
-        { label: "Rejected", path: "/RejectedTrips" },
-        { label: "Pending", path: "/PendingTrips" },
-      ],
-    },
+    
     { icon: LogOut, label: "Logout", onClick: logout },
   ];
 

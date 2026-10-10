@@ -138,7 +138,7 @@ const authenticatePoliceToken = async (req, res, next) => {
 const authenticateAdmin = async (req, res, next) => {
   try {
     const authHeader = req.headers["authorization"];
-    console.log("🔍 Authenticating admin with header:", authHeader);
+    console.log("🔍 Authenticating admin with header working:", authHeader);
 
     // Authorization header is required
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

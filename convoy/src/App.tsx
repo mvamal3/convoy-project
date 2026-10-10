@@ -106,8 +106,15 @@ const AppRoutes = () => {
       
   
      
-      <Route path="/SpDashboard" element={<SpDashboard />} />
       <Route path="/MonthlyVehicleReport" element={<MonthlyVehicleReport />} />
+
+      <Route path="/SpDashboard" 
+      element={
+          <ProtectedRoute requiredRole="sp">
+            <SpDashboard />
+          </ProtectedRoute>
+        }
+      />
 
       <Route path="/TodayVehicleReport" 
       element={
@@ -255,7 +262,7 @@ const AppRoutes = () => {
         <Route
         path="/TodaysTripDetails"
         element={
-          <ProtectedRoute requiredRole={["police", "admin"]}>
+          <ProtectedRoute requiredRole={["police", "admin","sp"]}>
             <TodaysTripDetails />
           </ProtectedRoute>
         }
