@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
+import { useAuth } from "@/contexts/AuthContext";
 import { MapPin, Calendar, Users, Car, User, ShieldCheck } from "lucide-react";
 
 const TripPrintPreview = () => {
   const { tripId } = useParams();
   const [trip, setTrip] = useState(null);
-  const accessToken = localStorage.getItem("accessToken");
+  const { accessToken } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const BASE_URL = `${API_BASE_URL}/api/auth`;
   console.log("baseurl", BASE_URL);

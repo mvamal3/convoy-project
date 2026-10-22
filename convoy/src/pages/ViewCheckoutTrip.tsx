@@ -21,8 +21,7 @@ const ViewCheckoutTrip = () => {
   const [tripData, setTripData] = useState<any>(null);
   const [tripDataApprove, setTripDataApprove] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  const accessToken = localStorage.getItem("accessToken");
+  const { user, accessToken } = useAuth();
   const [runningConveyId, setRunningcheckoutConvey] = useState(null);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const BASE_URL = `${API_BASE_URL}/api/auth`;

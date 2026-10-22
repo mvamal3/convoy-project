@@ -68,6 +68,14 @@ import GenerateReport1 from "@/pages/GenerateReport"; //
 
 const queryClient = new QueryClient();
 
+// Role groups for page guards. The API enforces the same access server-side.
+const CITIZEN = ["user", "scs"];
+const POLICE = ["police", "sp", "scs", "dsp"];
+
+const guard = (roles: string | string[], page: React.ReactNode) => (
+  <ProtectedRoute requiredRole={roles}>{page}</ProtectedRoute>
+);
+
 const AppRoutes = () => {
   //useAutoLogout();
   return (
@@ -75,21 +83,21 @@ const AppRoutes = () => {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/ManageDriver" element={<ManageDriver />} />
-      <Route path="/AddTrip" element={<AddTrip />} />
+      <Route path="/ManageDriver" element={guard(CITIZEN, <ManageDriver />)} />
+      <Route path="/AddTrip" element={guard(CITIZEN, <AddTrip />)} />
       <Route path="/PoliceLogin" element={<PoliceLogin />} />
-      <Route path="/AllTrips" element={<AllTrips />} />
-      <Route path="/ApprovedTrips" element={<AllApproveTrips />} />
-      <Route path="/RejectedTrips" element={<AllRejectedTrips />} />
-      <Route path="/PendingTrips" element={<AllPendingTrips />} />
+      <Route path="/AllTrips" element={guard(POLICE, <AllTrips />)} />
+      <Route path="/ApprovedTrips" element={guard(POLICE, <AllApproveTrips />)} />
+      <Route path="/RejectedTrips" element={guard(POLICE, <AllRejectedTrips />)} />
+      <Route path="/PendingTrips" element={guard(POLICE, <AllPendingTrips />)} />
       <Route path="/OtpVerification" element={<OtpVerification />} />
-      
-      <Route path="/qr" element={<Qr />} />
-      <Route path="/PoliceProfile" element={<PoliceProfile />} />
-      <Route path="/TestTripForm" element={<TestTripForm />} />
-      <Route path="/ViewCheckoutTrip/:tripId" element={<ViewCheckoutTrip />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/EditTrip/:tripId" element={<EditTrip />} />
+
+      <Route path="/qr" element={guard(POLICE, <Qr />)} />
+      <Route path="/PoliceProfile" element={guard(POLICE, <PoliceProfile />)} />
+      <Route path="/TestTripForm" element={guard("user", <TestTripForm />)} />
+      <Route path="/ViewCheckoutTrip/:tripId" element={guard(POLICE, <ViewCheckoutTrip />)} />
+      <Route path="/profile" element={guard("user", <ProfilePage />)} />
+      <Route path="/EditTrip/:tripId" element={guard(POLICE, <EditTrip />)} />
       <Route
   path="/CitizenEditTrip/:tripId"
   element={
@@ -98,15 +106,15 @@ const AppRoutes = () => {
     </ProtectedRoute>
   }
 />
-      <Route path="/MyTrips" element={<MyTrips />} />
-      <Route path="/ManageTrip/CheckoutPrint" element={<CheckoutPrint />} />
-      <Route path="/trip-report" element={<TripReport />} />
-      <Route path="/ViewAllVerifiedTrips" element={<ViewAllVerifiedTrips />} />
+      <Route path="/MyTrips" element={guard(CITIZEN, <MyTrips />)} />
+      <Route path="/ManageTrip/CheckoutPrint" element={guard(POLICE, <CheckoutPrint />)} />
+      <Route path="/trip-report" element={guard(POLICE, <TripReport />)} />
+      <Route path="/ViewAllVerifiedTrips" element={guard(POLICE, <ViewAllVerifiedTrips />)} />
       <Route path="/AdminLogin" element={<AdminLogin />} />
-      
-  
-     
-      <Route path="/MonthlyVehicleReport" element={<MonthlyVehicleReport />} />
+
+
+
+      <Route path="/MonthlyVehicleReport" element={guard([...POLICE, "admin"], <MonthlyVehicleReport />)} />
 
       <Route path="/SpDashboard" 
       element={
@@ -195,16 +203,16 @@ const AppRoutes = () => {
       />
       <Route
         path="/generate-checkout-report/:conveyId/:checkpostId"
-        element={<GenerateCheckoutReport />}
+        element={guard(POLICE, <GenerateCheckoutReport />)}
       />
-      
+
       <Route
         path="/ManageTrip/PoliceViewTrip/:tripId"
-        element={<Viewtripdetailspolice />}
+        element={guard([...POLICE, "admin"], <Viewtripdetailspolice />)}
       />{" "}
       <Route
         path="/ManageTrip/ViewTrip/:tripId"
-        element={<ViewTripDetails />}
+        element={guard(CITIZEN, <ViewTripDetails />)}
       />{" "}
       {/* Protected Routes for USER */}
       <Route
@@ -215,7 +223,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      <Route path="/trip/print/:tripId" element={<TripPrintPage />} />
+      <Route path="/trip/print/:tripId" element={guard(CITIZEN, <TripPrintPage />)} />
       <Route
         path="/PoliceDashboard"
         element={

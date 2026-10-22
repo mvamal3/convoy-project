@@ -1,0 +1,60 @@
+# Convoy Management System - Apache settings for the built frontend (dist/).
+# Copied into dist/ by `npm run build`. Requires AllowOverride All (or at
+# least FileInfo, Indexes, AuthConfig) and mod_rewrite + mod_headers.
+
+Options -Indexes
+
+# VAPT #8: never serve dotfiles (.htaccess, .env, .git ...) or source maps
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+<FilesMatch "\.(map|env|bak|old|orig|sql|log|zip)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    # VAPT #6: Content Security Policy (no unsafe-inline / unsafe-eval for scripts).
+    # style-src needs 'unsafe-inline' because UI libraries (SweetAlert2, toasts)
+    # inject <style> elements at runtime. Scripts and connections are locked
+    # to this origin; the API is reverse-proxied at /convoy/api.
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+
+    # VAPT #9: security headers
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=()"
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
+    Header always unset X-Powered-By
+
+    # HTML must never be cached (it references the current hashed bundles)
+    <FilesMatch "\.html$">
+        Header always set Cache-Control "no-store, no-cache, must-revalidate"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+    </FilesMatch>
+
+    # Hashed build assets are immutable and contain no user data
+    <FilesMatch "\.(js|css|png|jpe?g|svg|ico|woff2?)$">
+        Header always set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Static frontend: only GET and HEAD are allowed (blocks OPTIONS, TRACE, ...)
+    RewriteCond %{REQUEST_METHOD} !^(GET|HEAD)$
+    RewriteRule .* - [R=405,L]
+</IfModule>
+
+# Single-page app: send unknown paths to index.html (React Router handles them)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /convoy/
+    RewriteRule ^index\.html$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /convoy/index.html [L]
+</IfModule>

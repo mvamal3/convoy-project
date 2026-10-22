@@ -323,9 +323,10 @@ export const getOriginDestinations = async (accessToken) => {
   return res.data?.data?.data || [];
 };
 
-export const getOriginDestinationsPolice = async () => {
+export const getOriginDestinationsPolice = async (accessToken) => {
   const res = await axios.get(
     `${API_BASE_URL}/api/auth/get-all_origin_destination_Police`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   return res.data?.data?.data || [];
 };

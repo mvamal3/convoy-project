@@ -1,101 +1,110 @@
-import { useEffect, useRef, useState } from "react";
+
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-
 import { RefreshCw } from "lucide-react";
 import CommonInput from "@/components/inputs/CommonInput";
+
 const Captcha = ({ onChange, value = "", refreshTrigger }) => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const BASE_URL = `${API_BASE_URL}/api/auth`;
-  //console.log("baseurl", BASE_URL);
-  const canvasRef = useRef(null);
+
   const [inputValue, setInputValue] = useState(value);
+  const [captchaImage, setCaptchaImage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [captchaError, setCaptchaError] = useState("");
 
-  // Draw captcha directly from backend text
-  const drawCaptchaFromText = async () => {
+  const imageUrlRef = useRef("");
+  const previousRefreshTrigger = useRef(refreshTrigger);
+  const requestIdRef = useRef(0);
+
+  const drawCaptchaFromText = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
+    setLoading(true);
+    setCaptchaError("");
+
     try {
-      const response = await fetch(`${BASE_URL}/captcha?t=${Date.now()}`, {
-        credentials: "include", // ✅ VERY IMPORTANT
-      });
+      const response = await fetch(
+        `${BASE_URL}/captcha?t=${Date.now()}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
 
-      const data = await response.json();
-
-      if (data.text && canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-
-        // Clear
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Blue background
-        ctx.fillStyle = "#1e40af";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // White text
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 24px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(data.text, canvas.width / 2, canvas.height / 2);
-
-        // Store for validation
-        sessionStorage.setItem("captchaText", data.text);
+      if (!response.ok) {
+        throw new Error("Unable to load CAPTCHA");
       }
+
+      const imageBlob = await response.blob();
+
+      if (!imageBlob.type.includes("image/")) {
+        throw new Error("Invalid CAPTCHA image response");
+      }
+
+      const imageUrl = URL.createObjectURL(imageBlob);
+
+      // Ignore stale responses from earlier requests.
+      if (requestId !== requestIdRef.current) {
+        URL.revokeObjectURL(imageUrl);
+        return;
+      }
+
+      if (imageUrlRef.current) {
+        URL.revokeObjectURL(imageUrlRef.current);
+      }
+
+      imageUrlRef.current = imageUrl;
+      setCaptchaImage(imageUrl);
     } catch (error) {
-      console.error("Captcha error:", error);
-      // Draw fallback
-      if (canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#1e40af";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 24px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("123456", canvas.width / 2, canvas.height / 2);
+      if (requestId === requestIdRef.current) {
+        console.error("CAPTCHA loading failed:", error);
+        setCaptchaError("Unable to load CAPTCHA. Please refresh.");
+      }
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
       }
     }
-  };
+  }, [BASE_URL]);
 
-  useEffect(() => {
-    // Initialize canvas size
-    if (canvasRef.current) {
-      canvasRef.current.width = 120;
-      canvasRef.current.height = 40;
-    }
-    drawCaptchaFromText();
-  }, []);
-  useEffect(() => {
-    if (refreshTrigger !== undefined) {
-      handleRefresh();
-    }
-  }, [refreshTrigger]);
-
-  // Handle input change
-  const handleChange = (e) => {
-    const val = e.target.value;
-    // Allow only numbers
-    const numbersOnly = val.replace(/\D/g, "");
-    const limited = numbersOnly.slice(0, 6);
-
-    // Update local state
-    setInputValue(limited);
-
-    // Notify parent
-    if (onChange && typeof onChange === "function") {
-      onChange(limited);
-    }
-  };
-
-  // Handle refresh
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setInputValue("");
-    if (onChange && typeof onChange === "function") {
-      onChange("");
-    }
+    onChange?.("");
     drawCaptchaFromText();
+  }, [drawCaptchaFromText, onChange]);
+
+  // Load the initial CAPTCHA.
+  useEffect(() => {
+    drawCaptchaFromText();
+
+    return () => {
+      // Invalidate pending requests on cleanup.
+      requestIdRef.current++;
+
+      if (imageUrlRef.current) {
+        URL.revokeObjectURL(imageUrlRef.current);
+        imageUrlRef.current = "";
+      }
+    };
+  }, [drawCaptchaFromText]);
+
+  // Refresh only when the parent's trigger actually changes.
+  useEffect(() => {
+    if (previousRefreshTrigger.current === refreshTrigger) {
+      return;
+    }
+
+    previousRefreshTrigger.current = refreshTrigger;
+    handleRefresh();
+  }, [refreshTrigger, handleRefresh]);
+
+  const handleChange = (e) => {
+    const limited = e.target.value.replace(/\D/g, "").slice(0, 6);
+
+    setInputValue(limited);
+    onChange?.(limited);
   };
 
   return (
@@ -105,13 +114,18 @@ const Captcha = ({ onChange, value = "", refreshTrigger }) => {
       </Label>
 
       <div className="flex items-center gap-3">
-        <div className="h-11 w-32 border rounded-md overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={120}
-            height={40}
-            className="h-full w-full"
-          />
+        <div className="h-11 w-32 border rounded-md overflow-hidden flex items-center justify-center bg-white">
+          {captchaImage ? (
+            <img
+              src={captchaImage}
+              alt="CAPTCHA verification image"
+              className="h-full w-full"
+            />
+          ) : (
+            <span className="text-xs text-gray-500">
+              {loading ? "Loading..." : "CAPTCHA unavailable"}
+            </span>
+          )}
         </div>
 
         <Button
@@ -119,7 +133,9 @@ const Captcha = ({ onChange, value = "", refreshTrigger }) => {
           variant="outline"
           size="icon"
           onClick={handleRefresh}
+          disabled={loading}
           className="h-11 w-11"
+          aria-label="Refresh CAPTCHA"
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -137,7 +153,13 @@ const Captcha = ({ onChange, value = "", refreshTrigger }) => {
       </div>
 
       <div className="text-xs space-y-1">
-        <p className="text-gray-500">Type the 6-digit number shown</p>
+        <p className="text-gray-500">
+          Type the 6-digit number shown
+        </p>
+
+        {captchaError && (
+          <p className="text-red-600">{captchaError}</p>
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
+
+import useIdleLogout from "@/hooks/useIdleLogout";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
+import { getCsrfToken } from "@/api/csrf";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 interface User {
   id: string;
@@ -31,6 +40,8 @@ interface admin {
   usertype: string;
 }
 
+type AccountType = "user" | "police" | "admin";
+
 interface AuthContextType {
   user: User | police | admin | null;
   login: (email: string, password: string, captcha: string) => Promise<any>;
@@ -45,11 +56,65 @@ interface AuthContextType {
     captcha: string,
   ) => Promise<any>;
 
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
   accessToken: string | null;
-  refreshToken: string | null;
+  // Kept for compatibility; the refresh token now lives only in an
+  // httpOnly cookie and is never readable by scripts.
+  refreshToken: null;
 }
+
+// Build the user object each part of the app expects from a login or
+// refresh response.
+const toSessionUser = (type: AccountType, regUser: any) => {
+  if (type === "police") {
+    return {
+      id: regUser.id,
+      name: regUser.name || regUser.email.split("@")[0],
+      email: regUser.email,
+      role: regUser.role,
+      usertype: regUser.usertype,
+
+      // ✅ NULL-safe
+      checkpost: regUser.checkpostDetails?.location ?? null,
+      checkpostid: regUser.checkpostDetails?.locationid ?? null,
+      locationid: regUser.checkpostDetails?.locationid ?? null,
+
+      pol_reg_id: regUser.reg_id,
+    };
+  }
+
+  if (type === "admin") {
+    return {
+      id: regUser.id,
+      name: regUser.email,
+      email: regUser.email,
+      role: regUser.role,
+      usertype: regUser.usertype,
+    };
+  }
+
+  return {
+    id: regUser.id,
+    name: regUser.name || regUser.email.split("@")[0],
+    email: regUser.email,
+    role: regUser.role,
+    usertype: regUser.usertype,
+    orgName: regUser.orgName,
+  };
+};
+
+// Seconds until a JWT expires (0 when it cannot be read).
+const secondsUntilExpiry = (token: string) => {
+  try {
+    const payload = JSON.parse(
+      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+    );
+    return Math.max(payload.exp - Date.now() / 1000, 0);
+  } catch {
+    return 0;
+  }
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -67,225 +132,137 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const navigate = useNavigate(); // ✅ Move useNavigate here
   const [user, setUser] = useState<User | police | admin | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // The access token is held in memory only (never in browser storage).
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedAccessToken = localStorage.getItem("accessToken");
-    const storedRefreshToken = localStorage.getItem("refreshToken");
-
-    if (storedUser) setUser(JSON.parse(storedUser));
-    if (storedAccessToken) setAccessToken(storedAccessToken);
-    if (storedRefreshToken) setRefreshToken(storedRefreshToken);
-
-    setIsLoading(false);
+  const clearSession = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    setUser(null);
+    setAccessToken(null);
   }, []);
 
-  const login = async (email: string, password: string, captcha: string) => {
+  const postWithCsrf = async (path: string, body: object) => {
+    const csrfToken = await getCsrfToken();
+    return axios.post(`${API_BASE_URL}/api/auth/${path}`, body, {
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+    });
+  };
+
+  const startSession = useCallback((data: any, type: AccountType) => {
+    const sessionUser = toSessionUser(type, data.user);
+    setUser(sessionUser);
+    setAccessToken(data.tokens.accessToken);
+    return sessionUser;
+  }, []);
+
+  // Exchange the httpOnly refresh cookie for a new access token.
+  const refreshSession = useCallback(async () => {
+    try {
+      const response = await postWithCsrf("refresh-token", {});
+      const data = response.data?.data;
+      startSession(data, data.accountType);
+      return true;
+    } catch {
+      clearSession();
+      return false;
+    }
+  }, [startSession, clearSession]);
+
+  // Restore the session after a page reload.
+  useEffect(() => {
+    refreshSession().finally(() => setIsLoading(false));
+  }, [refreshSession]);
+
+  // Renew the access token shortly before it expires.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const delay = Math.max(secondsUntilExpiry(accessToken) - 60, 5) * 1000;
+    refreshTimer.current = setTimeout(async () => {
+      if (!(await refreshSession())) {
+        navigate("/", { replace: true });
+      }
+    }, delay);
+
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    };
+  }, [accessToken, refreshSession, navigate]);
+
+  const signIn = async (
+    path: string,
+    body: object,
+    type: AccountType,
+    errorLabel: string,
+  ) => {
     setIsLoading(true);
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/login`,
-        {
-          email,
-          password,
-          captcha,
-        },
-        {
-          withCredentials: true, // ✅ same as credentials: "include"
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      // ✅ Axios already parses JSON
+      const response = await postWithCsrf(path, body);
       const result = response.data;
-      //console.log("result", result);
 
-      // ❌ Handle backend error properly (same logic)
       if (result.success === false) {
         throw new Error(result.message || "Login failed");
       }
 
-      const regUser = result.data.user;
-      console.log;
-      const tokens = result.data.tokens;
+      if (type === "admin" && result.data.user.role !== "admin") {
+        throw new Error("Unauthorized admin access");
+      }
 
-      const newUser = {
-        id: regUser.id,
-        name: regUser.name || regUser.email.split("@")[0],
-        email: regUser.email,
-        role: regUser.role,
-        usertype: regUser.usertype,
-        orgName: regUser.orgName,
-      };
-
-      setUser(newUser);
-      setAccessToken(tokens.accessToken);
-      setRefreshToken(tokens.refreshToken);
-
-      localStorage.setItem("user", JSON.stringify(newUser));
-      localStorage.setItem("accessToken", tokens.accessToken);
-      localStorage.setItem("refreshToken", tokens.refreshToken);
-
+      startSession(result.data, type);
       return result;
     } catch (error: any) {
-      console.error("Login error:", error.response?.data || error.message);
+      console.error(errorLabel, error.response?.data?.message || error.message);
       throw error; // 🔥 pass real message to UI
     } finally {
       setIsLoading(false);
     }
   };
 
-  const Policelogin = async (
-    email: string,
-    password: string,
-    captcha: string,
-  ) => {
-    setIsLoading(true);
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/Policelogin`,
-        {
-          email,
-          password,
-          captcha,
-        },
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
+  const login = (email: string, password: string, captcha: string) =>
+    signIn("login", { email, password, captcha }, "user", "Login error:");
 
-      const result = response.data;
+  const Policelogin = (email: string, password: string, captcha: string) =>
+    signIn(
+      "Policelogin",
+      { email, password, captcha },
+      "police",
+      "Police login error:",
+    );
 
-      if (result.success === false) {
-        throw new Error(result.message || "Login failed");
-      }
+  const AdminLogin = (userid: string, password: string, captcha: string) =>
+    signIn(
+      "Adminlogin",
+      { userid, password, captcha },
+      "admin",
+      "Admin login error:",
+    );
 
-      const regUser = result.data.user;
-      const tokens = result.data.tokens;
-
-      const Policeuser = {
-        id: regUser.id,
-        name: regUser.name || regUser.email.split("@")[0],
-        email: regUser.email,
-        role: regUser.role,
-        usertype: regUser.usertype,
-
-        // ✅ NULL-safe
-        checkpost: regUser.checkpostDetails?.location ?? null,
-        checkpostid: regUser.checkpostDetails?.locationid ?? null,
-        locationid: regUser.checkpostDetails?.locationid ?? null,
-
-        pol_reg_id: regUser.reg_id,
-      };
-
-      setUser(Policeuser);
-      setAccessToken(tokens.accessToken);
-      setRefreshToken(tokens.refreshToken);
-
-      localStorage.setItem("user", JSON.stringify(Policeuser));
-      localStorage.setItem("accessToken", tokens.accessToken);
-      localStorage.setItem("refreshToken", tokens.refreshToken);
-
-      return result;
-    } catch (error: any) {
-      console.error(
-        "Police login error:",
-        error.response?.data || error.message,
-      );
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const AdminLogin = async (
-    userid: string,
-    password: string,
-    captcha: string,
-  ) => {
-    setIsLoading(true);
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/Adminlogin`,
-        {
-          userid,
-          password,
-          captcha,
-        },
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      const result = response.data;
-
-      if (result.success === false) {
-        throw new Error(result.message || "Admin login failed");
-      }
-
-      const regUser = result.data.user;
-      const tokens = result.data.tokens;
-
-      if (regUser.role !== "admin") {
-        throw new Error("Unauthorized admin access");
-      }
-
-      const adminUser = {
-        id: regUser.id,
-        name: regUser.email,
-        email: regUser.email,
-        role: regUser.role,
-        usertype: regUser.usertype,
-      };
-
-      setUser(adminUser);
-      setAccessToken(tokens.accessToken);
-      setRefreshToken(tokens.refreshToken);
-
-      localStorage.setItem("user", JSON.stringify(adminUser));
-      localStorage.setItem("accessToken", tokens.accessToken);
-      localStorage.setItem("refreshToken", tokens.refreshToken);
-
-      return result;
-    } catch (error: any) {
-      console.error(
-        "Admin login error:",
-        error.response?.data || error.message,
-      );
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await axios.post(
         `${API_BASE_URL}/api/auth/logout`,
         {},
-        { withCredentials: true },
+        {
+          withCredentials: true,
+          headers: accessToken
+            ? { Authorization: `Bearer ${accessToken}` }
+            : {},
+        },
       );
-    } catch (e) {}
+    } catch (error) {
+      console.error("Logout API request failed");
+    } finally {
+      clearSession();
+      navigate("/", { replace: true });
+    }
+  }, [accessToken, clearSession, navigate]);
 
-    setUser(null);
-    setAccessToken(null);
-    setRefreshToken(null);
-
-    localStorage.clear();
-    sessionStorage.clear();
-
-    navigate("/", { replace: true });
-  };
+  useIdleLogout(logout, Boolean(accessToken));
 
   return (
     <AuthContext.Provider
@@ -297,7 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logout,
         isLoading,
         accessToken,
-        refreshToken,
+        refreshToken: null,
       }}
     >
       {children}

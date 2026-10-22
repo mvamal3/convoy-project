@@ -60,23 +60,27 @@ const PoliceRegister = () => {
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   };
 
-  // ✅ Fetch checkpost list from API
+  // ✅ Fetch checkpost list from API (admin-only endpoint, needs the token)
   useEffect(() => {
+    if (!accessToken) return;
+
     const fetchCheckposts = async () => {
       try {
-        const data = await getOriginDestinationsPolice();
+        const data = await getOriginDestinationsPolice(accessToken);
         setCheckposts(data);
       } catch (err) {
         toast.error("Failed to load checkposts");
       }
     };
     fetchCheckposts();
-  }, []);
+  }, [accessToken]);
 
   useEffect(() => {
+    if (!accessToken) return;
+
     const fetchDesignations = async () => {
       try {
-        const res = await getPolicedesignation(); // no payload needed
+        const res = await getPolicedesignation(accessToken); // no payload needed
 
         if (res?.success) {
           setDesignations(res.data);
@@ -90,7 +94,7 @@ const PoliceRegister = () => {
     };
 
     fetchDesignations();
-  }, []);
+  }, [accessToken]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

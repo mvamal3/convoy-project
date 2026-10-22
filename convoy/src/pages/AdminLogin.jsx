@@ -22,11 +22,11 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [captcha, setCaptcha] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [refreshCaptcha, setRefreshCaptcha] = useState(false);
 
   const { AdminLogin, user, isLoading } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
-    localStorage.clear();
     window.history.replaceState(null, "", window.location.href);
   }, []);
 
@@ -42,6 +42,9 @@ const AdminLogin = () => {
       await AdminLogin(userid, password, captcha.trim()); // 👈 userid sent
     } catch (err) {
       toast.error("Login failed. Please try again.");
+      // A CAPTCHA is valid for one attempt only
+      setCaptcha("");
+      setRefreshCaptcha((prev) => !prev);
     }
   };
 
@@ -115,7 +118,11 @@ const AdminLogin = () => {
                 </div>
 
                 {/* Captcha */}
-                <Captcha onChange={setCaptcha} />
+                <Captcha
+                  onChange={setCaptcha}
+                  value={captcha}
+                  refreshTrigger={refreshCaptcha}
+                />
 
                 {/* Submit */}
                 <Button type="submit" className="w-full" disabled={isLoading}>

@@ -1,6 +1,8 @@
 // src/api/PostApi.jsx
 import { toast } from "@/hooks/use-toast";
 import Swal from "sweetalert2";
+import { getCsrfToken } from "@/api/csrf";
+import { escapeHtml } from "@/utils/inputSanitizer";
 //import { useNavigate } from "react-router-dom";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const BASE_URL = `${API_BASE_URL}/api/auth`;
@@ -11,9 +13,14 @@ export async function PostRegister(data, navigate) {
   //console.log("Registering with data000:", data);
 
   try {
+    const csrfToken = await getCsrfToken();
     const response = await fetch(`${BASE_URL}/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
       body: JSON.stringify(data),
     });
 
@@ -24,22 +31,23 @@ export async function PostRegister(data, navigate) {
       throw new Error(result?.message || "Request failed");
     }
 
-    // Format date & time
-    sessionStorage.setItem("otp_email", data.email);
-    sessionStorage.setItem("otp_mobile", data.ownContact);
-    // SweetAlert success popup
+    // SweetAlert success popup (user input is escaped before going into HTML)
     Swal.fire({
       icon: "success",
       title: "Registration Successful",
       html: `
-  ${data.title || ""} ${data.firstName} ${
-    data.lastName
-  }, your registration details have been submitted successfully.<br>
+  ${escapeHtml(data.title || "")} ${escapeHtml(data.firstName)} ${escapeHtml(
+    data.lastName,
+  )}, your registration details have been submitted successfully.<br>
   Please verify the OTP sent to your registered email/phone to complete your registration.<br><br>
 `,
       confirmButtonText: "OK",
     }).then(() => {
-      if (navigate) navigate("/OtpVerification");
+      // Pass contact details in router state, not browser storage
+      if (navigate)
+        navigate("/OtpVerification", {
+          state: { email: data.email, mobile: data.ownContact },
+        });
     });
 
     return { success: true, result };
@@ -122,7 +130,10 @@ export async function handleAddVehicleAPI(formData, accessToken, onSuccess) {
 
     if (!response.ok) throw new Error("Failed to register vehicle");
 
-    toast({ title: "Vehicle added successfully" });
+   toast({
+  title: "Vehicle added successfully",
+  duration: 2000,
+});
 
     if (typeof onSuccess === "function") {
       onSuccess(); // e.g., reset form + close modal
@@ -202,7 +213,11 @@ export async function handleAddDriverAPI(
 
     if (!response.ok) throw new Error("Driver registration failed");
 
-    toast({ title: "Driver added successfully" });
+    toast({
+  title: "Driver added successfully",
+  duration: 2000,
+});
+
 
     if (typeof onSuccess === "function") {
       onSuccess(); // reset form, close modal, etc.
@@ -351,11 +366,13 @@ export const PostPoliceRegister = async (payload,accessToken) => {
 
 export const postCitizenOtpVerify = async (payload) => {
   try {
+    const csrfToken = await getCsrfToken();
     const res = await fetch(`${BASE_URL}/verify-citizen-otp`, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        // Authorization header removed as requested
+        "X-CSRF-Token": csrfToken,
       },
       body: JSON.stringify(payload),
     });

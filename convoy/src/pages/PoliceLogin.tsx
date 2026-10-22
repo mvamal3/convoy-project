@@ -24,6 +24,7 @@ const PoliceLogin = () => {
   const { Policelogin, user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [captcha, setCaptcha] = useState("");
+const [refreshCaptcha, setRefreshCaptcha] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,17 +37,19 @@ const PoliceLogin = () => {
     try {
       await Policelogin(email, password, captcha.trim());
       // success handled in useEffect
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || error.message || "Login failed";
+    
+} catch (error: any) {
+  const message =
+    error.response?.data?.message ||
+    error.message ||
+    "Login failed";
 
-      // if (message == "Invalid credentials") {
-      //   console.log("test error");
-      // }
+  toast.error(message);
 
-      console.error("Login error:", message);
-      toast.error(message); // ✅ show backend message
-    }
+  setCaptcha("");
+  setRefreshCaptcha((prev) => !prev);
+}
+
   };
 
   useEffect(() => {
@@ -98,8 +101,10 @@ const PoliceLogin = () => {
                 />
 
                 {/* Captcha */}
-                <Captcha onChange={setCaptcha} />
-
+<Captcha
+  onChange={setCaptcha}
+  refreshTrigger={refreshCaptcha}
+/>
                 {/* Submit */}
                 <Button
                   type="submit"

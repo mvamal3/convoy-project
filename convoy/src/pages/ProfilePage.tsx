@@ -7,7 +7,7 @@ import { ArrowLeft, User } from "lucide-react";
 import { getUserDetails } from "@/contexts/GetApi";
 import { updateProfileAPI } from "@/contexts/PostApi";
 import { useAuth } from "@/contexts/AuthContext";
-
+import { sanitizeInput } from "@/utils/inputSanitizer";
 import { useToast } from "@/components/ui/use-toast";
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
@@ -191,10 +191,13 @@ const ProfilePage = () => {
       </div>
 
       {/* Edit Modal */}
+
+      {/* Edit Modal */}
       {isEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-3xl p-8 relative">
             <h2 className="text-xl font-semibold mb-4">Edit Profile</h2>
+
             {/* Close Button */}
             <button
               className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
@@ -203,6 +206,7 @@ const ProfilePage = () => {
             >
               ✖
             </button>
+
             {/* Edit Form */}
             <form className="space-y-4" onSubmit={handleUpdateProfile}>
               <div className="flex space-x-4">
@@ -210,7 +214,15 @@ const ProfilePage = () => {
                   <label className="block text-gray-600 mb-1">Title</label>
                   <select
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) =>
+                      setTitle(
+                        sanitizeInput(e.target.value, {
+                          maxLength: 10,
+                          trim: true,
+                          rejectHtml: true,
+                        }),
+                      )
+                    }
                     className="w-full border px-3 py-2 rounded-lg"
                     required
                   >
@@ -220,31 +232,48 @@ const ProfilePage = () => {
                     <option value="Mr">Mr</option>
                     <option value="Mrs">Mrs</option>
                     <option value="Ms">Ms</option>
-
-                    {/* Add more options if needed */}
                   </select>
                 </div>
+
                 <div className="flex-1">
                   <label className="block text-gray-600 mb-1">First Name</label>
                   <input
                     type="text"
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) =>
+                      setFirstName(
+                        sanitizeInput(e.target.value, {
+                          maxLength: 255,
+                          trim: false,
+                          rejectHtml: true,
+                        }),
+                      )
+                    }
                     className="w-full border px-3 py-2 rounded-lg"
                     required
                   />
                 </div>
+
                 <div className="flex-1">
                   <label className="block text-gray-600 mb-1">Last Name</label>
                   <input
                     type="text"
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={(e) =>
+                      setLastName(
+                        sanitizeInput(e.target.value, {
+                          maxLength: 255,
+                          trim: false,
+                          rejectHtml: true,
+                        }),
+                      )
+                    }
                     className="w-full border px-3 py-2 rounded-lg"
                     required
                   />
                 </div>
               </div>
+
               <div>
                 <label className="block text-gray-600 mb-1">
                   Contact Number
@@ -252,21 +281,41 @@ const ProfilePage = () => {
                 <input
                   type="text"
                   value={contactNumber}
-                  onChange={(e) => setContactNumber(e.target.value)}
+                  onChange={(e) =>
+                    setContactNumber(
+                      sanitizeInput(e.target.value, {
+                        maxLength: 10,
+                        trim: true,
+                        rejectHtml: true,
+                      }),
+                    )
+                  }
+                  maxLength={10}
+                  inputMode="numeric"
                   className="w-full border px-3 py-2 rounded-lg"
                   required
                 />
               </div>
+
               <div>
                 <label className="block text-gray-600 mb-1">Address</label>
                 <input
                   type="text"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) =>
+                    setAddress(
+                      sanitizeInput(e.target.value, {
+                        maxLength: 5000,
+                        trim: false,
+                        rejectHtml: true,
+                      }),
+                    )
+                  }
                   className="w-full border px-3 py-2 rounded-lg"
                   required
                 />
               </div>
+
               <div className="flex justify-end mt-4">
                 <button
                   type="submit"

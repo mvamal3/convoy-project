@@ -11,18 +11,12 @@ import {
 } from "@/components/ui/card";
 
 import { useAuth } from "@/contexts/AuthContext";
-
 import { Link, useNavigate } from "react-router-dom";
-
 import { toast } from "sonner";
-
 import { Loader2 } from "lucide-react";
-
 import HomeHeader from "@/include/HomeHeader";
 import HomeFooter from "@/include/HomeFooter";
-
 import Captcha from "@/components/Captcha";
-
 import CommonInput from "@/components/inputs/CommonInput";
 import CommonPasswordInput from "@/components/inputs/CommonPasswordInput";
 
@@ -35,29 +29,36 @@ const Login = () => {
   const [captcha, setCaptcha] = useState("");
   const [refreshCaptcha, setRefreshCaptcha] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ 
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!email || !password || !captcha) {
-      toast.error("Please fill in all fields including captcha");
-      return;
-    }
+  if (!email.trim() || !password || !captcha) {
+    toast.error("Please fill in all fields including captcha");
+    return;
+  }
 
-    try {
-      const response = await login(email, password, captcha.trim());
-      console.log("Login response:", response);
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || error.message || "Login failed";
+  if (!/^\d{6}$/.test(captcha)) {
+    toast.error("Please enter the 6-digit numeric CAPTCHA");
+    return;
+  }
 
-      console.error("Login error:", message);
-      toast.error(message); // ✅ show backend message
-      setCaptcha("");
+  try {
+    await login(email.trim(), password, captcha);
+  } catch (error) {
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      "Login failed";
 
-      // refresh captcha
-      setRefreshCaptcha((prev) => !prev);
-    }
-  };
+    toast.error(message);
+    setCaptcha("");
+    setRefreshCaptcha((prev) => !prev);
+  }
+};
+
+
+
 
   useEffect(() => {
     if (user) {

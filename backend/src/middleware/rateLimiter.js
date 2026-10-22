@@ -23,8 +23,8 @@ const generalLimiter = rateLimit({
 
 // Strict rate limiter for auth endpoints (login, register)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000000, // Allow 100000 failed attempts per window
+  windowMs: config.AUTH_RATE_LIMIT_WINDOW * 60 * 1000,
+  max: config.AUTH_RATE_LIMIT_MAX, // failed attempts per window per IP
   message: {
     success: false,
     message:
@@ -90,7 +90,7 @@ const createAccountLimiter = rateLimit({
 // API endpoint specific limiter
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100000, // 20 requests per minute
+  max: 300, // 300 requests per minute
   message: {
     success: false,
     message: "API rate limit exceeded, please slow down your requests.",
@@ -102,7 +102,7 @@ const apiLimiter = rateLimit({
 // High-limit API limiter for heavy endpoints
 const highLimitApiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 1000000, // 1 million requests per minute
+  max: 300, // 1 million requests per minute
   message: {
     success: false,
     message: "Too many requests from this IP, please slow down.",
@@ -112,9 +112,24 @@ const highLimitApiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Session refresh limiter. Kept separate from authLimiter because every
+// page load tries a refresh, and a visitor without a session gets a 401.
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // refresh requests per window per IP
+  message: {
+    success: false,
+    message: "Too many session refresh attempts, please try again later.",
+    retryAfter: 15 * 60,
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 module.exports = {
   generalLimiter,
   authLimiter,
+  refreshLimiter,
   passwordResetLimiter,
   createAccountLimiter,
   apiLimiter,

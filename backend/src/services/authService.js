@@ -19,6 +19,14 @@ const PoliceRegistrationDto = require("../dto/request/PoliceRegistrationDto");
 const PoliceLoginRequestDTO = require("../dto/request/PoliceLoginRequestDTO");
 const PoliceLoginResponseDTO = require("../dto/response/PoliceLoginResponseDTO");
 const AdminLoginRequestDTO = require("../dto/request/AdminLoginRequestDTO");
+const UpdateProfileDTO = require("../dto/request/UpdateProfileDTO");
+const LoginUserResponseDto = require("../dto/response/LoginUserResponseDto");
+const PoliceLoginUserResponseDto = require("../dto/response/PoliceLoginUserResponseDto");
+const {
+  ACCOUNT_TYPES,
+  consumeCaptcha,
+  issueTokens,
+} = require("../utils/authSession");
 
 //new dto
 
@@ -144,59 +152,129 @@ class AuthService {
   //   return new LoginResponseDTO(user, accessToken, refreshToken);
   // }
 
-  static async login(loginData, req) {
-    const userCaptcha = String(loginData.captcha || "").trim();
-    const sessionCaptcha = String(req.session.captcha || "").trim();
+  // static async login(loginData, req) {
 
-    //console.log("LOGIN SESSION ID:", req.sessionID);
-    //console.log("SESSION CAPTCHA:", req.session.captcha);
-    // console.log("USER CAPTCHA:", loginData.captcha);
+  //    const userCaptcha = String(loginData.captcha || "").trim();
+  // const sessionCaptcha = String(req.session?.captcha || "").trim();
+  // const captchaTime = Number(req.session?.captchaTime || 0);
 
-    if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
-      throw new Error("Invalid captcha");
-    }
+  // // Capture the expected answer, then consume the CAPTCHA.
+  // delete req.session.captcha;
+  // delete req.session.captchaTime;
 
-    req.session.captcha = null;
+  // // Persist consumption before processing authentication.
+  // await new Promise((resolve, reject) => {
+  //   req.session.save((err) => {
+  //     if (err) reject(err);
+  //     else resolve();
+  //   });
+  // });
 
-    const loginDTO = new LoginRequestDTO(loginData);
-    const validation = loginDTO.validate();
+  // const expired =
+  //   !captchaTime ||
+  //   Date.now() - captchaTime > 2 * 60 * 1000;
 
-    if (!validation.isValid) {
-      throw new Error(validation.errors.join(", "));
-    }
+  // if (
+  //   !/^\d{6}$/.test(userCaptcha) ||
+  //   !/^\d{6}$/.test(sessionCaptcha) ||
+  //   expired ||
+  //   userCaptcha !== sessionCaptcha
+  // ) {
+  //   throw new Error("Invalid or expired CAPTCHA");
+  // }
+    
 
-    const user = await User.findOne({
-      where: { email: loginDTO.email, isActive: 1 },
-      include: [
-        {
-          model: Registration,
-          as: "registration",
-          attributes: ["firstName", "lastName", "isOrg", "orgName"],
-        },
-      ],
-    });
+  //   //console.log("LOGIN SESSION ID:", req.sessionID);
+  //   //console.log("SESSION CAPTCHA:", req.session.captcha);
+  //   // console.log("USER CAPTCHA:", loginData.captcha);
 
-    if (!user || !(await user.validatePassword(loginDTO.password))) {
-      throw new Error("Invalid credentials");
-    }
+  //   if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
+  //     throw new Error("Invalid captcha");
+  //   }
 
-    user.lastLoginAt = new Date();
+  //   req.session.captcha = null;
 
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+  //   const loginDTO = new LoginRequestDTO(loginData);
+  //   const validation = loginDTO.validate();
 
-    const refreshToken = JWTConfig.generateRefreshToken({
-      userId: user.id,
-    });
+  //   if (!validation.isValid) {
+  //     throw new Error(validation.errors.join(", "));
+  //   }
 
-    user.refreshToken = refreshToken;
-    await user.save();
+  //   const user = await User.findOne({
+  //     where: { email: loginDTO.email, isActive: 1 },
+  //     include: [
+  //       {
+  //         model: Registration,
+  //         as: "registration",
+  //         attributes: ["firstName", "lastName", "isOrg", "orgName"],
+  //       },
+  //     ],
+  //   });
 
-    return new LoginResponseDTO(user, accessToken, refreshToken);
+  //   if (!user || !(await user.validatePassword(loginDTO.password))) {
+  //     throw new Error("Invalid credentials");
+  //   }
+
+  //   user.lastLoginAt = new Date();
+
+  //   const accessToken = JWTConfig.generateAccessToken({
+  //     userId: user.id,
+  //     email: user.email,
+  //     role: user.role,
+  //   });
+
+  //   const refreshToken = JWTConfig.generateRefreshToken({
+  //     userId: user.id,
+  //   });
+
+  //   user.refreshToken = refreshToken;
+  //   await user.save();
+
+  //   return new LoginResponseDTO(user, accessToken, refreshToken);
+  // }
+
+
+
+static async login(loginData, req) {
+  await consumeCaptcha(req, loginData?.captcha);
+
+  const loginDTO = new LoginRequestDTO(loginData);
+  const validation = loginDTO.validate();
+
+  if (!validation.isValid) {
+    throw new Error(validation.errors.join(", "));
   }
+
+  const user = await User.findOne({
+    where: {
+      email: loginDTO.email,
+      isActive: 1,
+    },
+    include: [
+      {
+        model: Registration,
+        as: "registration",
+        attributes: ["firstName", "lastName", "isOrg", "orgName"],
+      },
+    ],
+  });
+
+  if (!user || !(await user.validatePassword(loginDTO.password))) {
+    throw new Error("Invalid credentials");
+  }
+
+  user.lastLoginAt = new Date();
+
+  const { accessToken, refreshToken } = await issueTokens(
+    ACCOUNT_TYPES.USER,
+    user,
+    { email: user.email, role: user.role },
+  );
+
+  return new LoginResponseDTO(user, accessToken, refreshToken);
+}
+
 
   static async register(registerData) {
     const registerDTO = new RegisterRequestDTO(registerData);
@@ -380,62 +458,168 @@ class AuthService {
   //   return new AuthResponseDTO(user, accessToken, newRefreshToken);
   // }
 
-  static async refreshToken(token) {
-  if (!token) {
-    throw new Error("Refresh token required");
+  // Load an active account (with the data its login response needs)
+  // for the given account type.
+  static async findSessionAccount(type, id) {
+    if (type === ACCOUNT_TYPES.USER) {
+      return User.findOne({
+        where: { id, isActive: 1 },
+        include: [
+          {
+            model: Registration,
+            as: "registration",
+            attributes: ["firstName", "lastName", "isOrg", "orgName"],
+          },
+        ],
+      });
+    }
+
+    if (type === ACCOUNT_TYPES.POLICE) {
+      return db.PoliceUser.findOne({
+        where: { id, isActive: 1 },
+        include: [
+          {
+            model: db.PoliceRegistration,
+            as: "registration",
+            attributes: [
+              "firstName",
+              "lastName",
+              "designation",
+              "checkpost",
+              "reg_id",
+            ],
+            include: [
+              {
+                model: db.OriginDestination,
+                as: "originDestination",
+                attributes: ["id", "location"],
+              },
+            ],
+          },
+        ],
+      });
+    }
+
+    if (type === ACCOUNT_TYPES.ADMIN) {
+      const admin = await db.Admin.findOne({ where: { id, isActive: 1 } });
+      if (admin && (admin.role === "admin" || Number(admin.isadmin) === 1)) {
+        return admin;
+      }
+    }
+
+    return null;
   }
 
-  try {
-    // Verify signature, expiration, issuer and audience
-    const decoded = JWTConfig.verifyRefreshToken(token);
+  // True when every trip ID belongs to the citizen account `userId`.
+  static async userOwnsTrips(userId, tIds) {
+    const ids = [...new Set(tIds.filter(Boolean).map(String))];
+    if (ids.length === 0) return false;
 
-    // Check that the refresh token is still the
-    // currently active token for this user
-    const user = await User.findOne({
-      where: {
-        id: decoded.userId,
-        refreshToken: token,
-        isActive: true,
-      },
+    const registration = await Registration.findOne({
+      where: { userId },
+      attributes: ["reg_id"],
     });
+    if (!registration) return false;
 
-    if (!user) {
+    const count = await db.Trip.count({
+      where: { tId: ids, reg_id: registration.reg_id },
+    });
+    return count === ids.length;
+  }
+
+  // The user object returned to the frontend, matching each login response.
+  static sessionUser(type, account) {
+    if (type === ACCOUNT_TYPES.USER) {
+      return new LoginUserResponseDto(account);
+    }
+
+    if (type === ACCOUNT_TYPES.POLICE) {
+      return new PoliceLoginUserResponseDto(account);
+    }
+
+    return {
+      id: account.id,
+      email: account.userid,
+      role: "admin",
+      usertype: "admin",
+    };
+  }
+
+  static accessClaims(type, account) {
+    if (type === ACCOUNT_TYPES.USER) {
+      return { email: account.email, role: account.role };
+    }
+
+    if (type === ACCOUNT_TYPES.POLICE) {
+      return { email: account.email, role: "police" };
+    }
+
+    return { userid: account.userid, role: "admin" };
+  }
+
+  // Exchange a valid refresh token (from the httpOnly cookie) for a new
+  // token pair. Works for user, police and admin accounts.
+  static async refreshToken(token) {
+    if (!token) {
+      throw new Error("Refresh token required");
+    }
+
+    let decoded;
+    try {
+      decoded = JWTConfig.verifyRefreshToken(token);
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        throw new Error("Refresh token expired. Please login again.");
+      }
       throw new Error("Invalid refresh token");
     }
 
-    // Generate new access token
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    // Rotate refresh token
-    const newRefreshToken = JWTConfig.generateRefreshToken({
-      userId: user.id,
-    });
-
-    // Invalidate the old refresh token
-    // and store the new one
-    user.refreshToken = newRefreshToken;
-    await user.save();
-
-    return new AuthResponseDTO(
-      user,
-      accessToken,
-      newRefreshToken
+    const account = await AuthService.findSessionAccount(
+      decoded.typ,
+      decoded.userId,
     );
-  } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      throw new Error("Refresh token expired. Please login again.");
+
+    if (
+      !account ||
+      account.refreshToken !== token ||
+      (Number(account.tokenVersion) || 0) !== decoded.tv
+    ) {
+      throw new Error("Invalid refresh token");
     }
 
-    throw new Error("Invalid refresh token");
-  }
-}
+    const { accessToken, refreshToken } = await issueTokens(
+      decoded.typ,
+      account,
+      AuthService.accessClaims(decoded.typ, account),
+    );
 
-  static async logout(userId) {
-    await User.update({ refreshToken: null }, { where: { id: userId } });
+    return {
+      accountType: decoded.typ,
+      user: AuthService.sessionUser(decoded.typ, account),
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  // Revoke every token issued to the account: clear the stored refresh
+  // token and bump tokenVersion so outstanding access tokens are rejected.
+  static async logout(type, id) {
+    const models = {
+      [ACCOUNT_TYPES.USER]: db.User,
+      [ACCOUNT_TYPES.POLICE]: db.PoliceUser,
+      [ACCOUNT_TYPES.ADMIN]: db.Admin,
+    };
+
+    const model = models[type];
+    if (!model) return;
+
+    await model.update(
+      {
+        refreshToken: null,
+        tokenVersion: db.sequelize.literal("tokenVersion + 1"),
+      },
+      { where: { id } },
+    );
   }
 
   // =============driver_tbl new registration========================
@@ -3486,22 +3670,8 @@ static async registerPolice(registerData) {
 }
 
   static async loginPolice(loginData, req) {
-    console.log("SESSION ID:", req.sessionID);
+    await consumeCaptcha(req, loginData?.captcha);
 
-    //console.log("req", req.session.captcha);
-    const userCaptcha = String(loginData.captcha || "").trim();
-    const sessionCaptcha = String(req.session.captcha || "").trim();
-    //console.log("User Captcha1111:", userCaptcha);
-    //console.log("Session Captcha11111:", sessionCaptcha);
-    if (!/^\d{6}$/.test(userCaptcha)) {
-      throw new Error("Invalid captcha format");
-    }
-
-    if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
-      throw new Error("Invalid captcha");
-    }
-
-    req.session.captcha = null;
     const loginDTO = new PoliceLoginRequestDTO(loginData);
     const validation = loginDTO.validate();
 
@@ -3541,21 +3711,11 @@ static async registerPolice(registerData) {
     // ✅ Update last login
     user.lastLoginAt = new Date();
 
-    // ✅ Generate tokens
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: "police",
-    });
-
-    const refreshToken = JWTConfig.generateRefreshToken({
-      userId: user.id,
-    });
-
-    // ✅ Save token
-    user.refreshToken = refreshToken;
-    await user.save();
-    //console.log("Police user logged in:", user);
+    const { accessToken, refreshToken } = await issueTokens(
+      ACCOUNT_TYPES.POLICE,
+      user,
+      AuthService.accessClaims(ACCOUNT_TYPES.POLICE, user),
+    );
 
     return new PoliceLoginResponseDTO(user, accessToken, refreshToken);
   }
@@ -3601,21 +3761,7 @@ static async registerPolice(registerData) {
   // }
 
   static async loginAdmin(loginData, req) {
-    //console.log("🔹 Admin login request received:", loginData);
-
-    const userCaptcha = String(loginData.captcha || "").trim();
-    const sessionCaptcha = String(req.session.captcha || "").trim();
-
-    //console.log("🔹 User captcha:", userCaptcha);
-    //console.log("🔹 Session captcha:", sessionCaptcha);
-
-    if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
-      throw new Error("Invalid captcha");
-    }
-
-    // Prevent captcha reuse
-    req.session.captcha = null;
-    //console.log("✅ Captcha validated");
+    await consumeCaptcha(req, loginData?.captcha);
 
     const loginDTO = new AdminLoginRequestDTO(loginData);
     const validation = loginDTO.validate();
@@ -3638,66 +3784,29 @@ static async registerPolice(registerData) {
 
     //console.log("🔹 Admin found:", admin ? admin.userid : "NOT FOUND");
 
-    if (!admin) {
-      console.error("❌ Admin not found or inactive");
+    if (!admin || !(await admin.validatePassword(loginDTO.password))) {
       throw new Error("Invalid credentials");
     }
 
-    const passwordOk = await admin.validatePassword(loginDTO.password);
-    console.log("🔹 Password valid:", passwordOk);
-
-    if (!passwordOk) {
-      console.error("❌ Wrong password");
-      throw new Error("Invalid credentials");
-    }
-
-    console.log("🔹 Admin role:", admin.role, "isadmin:", admin.isadmin);
-
-    if (admin.role !== "admin" && admin.isadmin !== 1) {
-      console.error("❌ Not an admin account");
+    if (admin.role !== "admin" && Number(admin.isadmin) !== 1) {
       throw new Error("Unauthorized admin access");
     }
 
-    // Update last login
     admin.lastLoginAt = new Date();
 
-    console.log("🔑 Generating tokens...");
+    const { accessToken, refreshToken } = await issueTokens(
+      ACCOUNT_TYPES.ADMIN,
+      admin,
+      AuthService.accessClaims(ACCOUNT_TYPES.ADMIN, admin),
+    );
 
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: admin.id,
-      userid: admin.userid,
-      role: "admin",
-    });
-
-    const refreshToken = JWTConfig.generateRefreshToken({
-      userId: admin.id,
-    });
-
-    //console.log("🔹 Access Token:", accessToken);
-    //console.log("🔹 Refresh Token:", refreshToken);
-
-    // Store refresh token
-    admin.refreshToken = refreshToken;
-    await admin.save();
-
-    //console.log("✅ Admin login successful:", admin.userid);
-
-    const response = {
-      user: {
-        id: admin.id,
-        email: admin.userid,
-        role: "admin",
-        usertype: "admin",
-      },
+    return {
+      user: AuthService.sessionUser(ACCOUNT_TYPES.ADMIN, admin),
       tokens: {
         accessToken,
         refreshToken,
       },
     };
-
-    console.log("📦 Admin login response:", response);
-
-    return response;
   }
 
   static async conveywise(payload) {
@@ -3788,57 +3897,6 @@ static async registerPolice(registerData) {
     }
   }
 
-  // AuthService
-  static async adminlogin(loginData) {
-    const { userid, password } = loginData;
-    console.log("Admin login attempt with data:", loginData);
-
-    if (!userid || !password) {
-      return { success: false, message: "User ID and password are required" };
-    }
-
-    const adminRecord = await Admin.findOne({
-      where: { userid, isActive: 1 },
-    });
-
-    if (!adminRecord) {
-      return { success: false, message: "Invalid credentials" };
-    }
-
-    console.log("Stored password in DB:", adminRecord.password);
-    console.log("Entered password:", password);
-
-    if (password !== adminRecord.password) {
-      return { success: false, message: "Invalid credentials" };
-    }
-
-    adminRecord.lastLoginAt = new Date();
-
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: adminRecord.id,
-      userid: adminRecord.userid,
-      role: adminRecord.role,
-    });
-
-    const refreshToken = JWTConfig.generateRefreshToken({
-      userId: adminRecord.id,
-    });
-
-    adminRecord.refreshToken = refreshToken;
-    await adminRecord.save();
-
-    return {
-      success: true,
-      message: "Login successful",
-      accessToken,
-      refreshToken,
-      admin: {
-        id: adminRecord.id,
-        userid: adminRecord.userid,
-        role: adminRecord.role,
-      },
-    };
-  }
   static async getConveyDetails(checkpostid) {
     try {
       console.log("Fetching convey details with payload:", checkpostid);
@@ -5813,57 +5871,77 @@ static async updateTripPolice(tripDataArray) {
 }
 
 
-  static async updateProfile(profileData) {
-    try {
-      console.log("Updating profile with data:", profileData);
 
-      const { userid, title, firstName, lastName, ownContact, ownAddress } =
-        profileData;
+static async updateProfile(profileData) {
+  try {
+    // 1. Validate profile data
+    const validation = UpdateProfileDTO.validate(profileData);
 
-      // ✅ Validate input
-      if (!userid) {
-        return {
-          success: false,
-          message: "User ID is required",
-        };
-      }
-
-      // ✅ Find existing registration record
-      const registration = await db.Registration.findOne({
-        where: { userId: userid },
-      });
-
-      if (!registration) {
-        return {
-          success: false,
-          message: "Profile not found for the given user ID",
-        };
-      }
-
-      // ✅ Update the profile
-      await registration.update({
-        title,
-        firstName,
-        lastName,
-        ownContact,
-        ownAddress,
-      });
-
-      // ✅ Return success message
-      return {
-        success: true,
-        message: "Profile updated successfully ✅",
-        updatedData: registration.toSafeObject(),
-      };
-    } catch (error) {
-      console.error("Error updating profile:", error);
+    if (!validation.isValid) {
       return {
         success: false,
-        message: "Error updating profile",
-        error: error.message,
+        message: "Profile validation failed",
+        errors: validation.errors,
       };
     }
+
+    const {
+      userid,
+      title,
+      firstName,
+      lastName,
+      ownContact,
+      ownAddress,
+    } = profileData;
+
+    // 2. Normalize accepted plain-text values
+    const normalize = (value) =>
+      typeof value === "string"
+        ? value.normalize("NFKC").trim()
+        : value;
+
+    const sanitizedTitle = normalize(title);
+    const sanitizedFirstName = normalize(firstName);
+    const sanitizedLastName = normalize(lastName);
+    const sanitizedOwnContact = normalize(ownContact);
+    const sanitizedOwnAddress = normalize(ownAddress);
+
+    // 3. Find registration record
+    const registration = await db.Registration.findOne({
+      where: { userId: userid },
+    });
+
+    if (!registration) {
+      return {
+        success: false,
+        message: "Profile not found for the given user ID",
+      };
+    }
+
+    // 4. Update only validated fields
+    await registration.update({
+      title: sanitizedTitle || null,
+      firstName: sanitizedFirstName,
+      lastName: sanitizedLastName,
+      ownContact: sanitizedOwnContact,
+      ownAddress: sanitizedOwnAddress,
+    });
+
+    // 5. Return success
+    return {
+      success: true,
+      message: "Profile updated successfully",
+      updatedData: registration.toSafeObject(),
+    };
+  } catch (error) {
+    console.error("Error updating profile:", error.message);
+
+    return {
+      success: false,
+      message: "Error updating profile",
+    };
   }
+}
 
   static async updatePoliceProfile(profileData) {
     try {
@@ -8774,8 +8852,18 @@ static async updateTripPolice(tripDataArray) {
         throw new Error("User ID and password are required");
       }
 
-      if (password.length < 6) {
-        throw new Error("Password must be at least 6 characters");
+      if (
+        typeof password !== "string" ||
+        password.length < 8 ||
+        password.length > 100 ||
+        !/[a-z]/.test(password) ||
+        !/[A-Z]/.test(password) ||
+        !/\d/.test(password) ||
+        !/[^A-Za-z0-9]/.test(password)
+      ) {
+        throw new Error(
+          "Password must be 8-100 characters with upper and lower case letters, a number and a special character"
+        );
       }
 
       // 2️⃣ Find police user
@@ -8795,6 +8883,9 @@ static async updateTripPolice(tripDataArray) {
       // 4️⃣ Update password (PLAIN TEXT HERE)
       // 🔐 bcrypt hashing happens in model hook (beforeUpdate)
       policeUser.password = password;
+      // Sign the officer out everywhere after a password change
+      policeUser.refreshToken = null;
+      policeUser.tokenVersion = (Number(policeUser.tokenVersion) || 0) + 1;
       await policeUser.save();
 
       return {

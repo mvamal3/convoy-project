@@ -51,9 +51,8 @@ const MyTrips = () => {
               origin: trip.originLocation.location,
               destination: trip.destinationLocation.location,
               date: trip.date,
-              convoyTime: conveyName
-                ? `${conveyTime}<br />(${conveyName})` // ✅ Line break added here
-                : conveyTime,
+              convoyTime: conveyTime,
+              convoyName: conveyName,
               driverName:
                 `${trip.driver.dFirstName} ${trip.driver.dLastName}`.trim(),
               licenseNo: trip.driver.licenseNo,
@@ -235,10 +234,14 @@ const MyTrips = () => {
                           <td className="px-4 py-2 border">
                             {new Date(row.date).toLocaleDateString("en-GB")}
                           </td>
-                          <td
-                            className="px-4 py-2 border"
-                            dangerouslySetInnerHTML={{ __html: row.convoyTime }}
-                          />
+                          <td className="px-4 py-2 border">
+                            {row.convoyTime}
+                            {row.convoyName && (
+                              <>
+                                <br />({row.convoyName})
+                              </>
+                            )}
+                          </td>
                           <td className="px-4 py-2 border">{row.vehicleNo}</td>
 
                           <td className="px-4 py-2 border text-center">

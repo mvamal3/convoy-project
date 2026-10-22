@@ -11,6 +11,7 @@ import CommonTextarea from "@/components/inputs/CommonTextarea";
 
 import { getDistricts } from "@/contexts/GetApi";
 import { PostRegister } from "@/contexts/PostApi"; // ✅ use centralized API
+import { containsUnsafeMarkup } from "@/utils/inputSanitizer";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -107,9 +108,43 @@ const Register = () => {
       );
     }
 
-    // Mobile number validation: maximum 10 digits
-    if (ownContact && !/^\d{1,10}$/.test(ownContact)) {
-      errors.push("Mobile number must be at most 10 digits");
+    // Reject markup/script content in every free-text field
+    const textFields = {
+      Title: title,
+      "First name": firstName,
+      "Last name": lastName,
+      Address: ownAddress,
+      "Organization / Department": formData.orgName,
+      "Document type": formData.docIdtype,
+      "Document number": formData.docId,
+      "Department name": formData.govtdeptName,
+      "Department category": formData.govtsubcat,
+      Email: email,
+    };
+    for (const [label, value] of Object.entries(textFields)) {
+      if (containsUnsafeMarkup(value)) {
+        errors.push(`${label} contains invalid characters`);
+      }
+    }
+
+    // Same rules as the server (RegistrationDtoV1)
+    const namePattern = /^[A-Za-z\s'-]{1,30}$/;
+    if (firstName && !namePattern.test(firstName)) {
+      errors.push("First name may only contain letters, spaces, ' and - (max 30)");
+    }
+    if (lastName && !namePattern.test(lastName)) {
+      errors.push("Last name may only contain letters, spaces, ' and - (max 30)");
+    }
+    if (ownAddress && ownAddress.length > 300) {
+      errors.push("Address must be at most 300 characters");
+    }
+    if (formData.docId && !/^[A-Za-z0-9 /-]{1,50}$/.test(formData.docId.trim())) {
+      errors.push("Document number may only contain letters, numbers, spaces, / and -");
+    }
+
+    // Mobile number validation: exactly 10 digits
+    if (ownContact && !/^\d{10}$/.test(ownContact)) {
+      errors.push("Mobile number must be exactly 10 digits");
     }
 
     // Email format validation

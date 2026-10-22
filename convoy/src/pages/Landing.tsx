@@ -36,10 +36,7 @@ const Landing = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // ✅ Clear any user-related storage on landing
-    localStorage.removeItem("user");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    // ✅ Clear any leftover session storage on landing
     sessionStorage.clear();
 
     // ✅ Optional: clear cookies (if needed)

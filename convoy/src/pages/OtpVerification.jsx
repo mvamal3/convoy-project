@@ -1,6 +1,6 @@
 // ... your imports
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import HomeFooter from "@/include/HomeFooter";
@@ -42,27 +42,28 @@ const OtpVerification = () => {
     return mobile.replace(/\d(?=\d{4})/g, "*");
   };
 
+  // Contact details come from the registration page via router state,
+  // never from browser storage. After a reload the user types the email.
+  const location = useLocation();
+  const askForEmail = !location.state?.email;
+
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    const savedEmail = sessionStorage.getItem("otp_email");
-    const savedMobile = sessionStorage.getItem("otp_mobile");
-
-    if (!savedEmail && !savedMobile) {
-      toast.error("OTP session expired. Please register again.");
-      navigate("/register");
-      return;
-    }
-
-    setEmail(savedEmail);
-    setMobile(savedMobile);
-  }, [navigate]);
+    setEmail(location.state?.email || "");
+    setMobile(location.state?.mobile || "");
+  }, [location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (otp.length !== 6) {
+    if (!/^\d{6}$/.test(otp)) {
       toast.error("Please enter a valid 6-digit OTP.");
+      return;
+    }
+
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email.trim())) {
+      toast.error("Please enter your registered email address.");
       return;
     }
 
@@ -73,7 +74,6 @@ const OtpVerification = () => {
         mobile: mobile.trim(),
         otp: otp.trim(),
       };
-      console.log("🔍 OTP Payload:", payload);
 
       const res = await postCitizenOtpVerify(payload);
 
@@ -85,10 +85,7 @@ const OtpVerification = () => {
           confirmButtonText: "OK",
         });
 
-        sessionStorage.removeItem("otp_email");
-        sessionStorage.removeItem("otp_mobile");
-
-        navigate("/");
+        navigate("/", { replace: true, state: null });
       } else if (res?.success === false) {
         toast.error(res.message || "Incorrect OTP. Please try again.");
       } else {
@@ -119,7 +116,9 @@ const OtpVerification = () => {
                 OTP Verification
               </CardTitle>
               <CardDescription>
-                {email && mobile
+                {askForEmail
+                  ? "Enter your registered email and the 6-digit OTP."
+                  : email && mobile
                   ? `Enter the 6-digit OTP sent to ${maskEmail(
                       email
                     )} and ${maskMobile(mobile)}.`
@@ -130,13 +129,27 @@ const OtpVerification = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {askForEmail && (
+                  <div>
+                    <Input
+                      type="email"
+                      maxLength={100}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Registered email"
+                      className="h-12"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                )}
                 <div>
                   <Input
                     type="text"
                     maxLength={6}
                     pattern="\d*"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                     placeholder="Enter OTP"
                     className="h-12 text-center tracking-widest text-xl"
                     required

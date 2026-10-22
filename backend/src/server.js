@@ -27,8 +27,8 @@ const connectDB = async () => {
 const startServer = async () => {
   await connectDB();
 
-  const server = app.listen(config.PORT, "10.168.2.35", () => {
-    console.log(`🚀 Server running at http://10.168.2.35:${config.PORT}`);
+  const server = app.listen(config.PORT, config.HOST, () => {
+    console.log(`🚀 Server running at http://${config.HOST}:${config.PORT}`);
     console.log(`🌐 Environment: ${config.NODE_ENV}`);
   });
 

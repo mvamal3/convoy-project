@@ -2,21 +2,85 @@ const AuthService = require("../services/authService");
 const BaseResponseDTO = require("../dto/response/BaseResponseDTO");
 const { CaptchaGenerator } = require("captcha-canvas");
 const db = require("../models"); // make sure index.js in /models returns db with initialized models
+const {
+  REFRESH_COOKIE,
+  setRefreshCookie,
+  clearAuthCookies,
+} = require("../utils/authSession");
 
 ////new dto
 const GetTripDetailsByDateRequestDTO = require("../dto/request/new/GetTripDetailsByDateRequestDTO");
 //const GetAllApproveTripRequestDTO = require("../dto/request/GetAllApproveTripRequestDTO");
 
 class AuthController {
-  static async login(req, res) {
-    try {
-      const result = await AuthService.login(req.body, req);
-      console.log("Login successful for user:", result);
-      res.json(BaseResponseDTO.success(result, "Login successful"));
-    } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
-    }
+
+// Put the refresh token in an httpOnly cookie and return only the
+// access token and user details in the JSON body.
+static sendSession(res, { user, tokens }, message, accountType) {
+  if (!tokens?.accessToken || !tokens?.refreshToken) {
+    throw new Error("Invalid login token response");
   }
+
+  setRefreshCookie(res, tokens.refreshToken);
+
+  return res.status(200).json(
+    BaseResponseDTO.success(
+      {
+        accountType,
+        user,
+        tokens: {
+          accessToken: tokens.accessToken,
+          tokenType: "Bearer",
+        },
+      },
+      message
+    )
+  );
+}
+
+// Citizens may only touch their own trips; police and admin are not limited.
+static async canAccessTrips(req, tIds) {
+  if (req.accountType !== "user") return true;
+  return AuthService.userOwnsTrips(req.user.id, tIds);
+}
+
+static sendLoginError(res, error) {
+  if (
+    error.message ===
+      "Invalid or expired CAPTCHA. Please refresh and try again." ||
+    error.message ===
+      "CAPTCHA session missing. Please refresh CAPTCHA."
+  ) {
+    return res.status(400).json(
+      BaseResponseDTO.error(error.message)
+    );
+  }
+
+  if (
+    error.message === "Invalid credentials" ||
+    error.message === "Unauthorized admin access"
+  ) {
+    return res.status(401).json(
+      BaseResponseDTO.error("Invalid credentials")
+    );
+  }
+
+  console.error("Login error:", error.message);
+
+  return res.status(400).json(
+    BaseResponseDTO.error("Unable to process login")
+  );
+}
+
+static async login(req, res) {
+  try {
+    const result = await AuthService.login(req.body, req);
+    return AuthController.sendSession(res, result, "Login successful", "user");
+  } catch (error) {
+    return AuthController.sendLoginError(res, error);
+  }
+}
+
 
   static async register(req, res) {
     try {
@@ -261,15 +325,42 @@ class AuthController {
     }
   }
 
-  static async refreshToken(req, res) {
-    try {
-      const { refreshToken } = req.body;
-      const result = await AuthService.refreshToken(refreshToken);
-      res.json(BaseResponseDTO.success(result, "Token refreshed successfully"));
-    } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+
+
+static async refreshToken(req, res) {
+  try {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE];
+
+    if (!refreshToken) {
+      return res.status(401).json(
+        BaseResponseDTO.error("Refresh token required")
+      );
     }
+
+    const result = await AuthService.refreshToken(refreshToken);
+
+    return AuthController.sendSession(
+      res,
+      {
+        user: result.user,
+        tokens: {
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        },
+      },
+      "Token refreshed successfully",
+      result.accountType
+    );
+  } catch (error) {
+    clearAuthCookies(res);
+
+    return res.status(401).json(
+      BaseResponseDTO.error("Invalid or expired refresh token")
+    );
   }
+}
+
+
   //--------------------------------------
 
   //get_driver_list_by_regId
@@ -442,6 +533,10 @@ class AuthController {
   //get_trip_details_by_tId
   static async getTripDetailsbyTripId(req, res) {
     try {
+      if (!(await AuthController.canAccessTrips(req, [req.body?.tId]))) {
+        return res.status(403).json(BaseResponseDTO.error("Access denied"));
+      }
+
       const result = await AuthService.getTripDetailsbyTripId(req.body);
       res.json(
         BaseResponseDTO.success(result, "Trip Details Loaded successfully"),
@@ -552,15 +647,6 @@ class AuthController {
   }
   //==========================
 
-  static async logout(req, res) {
-    try {
-      await AuthService.logout(req.user.id);
-      res.json(BaseResponseDTO.success(null, "Logout successful"));
-    } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
-    }
-  }
-
   static async profile(req, res) {
     try {
       const UserResponseDTO = require("../dto/response/UserResponseDTO");
@@ -596,9 +682,8 @@ class AuthController {
   }
   static async getuserprofile(req, res) {
     try {
-      // req.body contains { id: someValue }
-      const { userId } = req.body;
-      const result = await AuthService.getProfileByUserId(userId);
+      // Citizens can only read their own profile
+      const result = await AuthService.getProfileByUserId(req.user.id);
       console.log("User profile fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "User Profile Details"));
     } catch (error) {
@@ -625,7 +710,11 @@ class AuthController {
   }
   static async updateProfile(req, res) {
     try {
-      const result = await AuthService.updateProfile(req.body);
+      // Citizens can only update their own profile
+      const result = await AuthService.updateProfile({
+        ...req.body,
+        userid: String(req.user.id),
+      });
 
       if (result.success) {
         // ✅ Send success message and data
@@ -641,8 +730,9 @@ class AuthController {
   }
   static async getPoliceProfile(req, res) {
     try {
-      // req.body contains { id: someValue }
-      const { userId } = req.body;
+      // Police officers can only read their own profile; admins can read any
+      const userId =
+        req.accountType === "admin" ? req.body?.userId : req.user.id;
       const result = await AuthService.getPoliceProfileByUserId(userId);
       console.log("User profile fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "User Profile Details"));
@@ -656,6 +746,11 @@ class AuthController {
     try {
       // req.body contains { tripId: someValue, ...updateData }
       const { tripId } = req.body;
+
+      if (!(await AuthController.canAccessTrips(req, [tripId]))) {
+        return res.status(403).json(BaseResponseDTO.error("Access denied"));
+      }
+
       const result = await AuthService.editTripDetailsByTripId(tripId);
       console.log("Trip details updated successfully:", result);
       res.json(
@@ -669,6 +764,14 @@ class AuthController {
   
 static async updateTripPolice(req, res) {
   try {
+    const tIds = Array.isArray(req.body)
+      ? req.body.map((item) => item?.payload?.tId)
+      : [];
+
+    if (!(await AuthController.canAccessTrips(req, tIds))) {
+      return res.status(403).json(BaseResponseDTO.error("Access denied"));
+    }
+
     const result = await AuthService.updateTripPolice(req.body);
 
     // IMPORTANT: Do not wrap a failed service result as success.
@@ -1100,54 +1203,43 @@ static async updateTripPolice(req, res) {
   }
 
   ///////////Police login
-  static async loginPolice(req, res) {
-    try {
-      const result = await AuthService.loginPolice(req.body, req);
-      console.log("Police login successful for user:", result);
-      res.json(BaseResponseDTO.success(result, "Police login successful"));
-    } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
-    }
+  
+  
+static async loginPolice(req, res) {
+  try {
+    const result = await AuthService.loginPolice(req.body, req);
+    return AuthController.sendSession(res, result, "Police login successful", "police");
+  } catch (error) {
+    return AuthController.sendLoginError(res, error);
   }
+}
+
 
   //////////////Admin login
   static async loginAdmin(req, res) {
     try {
       const result = await AuthService.loginAdmin(req.body, req);
-      res.json(BaseResponseDTO.success(result, "Admin login successful"));
+      return AuthController.sendSession(res, result, "Admin login successful", "admin");
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendLoginError(res, error);
     }
   }
 
-  ///////logout
+  ///////logout (user, police and admin)
   static async logout(req, res) {
     try {
-      if (req.user?.userId) {
-        // Remove refresh token for all user tables
-        await Promise.all([
-          db.Admin?.update(
-            { refreshToken: null },
-            { where: { id: req.user.userId } },
-          ),
-          db.PoliceUser?.update(
-            { refreshToken: null },
-            { where: { id: req.user.userId } },
-          ),
-          db.User?.update(
-            { refreshToken: null },
-            { where: { id: req.user.userId } },
-          ),
-        ]);
-      }
-
-      req.session.destroy(() => {});
-      res.clearCookie("connect.sid");
-
-      res.json({ success: true });
-    } catch (err) {
-      res.json({ success: true });
+      await AuthService.logout(req.accountType, req.user.id);
+    } catch (error) {
+      console.error("Logout error:", error.message);
     }
+
+    clearAuthCookies(res);
+
+    if (req.session) {
+      req.session.destroy(() => {});
+    }
+
+    res.json(BaseResponseDTO.success(null, "Logout successful"));
   }
 
   static async getconveywiseReport(req, res) {
@@ -1171,24 +1263,6 @@ static async updateTripPolice(req, res) {
       res.json(BaseResponseDTO.success(result, "OTP verification successful"));
     } catch (error) {
       res.status(400).json(BaseResponseDTO.error(error.message));
-    }
-  }
-  static async adminlogin(req, res) {
-    try {
-      const { userid, password } = req.body;
-      const result = await AuthService.adminlogin({ userid, password });
-
-      if (!result.success) {
-        return res.status(401).json(result); // 401 Unauthorized for bad creds
-      }
-
-      return res.status(200).json(result);
-    } catch (error) {
-      console.error("Controller admin login error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
     }
   }
   static async getConveyDetails(req, res) {

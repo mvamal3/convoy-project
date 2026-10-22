@@ -42,6 +42,13 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
 
+      // Incremented on logout so previously issued tokens stop working
+      tokenVersion: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+
       lastLoginAt: {
         type: DataTypes.DATE,
         allowNull: true,

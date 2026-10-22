@@ -1,369 +1,190 @@
 const express = require("express");
 const AuthController = require("../controllers/authController");
 const svgCaptcha = require("svg-captcha");
+const crypto = require("crypto");
+const csrfProtection = require("../middleware/csrfProtection");
 
 const {
+  authenticate,
   authenticateToken,
   authenticatePoliceToken,
-  authenticateAdmin
-} = require("../middleware/auth");  
+  authenticateAdmin,
+  authenticatePoliceOrAdmin,
+  authenticateAny,
+} = require("../middleware/auth");
 const {
   authLimiter,
+  refreshLimiter,
   highLimitApiLimiter,
   createAccountLimiter,
-  passwordResetLimiter,
 } = require("../middleware/rateLimiter");
 
 const router = express.Router();
-// CAPTCHA endpoint
+
+// Citizen or police (trip editing is shared by both)
+const authenticateUserOrPolice = authenticate("user", "police");
+
+// ==================== Public: CAPTCHA, CSRF, login ====================
+
 router.get("/captcha", (req, res) => {
-  const captchaText = Math.floor(100000 + Math.random() * 900000).toString();
+const captcha = svgCaptcha.create({
+  size: 6,
+  noise: 3,
+  color: true,
+  background: "#1e40af",
+  charPreset: "23456789",
+  width: 120,
+  height: 40,
+});
 
-  // Store in session
-  req.session.captcha = captchaText;
+  // Keep the answer only on the server.
+  req.session.captcha = captcha.text;
   req.session.captchaTime = Date.now();
-  console.log("req.session.captcha", req.session.captcha);
-  console.log("SESSION ID:", req.sessionID);
 
-  // Return as JSON with text and instructions to create client-side
-  res.json({
-    success: true,
-    text: captchaText,
-    // Return instructions to create captcha client-side
-    instructions: {
-      backgroundColor: "#1e40af", // Blue
-      textColor: "#ffffff", // White
-      fontSize: "24px",
-      fontFamily: "'Courier New', monospace",
-      width: 120,
-      height: 40,
-    },
+  // Prevent the browser from caching the CAPTCHA.
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+
+  // Save the session before returning the image.
+  req.session.save((err) => {
+    if (err) {
+      return res.status(500).json({
+        message: "Unable to generate CAPTCHA",
+      });
+    }
+
+    res.type("svg").send(captcha.data);
   });
 });
-// Apply auth rate limiter to login endpoint
-router.post("/login", authLimiter, AuthController.login);
 
-// Apply create account rate limiter to registration createAccountLimiter
-router.post("/register", AuthController.registerNew);
+router.get("/csrf-token", (req, res) => {
+  const token = crypto.randomBytes(32).toString("hex");
 
-// Apply create account rate limiter to registration createAccountLimiter
-router.post("/policeregister", authenticateAdmin,AuthController.registerPolice);
+  req.session.csrfToken = token;
 
+  res.set("Cache-Control", "no-store");
 
-//////////police login
-router.post("/Policelogin", AuthController.loginPolice);
-//////////////logout
-//router.post("/logout", AuthController.logout);
+  req.session.save((err) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Unable to initialize CSRF protection",
+      });
+    }
 
-//router.post("/checkauth", authenticatePoliceToken, AuthController.checkAuth);
+    res.json({ csrfToken: token });
+  });
+});
 
-////////////Admin Login
-router.post("/Adminlogin", AuthController.loginAdmin);
+router.post("/login", authLimiter, csrfProtection, AuthController.login);
+router.post("/Policelogin", authLimiter, csrfProtection, AuthController.loginPolice);
+router.post("/Adminlogin", authLimiter, csrfProtection, AuthController.loginAdmin);
 
-//Apply create Driver_tbl rate limiter to registration
-router.post(
-  "/driver-registration",
-  authenticateToken,
-  AuthController.registerDriver,
-);
+// The refresh token is read from an httpOnly cookie, so require CSRF token
+router.post("/refresh-token", refreshLimiter, csrfProtection, AuthController.refreshToken);
+router.post("/logout", authenticateAny, AuthController.logout);
 
-router.post("/delete-driver", authenticateToken, AuthController.deleteDriver); // Assuming this is for driver delete
+// ==================== Public: citizen registration ====================
 
-//vehicle
-router.post("/vehicle-new", authenticateToken, AuthController.registerVehicle); // Assuming this is for vehicle registration
-router.post("/delete-vehicle", authenticateToken, AuthController.deleteVehicle); // Assuming this is for vehicle delete
-
-router.post("/trip-new", authenticateToken, AuthController.newtrip);
-
-router.post("/spl-trip-new", authenticateToken, AuthController.splnewtrip);
-
-router.post("/delete-trip", authenticateToken, AuthController.deletetrip); // Assuming this is for vehicle delete
-
-// Apply auth rate limiter to token refresh
-
-router.post("/refresh-token", authLimiter, AuthController.refreshToken);
-router.post("/driverstatus", authenticateToken, AuthController.driverstatus);
-router.post("/vehiclestatus", AuthController.vehiclestatus);
-router.get("/getlicense", AuthController.getByLicense);
-router.get("/getdriver", AuthController.getByMobilenumber);
-router.post(
-  "/get-driver-list",
-  authenticateToken,
-  AuthController.getDriveListbyRegId,
-);
-router.get(
-  "/get-vehicle-list",
-  authenticateToken,
-  AuthController.getVehicleListbyRegId,
-);
+router.post("/register", createAccountLimiter, csrfProtection, AuthController.registerNew);
+router.post("/verify-citizen-otp", authLimiter, csrfProtection, AuthController.otpVerification);
 router.get("/getDistrict", AuthController.getDistrict);
 router.post("/getSubDistrict", AuthController.getSubDistrict);
 router.post("/getVillage", AuthController.getVillage);
-router.get(
-  "/get-trip-details",
-  authenticateToken,
-  AuthController.getTripDetailsbyRegId,
-);
 
-router.post(
-  "/get-trip-details-citizen",
-  authenticateToken,
-  AuthController.getTripDetailsbyRegIdCitizen,
-);
-router.post("/get-trip-details-by-tId", AuthController.getTripDetailsbyTripId);
-// router.post("/get-trip-details-by-tId", AuthController.getTripDetailsbyTripId);
+// ==================== Citizen ====================
 
-router.post(
-  "/get-trip-details-by-tId-user",
-  authenticateToken,
-  AuthController.getTripDetailsbyTripId,
-);
-router.post(
-  "/get-trip-details-by-dt",
-  authenticatePoliceToken,
-  AuthController.getTripDetailsbydt,
-);
+router.get("/profile", authenticateToken, AuthController.profile);
+router.post("/getuserprofile", authenticateToken, AuthController.getuserprofile);
+router.post("/update-profile", authenticateToken, AuthController.updateProfile);
 
-router.post(
-  "/get-Pending-trip-details-by-dt",
-  authenticatePoliceToken,
-  AuthController.getPendingTripDetailsbydt,
-);
+router.post("/driver-registration", authenticateToken, AuthController.registerDriver);
+router.post("/delete-driver", authenticateToken, AuthController.deleteDriver);
+router.post("/driverstatus", authenticateToken, AuthController.driverstatus);
+router.post("/get-driver-list", authenticateToken, AuthController.getDriveListbyRegId);
+router.get("/getlicense", authenticateToken, AuthController.getByLicense);
+router.get("/getdriver", authenticateToken, AuthController.getByMobilenumber);
 
-router.post(
-  "/get-all-Approve-pending-rejected-trip-details",
-  AuthController.getApproeveTripDetails,
-);
-// router.post(
-//   "/get-all-Approve-trip-details",
-//   authenticatePoliceToken,
-//   AuthController.getallApproeveTripDetails
-// );
-router.post(
-  "/get-all-Approve-trip-details",
-  AuthController.getallApproeveTripDetails,
-);
+router.post("/vehicle-new", authenticateToken, AuthController.registerVehicle);
+router.post("/delete-vehicle", authenticateToken, AuthController.deleteVehicle);
+router.post("/vehiclestatus", authenticateToken, AuthController.vehiclestatus);
+router.get("/get-vehicle-list", authenticateToken, AuthController.getVehicleListbyRegId);
 
-router.post(
-  "/get-all-Approve-Rejected-Pending-trip-details",
-  authenticatePoliceToken,
-  AuthController.getallApproeveRejectedPendingTripDetails,
-);
-router.post(
-  "/get-all-trip-details",
-  authenticatePoliceToken,
-  AuthController.getTripDetails,
-);
-router.post(
-  "/get-trips-by-filters",
-  authenticatePoliceToken,
-  AuthController.tripfilterdata,
-);
+router.post("/trip-new", authenticateToken, AuthController.newtrip);
+router.post("/spl-trip-new", authenticateToken, AuthController.splnewtrip);
+router.post("/delete-trip", authenticateToken, AuthController.deletetrip);
+router.get("/get-trip-details", authenticateToken, AuthController.getTripDetailsbyRegId);
+router.post("/get-trip-details-citizen", authenticateToken, AuthController.getTripDetailsbyRegIdCitizen);
+router.post("/get-trip-details-by-tId-user", authenticateToken, AuthController.getTripDetailsbyTripId);
+router.get("/get-trip-details-Spl-convoy", authenticateToken, AuthController.getSplConvoyTripDetailsbyRegId);
+
+// ==================== Citizen and police ====================
+
+// Citizens are limited to their own trips inside the controller
+router.post("/edittripdetails", authenticateUserOrPolice, AuthController.editTripDetails);
+router.post("/update-trip", authenticateUserOrPolice, AuthController.updateTripPolice);
+
+// ==================== Any signed-in account ====================
+
+router.get("/get-all_origin_destination", authenticateAny, AuthController.getOriginDestination);
+router.post("/get-convey-time", authenticateAny, AuthController.getConveyTimeByLocId);
+router.post("/get-convey-details", authenticateAny, AuthController.getConveyDetails);
+router.post("/getstopconvey", authenticateAny, AuthController.getStopConvey);
+router.get("/getcurrentdateandtime", authenticateAny, AuthController.getcurrentdateandtime);
+router.post("/get-nationality", authenticateAny, AuthController.getNationality);
+
+// ==================== Police ====================
+
+router.post("/getppoliceprofile", authenticatePoliceOrAdmin, AuthController.getPoliceProfile);
+
+router.post("/get-trip-details-by-tId", authenticatePoliceOrAdmin, AuthController.getTripDetailsbyTripId);
+router.post("/get-trip-details-by-dt", authenticatePoliceToken, AuthController.getTripDetailsbydt);
+router.post("/get-Pending-trip-details-by-dt", authenticatePoliceToken, AuthController.getPendingTripDetailsbydt);
+router.post("/get-all-Approve-pending-rejected-trip-details", authenticatePoliceToken, AuthController.getApproeveTripDetails);
+router.post("/get-all-Approve-trip-details", authenticatePoliceToken, AuthController.getallApproeveTripDetails);
+router.post("/get-all-Approve-Rejected-Pending-trip-details", authenticatePoliceToken, AuthController.getallApproeveRejectedPendingTripDetails);
+router.post("/get-all-trip-details", authenticatePoliceToken, AuthController.getTripDetails);
+router.post("/get-trips-by-filters", authenticatePoliceToken, AuthController.tripfilterdata);
+router.post("/get-all-details-by-tripid", authenticatePoliceToken, AuthController.getAllDetailsByTripId);
+router.post("/get-Verified-trip-details", authenticatePoliceToken, AuthController.getallVerifiedTrips);
+router.post("/getapprovecount", authenticatePoliceToken, AuthController.getapprovecount);
 
 router.post("/trip-verify", authenticatePoliceToken, AuthController.tripVerify);
+router.post("/trip-approval", authenticatePoliceToken, AuthController.tripApproval);
 
-router.post(
-  "/trip-approval",
-  authenticatePoliceToken,
-  AuthController.tripApproval,
-);
-router.get("/get-all_origin_destination", AuthController.getOriginDestination);
-router.get(
-  "/get-all_origin_destination_Police",
-  AuthController.getOriginDestination,
-);
-router.post(
-  "/convey-wise-report",
-  authenticatePoliceToken,
-  highLimitApiLimiter, // ✅ apply high-limit
-  AuthController.getconveywiseReport,
-);
-router.post(
-  "/get-all-today-convey-reports",
-  AuthController.getAllTodayConveyReports,
-);
-router.post("/get-all-details-by-tripid", AuthController.getAllDetailsByTripId);
+router.post("/start-convoy", authenticatePoliceToken, AuthController.addConveyControl);
+router.post("/stop-convoy", authenticatePoliceToken, AuthController.stopConveyControl);
+router.post("/getrunningconvey", authenticatePoliceToken, AuthController.getRunningConvey);
 
-router.post("/get-convey-time", AuthController.getConveyTimeByLocId);
-router.post("/verify-citizen-otp", AuthController.otpVerification);
-router.post("/get-convey-details", AuthController.getConveyDetails);
-router.get(
-  "/get-vehicle-list",
-  authenticateToken,
-  AuthController.getVehicleListbyRegId,
-);
+router.post("/start-checkout", authenticatePoliceToken, AuthController.startcheckout);
+router.post("/get-running-checkout", authenticatePoliceToken, AuthController.getRunningCheckout);
+router.post("/stop-checkout", authenticatePoliceToken, AuthController.stopcheckout);
+router.post("/getcheckouttrip", authenticatePoliceToken, AuthController.getCheckOutTrip);
+router.post("/getSpecialConvoycheckouttrip", authenticatePoliceToken, AuthController.getspecialConvoyCheckOutTrip);
+router.post("/update-checkout-trip", authenticatePoliceToken, AuthController.updateCheckOutTrip);
 
-router.post(
-  "/start-convoy",
-  authenticatePoliceToken,
-  AuthController.addConveyControl,
-);
+router.post("/getarrivallist", authenticatePoliceToken, AuthController.getarrivalist);
+router.post("/convey-wise-report", authenticatePoliceToken, highLimitApiLimiter, AuthController.getconveywiseReport);
+router.post("/get-all-today-convey-reports", authenticatePoliceToken, AuthController.getAllTodayConveyReports);
+router.post("/getcheckoutreport", authenticatePoliceToken, AuthController.getCheckOutReport);
+router.post("/specialgetcheckoutreport", authenticatePoliceToken, AuthController.getSpecialCheckOutReport);
+router.post("/generate-checkout-report", authenticatePoliceToken, AuthController.generateCheckoutReport);
+router.post("/get-special-convoy-report", authenticatePoliceToken, AuthController.getSpecialConvoyReport);
+router.post("/get-sp-report", authenticatePoliceToken, AuthController.getSpReport);
+router.post("/sp/trip-details", authenticatePoliceToken, AuthController.getSpTripDetails);
 
-router.post(
-  "/stop-convoy",
-  // authenticatePoliceToken,
-  AuthController.stopConveyControl,
-);
-router.post(
-  "/getrunningconvey",
-  // authenticatePoliceToken,
-  AuthController.getRunningConvey,
-);
-router.post(
-  "/getstopconvey",
-  // authenticatePoliceToken,
-  AuthController.getStopConvey,
-);
-router.post(
-  "/getcheckouttrip",
-  //authenticatePoliceToken,
-  AuthController.getCheckOutTrip,
-);
-router.post(
-  "/getSpecialConvoycheckouttrip",
-  //authenticatePoliceToken,
-  AuthController.getspecialConvoyCheckOutTrip,
-);
+router.post("/todays-trip-details", authenticatePoliceOrAdmin, highLimitApiLimiter, AuthController.getTodayConvoyTrips);
 
-router.post(
-  "/update-checkout-trip",
-  authenticatePoliceToken,
-  AuthController.updateCheckOutTrip,
-);
+// ==================== Admin ====================
 
-router.post(
-  "/getcheckoutreport",
-  authenticatePoliceToken,
-  AuthController.getCheckOutReport,
-);
-
-router.post(
-  "/specialgetcheckoutreport",
-  authenticatePoliceToken,
-  AuthController.getSpecialCheckOutReport,
-);
-
-router.post(
-  "/getuserprofile",
-  // authenticatePoliceToken,
-  AuthController.getuserprofile,
-);
-router.post(
-  "/getppoliceprofile",
-  // authenticatePoliceToken,
-  AuthController.getPoliceProfile,
-);
-
-router.post(
-  "/edittripdetails",
-  // authenticatePoliceToken,
-  AuthController.editTripDetails,
-);
-router.post("/update-trip", AuthController.updateTripPolice);
-
-router.post(
-  "/update-profile",
-  // authenticatePoliceToken,
-  AuthController.updateProfile,
-);
-
-router.post(
-  "/update-police-profile",
-  authenticateAdmin,
-  AuthController.updatePoliceProfile,
-);
-
-router.post(
-  "/getapprovecount",
-  authenticatePoliceToken,
-  AuthController.getapprovecount,
-);
-router.get(
-  "/getcurrentdateandtime",
-  // authenticatePoliceToken,
-  AuthController.getcurrentdateandtime,
-);
-
-router.post("/admin", AuthController.adminlogin);
-
-router.post("/getarrivallist", AuthController.getarrivalist);
-
-router.post(
-  "/get-Verified-trip-details",
-  authenticatePoliceToken,
-  AuthController.getallVerifiedTrips,
-);
-
-router.post(
-  "/start-checkout",
-  authenticatePoliceToken,
-  AuthController.startcheckout,
-);
-router.post(
-  "/get-running-checkout",
-  authenticatePoliceToken,
-  AuthController.getRunningCheckout,
-);
-
-router.post(
-  "/stop-checkout",
-  authenticatePoliceToken,
-  AuthController.stopcheckout,
-);
-
-// // Today's Trip Details
-//router.post("/todays-trip-details", AuthController.getTodaysTripDetails);
-// router.post(
-//   "/todays-trip-details",
-//   AuthController.getTodaysTripDetails
-// );
-
-router.post(
-  "/todays-trip-details",
-  highLimitApiLimiter,
-  AuthController.getTodayConvoyTrips,
-);
-
-router.post(
-  "/change-police-password",
-  // ✅ REQUIRED
-  AuthController.changePolicePassword,
-);
-
-router.post("/freeze-police-user", authenticateAdmin,AuthController.freezePoliceUser);
-
+router.post("/policeregister", authenticateAdmin, AuthController.registerPolice);
+router.post("/update-police-profile", authenticateAdmin, AuthController.updatePoliceProfile);
+router.post("/change-police-password", authenticateAdmin, AuthController.changePolicePassword);
+router.post("/delete-police-user", authenticateAdmin, AuthController.deletePoliceUser);
+router.post("/freeze-police-user", authenticateAdmin, AuthController.freezePoliceUser);
 router.post("/Unfreeze-police-user", authenticateAdmin, AuthController.unfreezePoliceUser);
-
-router.post("/get-frozen-police-users", authenticateAdmin,AuthController.getFrozenPoliceUsers);
-router.post("/get-registered-police", authenticateAdmin,AuthController.getRegisteredPolice);
-
-router.post("/generate-checkout-report", AuthController.generateCheckoutReport);
-
-router.post("/delete-police-user", AuthController.deletePoliceUser);
-router.post("/get-police-designation", AuthController.getPoliceDesignation);
-
-router.post("/get-sp-report", AuthController.getSpReport);
-router.post("/sp/trip-details", AuthController.getSpTripDetails);
-
-router.post("/get-nationality", AuthController.getNationality);
-
-router.get(
-  "/get-trip-details-Spl-convoy",
-  authenticateToken,
-  AuthController.getSplConvoyTripDetailsbyRegId,
-);
-
-router.post(
-  "/get-special-convoy-report",
-  AuthController.getSpecialConvoyReport,
-);
-
-// Apply password reset limiter (if you implement password reset)
-// router.post('/forgot-password', passwordResetLimiter, AuthController.forgotPassword);
-// router.post('/reset-password', passwordResetLimiter, AuthController.resetPassword);
-
-// No special rate limiting for authenticated routes (uses general limiter)
-router.post("/logout", authenticateToken, AuthController.logout);
-router.get("/profile", authenticateToken, AuthController.profile);
+router.post("/get-frozen-police-users", authenticateAdmin, AuthController.getFrozenPoliceUsers);
+router.post("/get-registered-police", authenticateAdmin, AuthController.getRegisteredPolice);
+router.post("/get-police-designation", authenticateAdmin, AuthController.getPoliceDesignation);
+router.get("/get-all_origin_destination_Police", authenticateAdmin, AuthController.getOriginDestination);
 
 module.exports = router;
