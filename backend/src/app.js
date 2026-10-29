@@ -73,6 +73,16 @@ app.use(
   }),
 );
 
+// With COOKIE_SECURE the API is only reachable through the HTTPS reverse
+// proxy, so tell express-session the connection is secure. Without this it
+// refuses to send Secure cookies unless the proxy forwards X-Forwarded-Proto.
+if (config.COOKIE_SECURE) {
+  app.use((req, res, next) => {
+    req.headers["x-forwarded-proto"] = "https";
+    next();
+  });
+}
+
 // CAPTCHA session
 app.use(
   session({
@@ -80,14 +90,17 @@ app.use(
     secret: config.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    proxy: config.COOKIE_SECURE,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: config.COOKIE_SECURE,
       sameSite: "lax",
       maxAge: 5 * 60 * 1000,
     },
   }),
 );
+
+
 
 // Rate limiting
 const limiter = rateLimit({

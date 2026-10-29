@@ -82,6 +82,7 @@ router.post("/Adminlogin", authLimiter, csrfProtection, AuthController.loginAdmi
 // The refresh token is read from an httpOnly cookie, so require CSRF token
 router.post("/refresh-token", refreshLimiter, csrfProtection, AuthController.refreshToken);
 router.post("/logout", authenticateAny, AuthController.logout);
+router.get("/session", authenticateAny, AuthController.getSession);
 
 // ==================== Public: citizen registration ====================
 

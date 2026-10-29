@@ -21,11 +21,24 @@ module.exports = {
   JWT_SECRET: process.env.JWT_SECRET || "your-super-secret-key",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "15m",
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "refresh-secret",
-  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+  // Refresh token lifetime doubles as the server-side idle timeout:
+  // a session not refreshed within this time cannot be resumed.
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "20m",
+
+  // Session limits
+  // Absolute session length; after this the user must log in again.
+  SESSION_MAX_HOURS: parseFloat(process.env.SESSION_MAX_HOURS) || 12,
+  // A new login revokes every earlier session of the same account.
+  SINGLE_SESSION: process.env.SINGLE_SESSION !== "false",
 
   // Security
   BCRYPT_ROUNDS: parseInt(process.env.BCRYPT_ROUNDS, 10) || 12,
   SESSION_SECRET: process.env.SESSION_SECRET,
+  // Mark cookies Secure. Set true when the site is served over HTTPS
+  // (the API is only reachable through the HTTPS reverse proxy).
+  COOKIE_SECURE: process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === "true"
+    : (process.env.NODE_ENV || "development") === "production",
 
   // Rate Limiting
   RATE_LIMIT_WINDOW: parseInt(process.env.RATE_LIMIT_WINDOW, 10) || 15,

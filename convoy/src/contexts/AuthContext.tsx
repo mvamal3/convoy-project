@@ -104,17 +104,40 @@ const toSessionUser = (type: AccountType, regUser: any) => {
   };
 };
 
-// Seconds until a JWT expires (0 when it cannot be read).
-const secondsUntilExpiry = (token: string) => {
+// Decoded JWT payload (null when it cannot be read). Used only to read our
+// own claims; the server still verifies every token's signature.
+const tokenPayload = (token: string) => {
   try {
-    const payload = JSON.parse(
+    return JSON.parse(
       atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
     );
-    return Math.max(payload.exp - Date.now() / 1000, 0);
   } catch {
-    return 0;
+    return null;
   }
 };
+
+// Seconds until a JWT expires (0 when it cannot be read).
+const secondsUntilExpiry = (token: string) => {
+  const payload = tokenPayload(token);
+  return payload ? Math.max(payload.exp - Date.now() / 1000, 0) : 0;
+};
+
+// One-time value sent with each login attempt. The server echoes it inside
+// the signed access token, so a replayed (old) login response is rejected.
+const newLoginNonce = () => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+};
+
+// Auth endpoints handle their own 401s; any other API 401 ends the session.
+const SESSION_ENDPOINTS =
+  /\/api\/auth\/(login|Policelogin|Adminlogin|refresh-token|logout|session|captcha|csrf-token)\b/;
+
+const isSessionRejection = (url: string, status: number) =>
+  status === 401 &&
+  url.startsWith(`${API_BASE_URL}/api/`) &&
+  !SESSION_ENDPOINTS.test(url);
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -153,19 +176,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
-  const startSession = useCallback((data: any, type: AccountType) => {
-    const sessionUser = toSessionUser(type, data.user);
-    setUser(sessionUser);
-    setAccessToken(data.tokens.accessToken);
-    return sessionUser;
-  }, []);
+  // Ask the server whether a token is valid before trusting it. The user
+  // shown in the app comes from this response, never from a login response.
+  const verifySession = async (token: string, expectedType?: AccountType) => {
+    const response = await axios.get(`${API_BASE_URL}/api/auth/session`, {
+      withCredentials: true,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = response.data?.data;
+
+    if (!data?.user || (expectedType && data.accountType !== expectedType)) {
+      throw new Error("Session could not be verified");
+    }
+    return data as { accountType: AccountType; user: any };
+  };
+
+  const startSession = useCallback(
+    (token: string, verified: { accountType: AccountType; user: any }) => {
+      const sessionUser = toSessionUser(verified.accountType, verified.user);
+      setUser(sessionUser);
+      setAccessToken(token);
+      return sessionUser;
+    },
+    [],
+  );
 
   // Exchange the httpOnly refresh cookie for a new access token.
   const refreshSession = useCallback(async () => {
     try {
       const response = await postWithCsrf("refresh-token", {});
-      const data = response.data?.data;
-      startSession(data, data.accountType);
+      const token = response.data?.data?.tokens?.accessToken;
+      startSession(token, await verifySession(token));
       return true;
     } catch {
       clearSession();
@@ -202,18 +243,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     setIsLoading(true);
     try {
-      const response = await postWithCsrf(path, body);
+      const loginNonce = newLoginNonce();
+      const response = await postWithCsrf(path, { ...body, loginNonce });
       const result = response.data;
 
       if (result.success === false) {
         throw new Error(result.message || "Login failed");
       }
 
-      if (type === "admin" && result.data.user.role !== "admin") {
+      // Reject a response that was not issued for this login attempt
+      const token = result.data?.tokens?.accessToken;
+      const payload = token ? tokenPayload(token) : null;
+      if (!payload || payload.ln !== loginNonce || payload.typ !== type) {
+        throw new Error("Login could not be verified. Please try again.");
+      }
+
+      // The server must confirm the session before any page is shown
+      const verified = await verifySession(token, type);
+
+      if (type === "admin" && verified.user.role !== "admin") {
         throw new Error("Unauthorized admin access");
       }
 
-      startSession(result.data, type);
+      startSession(token, verified);
       return result;
     } catch (error: any) {
       console.error(errorLabel, error.response?.data?.message || error.message);
@@ -263,6 +315,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [accessToken, clearSession, navigate]);
 
   useIdleLogout(logout, Boolean(accessToken));
+
+  // If the server rejects the token on any API call (revoked, expired or
+  // replayed session), end the session at once instead of showing a page
+  // without data.
+  const sessionActive = useRef(false);
+  sessionActive.current = Boolean(accessToken);
+
+  useEffect(() => {
+    const endRejectedSession = () => {
+      if (!sessionActive.current) return;
+      sessionActive.current = false;
+      clearSession();
+      navigate("/", { replace: true });
+    };
+
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const url = error.config?.url || "";
+        if (isSessionRejection(url, error.response?.status)) {
+          endRejectedSession();
+        }
+        return Promise.reject(error);
+      },
+    );
+
+    const originalFetch = window.fetch;
+    window.fetch = async (input, init) => {
+      const response = await originalFetch(input, init);
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      if (isSessionRejection(url, response.status)) {
+        endRejectedSession();
+      }
+      return response;
+    };
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+      window.fetch = originalFetch;
+    };
+  }, [clearSession, navigate]);
 
   return (
     <AuthContext.Provider

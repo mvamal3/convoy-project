@@ -1225,6 +1225,39 @@ static async loginPolice(req, res) {
     }
   }
 
+  ///////current session (user, police and admin)
+  // The frontend calls this before showing any signed-in page, so a
+  // replayed or revoked token never results in a signed-in view.
+  static async getSession(req, res) {
+    try {
+      const account = await AuthService.findSessionAccount(
+        req.accountType,
+        req.user.id,
+      );
+
+      if (!account) {
+        return res
+          .status(401)
+          .json(BaseResponseDTO.error("Invalid or expired token"));
+      }
+
+      return res.json(
+        BaseResponseDTO.success(
+          {
+            accountType: req.accountType,
+            user: AuthService.sessionUser(req.accountType, account),
+          },
+          "Session is valid",
+        ),
+      );
+    } catch (error) {
+      console.error("Session check error:", error.message);
+      return res
+        .status(401)
+        .json(BaseResponseDTO.error("Invalid or expired token"));
+    }
+  }
+
   ///////logout (user, police and admin)
   static async logout(req, res) {
     try {

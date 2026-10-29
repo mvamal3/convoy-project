@@ -25,7 +25,9 @@ const PoliceLoginUserResponseDto = require("../dto/response/PoliceLoginUserRespo
 const {
   ACCOUNT_TYPES,
   consumeCaptcha,
+  isValidLoginNonce,
   issueTokens,
+  isSessionExpired,
 } = require("../utils/authSession");
 
 //new dto
@@ -238,6 +240,7 @@ class AuthService {
 
 static async login(loginData, req) {
   await consumeCaptcha(req, loginData?.captcha);
+  const loginNonce = AuthService.requireLoginNonce(loginData);
 
   const loginDTO = new LoginRequestDTO(loginData);
   const validation = loginDTO.validate();
@@ -270,6 +273,7 @@ static async login(loginData, req) {
     ACCOUNT_TYPES.USER,
     user,
     { email: user.email, role: user.role },
+    { newSession: true, nonce: loginNonce },
   );
 
   return new LoginResponseDTO(user, accessToken, refreshToken);
@@ -557,6 +561,16 @@ static async login(loginData, req) {
     return { userid: account.userid, role: "admin" };
   }
 
+  // Every login request must carry the browser's one-time login nonce.
+  // It is echoed in the access token so a replayed response is detectable.
+  static requireLoginNonce(loginData) {
+    const nonce = loginData?.loginNonce;
+    if (!isValidLoginNonce(nonce)) {
+      throw new Error("Invalid login request");
+    }
+    return nonce;
+  }
+
   // Exchange a valid refresh token (from the httpOnly cookie) for a new
   // token pair. Works for user, police and admin accounts.
   static async refreshToken(token) {
@@ -587,10 +601,16 @@ static async login(loginData, req) {
       throw new Error("Invalid refresh token");
     }
 
+    // Enforce the absolute session length (SESSION_MAX_HOURS)
+    if (isSessionExpired(decoded.st)) {
+      throw new Error("Session expired. Please login again.");
+    }
+
     const { accessToken, refreshToken } = await issueTokens(
       decoded.typ,
       account,
       AuthService.accessClaims(decoded.typ, account),
+      { startedAt: decoded.st },
     );
 
     return {
@@ -3671,6 +3691,7 @@ static async registerPolice(registerData) {
 
   static async loginPolice(loginData, req) {
     await consumeCaptcha(req, loginData?.captcha);
+    const loginNonce = AuthService.requireLoginNonce(loginData);
 
     const loginDTO = new PoliceLoginRequestDTO(loginData);
     const validation = loginDTO.validate();
@@ -3715,6 +3736,7 @@ static async registerPolice(registerData) {
       ACCOUNT_TYPES.POLICE,
       user,
       AuthService.accessClaims(ACCOUNT_TYPES.POLICE, user),
+      { newSession: true, nonce: loginNonce },
     );
 
     return new PoliceLoginResponseDTO(user, accessToken, refreshToken);
@@ -3762,6 +3784,7 @@ static async registerPolice(registerData) {
 
   static async loginAdmin(loginData, req) {
     await consumeCaptcha(req, loginData?.captcha);
+    const loginNonce = AuthService.requireLoginNonce(loginData);
 
     const loginDTO = new AdminLoginRequestDTO(loginData);
     const validation = loginDTO.validate();
@@ -3798,6 +3821,7 @@ static async registerPolice(registerData) {
       ACCOUNT_TYPES.ADMIN,
       admin,
       AuthService.accessClaims(ACCOUNT_TYPES.ADMIN, admin),
+      { newSession: true, nonce: loginNonce },
     );
 
     return {
