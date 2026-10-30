@@ -41,7 +41,12 @@ const AdminLogin = () => {
     try {
       await AdminLogin(userid, password, captcha.trim()); // 👈 userid sent
     } catch (err) {
-      toast.error("Login failed. Please try again.");
+      // Show the server's reason (invalid credentials, CAPTCHA, too many attempts)
+      toast.error(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Login failed. Please try again.",
+      );
       // A CAPTCHA is valid for one attempt only
       setCaptcha("");
       setRefreshCaptcha((prev) => !prev);
