@@ -65,6 +65,10 @@ import SpecialConvoyArrivalReport from "@/pages/SpecialConvoyArrivalReport"; //
 import MonthlyVehicleReport from "@/pages/MonthlyVehicleReport"; //
 
 import GenerateReport1 from "@/pages/GenerateReport"; //
+import ForgotPassword from "@/pages/ForgotPassword";
+import ChangePassword from "@/pages/ChangePassword";
+import ManageCitizens from "@/pages/ManageCitizens";
+import AuditLogs from "@/pages/AuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +115,10 @@ const AppRoutes = () => {
       <Route path="/trip-report" element={guard(POLICE, <TripReport />)} />
       <Route path="/ViewAllVerifiedTrips" element={guard(POLICE, <ViewAllVerifiedTrips />)} />
       <Route path="/AdminLogin" element={<AdminLogin />} />
+      <Route path="/ForgotPassword" element={<ForgotPassword />} />
+      <Route path="/ChangePassword" element={guard([...CITIZEN, ...POLICE, "admin"], <ChangePassword />)} />
+      <Route path="/ManageCitizens" element={guard("admin", <ManageCitizens />)} />
+      <Route path="/AuditLogs" element={guard("admin", <AuditLogs />)} />
 
 
 

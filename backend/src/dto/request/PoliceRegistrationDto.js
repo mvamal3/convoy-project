@@ -1,3 +1,5 @@
+const { checkPassword } = require("../../utils/passwordPolicy");
+
 // ---------- Sanitizers ----------
 
 // Plain text: normalise unicode, collapse whitespace, strip control/invisible
@@ -83,9 +85,9 @@ class PoliceRegistrationDto {
       errors.push("Invalid email format");
 
     // Password
-    if (this.password && this.password.length < 6)
-      errors.push("Password must be at least 6 characters long");
-    if (this.password && Buffer.byteLength(this.password, "utf8") > MAX.password)
+    if (this.password && checkPassword(this.password))
+      errors.push(checkPassword(this.password));
+    else if (this.password && Buffer.byteLength(this.password, "utf8") > MAX.password)
       errors.push(`Password is too long (maximum ${MAX.password} bytes)`);
 
     // Contact

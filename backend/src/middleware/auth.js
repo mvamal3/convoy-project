@@ -9,7 +9,7 @@ const SAFE_ATTRIBUTES = { exclude: ["password", "refreshToken"] };
 const accountLoaders = {
   [ACCOUNT_TYPES.USER]: async (id) => {
     const user = await db.User.findByPk(id, { attributes: SAFE_ATTRIBUTES });
-    return user && user.isActive ? user : null;
+    return user && user.isActive && !user.isFrozen ? user : null;
   },
 
   [ACCOUNT_TYPES.POLICE]: async (id) => {
@@ -17,7 +17,8 @@ const accountLoaders = {
       attributes: SAFE_ATTRIBUTES,
       include: [{ model: db.PoliceRegistration, as: "registration" }],
     });
-    return user && user.isActive ? user : null;
+    // status 0 = frozen by an admin
+    return user && user.isActive && Number(user.status) === 1 ? user : null;
   },
 
   [ACCOUNT_TYPES.ADMIN]: async (id) => {
@@ -124,18 +125,6 @@ const authenticateAny = authenticate(
   ACCOUNT_TYPES.ADMIN,
 );
 
-const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res
-        .status(403)
-        .json(BaseResponseDTO.error("Insufficient permissions"));
-    }
-
-    next();
-  };
-};
-
 module.exports = {
   authenticate,
   authenticateToken,
@@ -143,5 +132,4 @@ module.exports = {
   authenticateAdmin,
   authenticatePoliceOrAdmin,
   authenticateAny,
-  authorizeRoles,
 };

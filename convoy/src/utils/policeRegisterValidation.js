@@ -1,6 +1,8 @@
 // Same rules as the backend PoliceRegistrationDto.
 // Frontend validation is for user feedback only; the server still enforces everything.
 
+import { checkPassword } from "./passwordPolicy";
+
 // ---------- Sanitizers ----------
 export const cleanText = (value) => {
   if (typeof value !== "string" && typeof value !== "number") return "";
@@ -72,8 +74,8 @@ export const validatePoliceForm = (form) => {
 
   // Password
   if (values.password && !errors.password) {
-    if (values.password.length < 6)
-      errors.password = "Password must be at least 6 characters long";
+    const passwordError = checkPassword(values.password);
+    if (passwordError) errors.password = passwordError;
     else if (new TextEncoder().encode(values.password).length > MAX.password)
       errors.password = `Password is too long (maximum ${MAX.password} bytes)`;
   }

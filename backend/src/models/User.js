@@ -46,6 +46,23 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
+      // Account lockout (see utils/loginLockout.js)
+      failedLoginAttempts: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      // Epoch milliseconds; login is refused until then
+      lockedUntil: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+      },
+      // Frozen by an admin; isActive only means "OTP verified"
+      isFrozen: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
     },
     {
       tableName: "users",

@@ -328,6 +328,21 @@ class TripRequestDTO {
         "Convoy time contains invalid characters"
       );
     } else if (
+      this.specialType !== null &&
+      this.specialType !== undefined &&
+      this.specialType !== ""
+    ) {
+      // Special convoy sends a clock time (HH:MM or HH:MM:SS)
+      if (
+        !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(
+          String(this.convoyTime)
+        )
+      ) {
+        errors.push(
+          "Convoy time must be a valid time (HH:MM)"
+        );
+      }
+    } else if (
       !/^\d{1,2}$/.test(
         String(this.convoyTime)
       )

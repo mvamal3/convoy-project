@@ -8,7 +8,6 @@ const config = require("./config/environment");
 const cookieParser = require("cookie-parser");
 // Import routes
 const authRoutes = require("./routes/auth");
-const userRoutes = require("./routes/users");
 
 // Error handler
 const errorHandler = require("./middleware/errorHandler");
@@ -83,10 +82,25 @@ if (config.COOKIE_SECURE) {
   });
 }
 
-// CAPTCHA session
+// CAPTCHA/CSRF session, stored in MySQL (table `sessions`, see
+// migrations/2026-11-03-sessions.sql) so it survives restarts, is shared by
+// every process, and expired rows are deleted every 15 minutes.
+const MySQLStore = require("express-mysql-session")(session);
+const sessionStore = new MySQLStore({
+  host: config.DB_HOST,
+  port: Number(config.DB_PORT),
+  user: config.DB_USER,
+  password: config.DB_PASS,
+  database: config.DB_NAME,
+  createDatabaseTable: false,
+  clearExpired: true,
+  checkExpirationInterval: 15 * 60 * 1000,
+});
+
 app.use(
   session({
     name: "captcha-session",
+    store: sessionStore,
     secret: config.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -126,7 +140,6 @@ app.use("/api/", rejectUnsafeInput);
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

@@ -13,6 +13,9 @@ import {
   BarChart2,
   LogOut,
   Search,
+  KeyRound,
+  Lock,
+  FileText,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -80,6 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
       ],
     },
     { icon: User, label: "Profile", path: "/profile" },
+    { icon: KeyRound, label: "Change Password", path: "/ChangePassword" },
     { icon: LogOut, label: "Logout", onClick: logout },
   ];
 
@@ -119,6 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     },
     { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },
     { icon: User, label: "Profile", path: "/PoliceProfile" },
+    { icon: KeyRound, label: "Change Password", path: "/ChangePassword" },
     { icon: LogOut, label: "Logout", onClick: logout },
   ];
 
@@ -128,7 +133,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     { icon: Users, label: "Show Registered User", path: "/RegisteredPolice" },
     { icon: Search, label: "View Trip", path: "/SearchTrip" },
     { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },
-    
+    { icon: Lock, label: "Manage Citizens", path: "/ManageCitizens" },
+    { icon: FileText, label: "Audit Log", path: "/AuditLogs" },
+    { icon: KeyRound, label: "Change Password", path: "/ChangePassword" },
     { icon: LogOut, label: "Logout", onClick: logout },
   ];
 
@@ -145,6 +152,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         { label: "Pending", path: "/PendingTrips" },
       ],
     },
+    { icon: KeyRound, label: "Change Password", path: "/ChangePassword" },
     { icon: LogOut, label: "Logout", onClick: logout },
   ];
 
@@ -168,6 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     // { icon: Route, label: "Today's Trip Details", path: "/TodaysTripDetails" },
 
     { icon: User, label: "Profile", path: "/PoliceProfile" },
+    { icon: KeyRound, label: "Change Password", path: "/ChangePassword" },
 
     { icon: LogOut, label: "Logout", onClick: logout },
   ];

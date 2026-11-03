@@ -49,6 +49,18 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 0,
       },
 
+      // Account lockout (see utils/loginLockout.js)
+      failedLoginAttempts: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      // Epoch milliseconds; login is refused until then
+      lockedUntil: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+      },
+
       lastLoginAt: {
         type: DataTypes.DATE,
         allowNull: true,
@@ -62,7 +74,7 @@ module.exports = (sequelize, DataTypes) => {
 
   // 🔐 Password validator
   Admin.prototype.validatePassword = async function (password) {
-    const bcrypt = require("bcrypt");
+    const bcrypt = require("bcryptjs");
     return bcrypt.compare(password, this.password);
   };
 

@@ -99,6 +99,15 @@ const [refreshCaptcha, setRefreshCaptcha] = useState(false);
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                 />
+                <div className="text-right -mt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/ForgotPassword?type=police")}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
 
                 {/* Captcha */}
 <Captcha

@@ -14,12 +14,20 @@ const {
 } = require("../middleware/auth");
 const {
   authLimiter,
+  otpRequestLimiter,
   refreshLimiter,
   highLimitApiLimiter,
   createAccountLimiter,
 } = require("../middleware/rateLimiter");
+const { AUDIT_ACTIONS: A, auditRoute } = require("../utils/auditLog");
 
 const router = express.Router();
+
+// Audit-trail target taken from a request body field
+const target = (targetType, field) => (req) => ({
+  targetType,
+  targetId: req.body?.[field],
+});
 
 // Citizen or police (trip editing is shared by both)
 const authenticateUserOrPolice = authenticate("user", "police");
@@ -86,8 +94,18 @@ router.get("/session", authenticateAny, AuthController.getSession);
 
 // ==================== Public: citizen registration ====================
 
-router.post("/register", createAccountLimiter, csrfProtection, AuthController.registerNew);
+router.post("/register", createAccountLimiter, csrfProtection, auditRoute(A.REGISTER, target("user", "email")), AuthController.registerNew);
 router.post("/verify-citizen-otp", authLimiter, csrfProtection, AuthController.otpVerification);
+router.post("/resend-otp", otpRequestLimiter, csrfProtection, AuthController.resendOtp);
+
+// ==================== Public: forgot password (citizen and police) ====================
+
+router.post("/forgot-password", otpRequestLimiter, csrfProtection, AuthController.forgotPassword);
+router.post("/reset-password", authLimiter, csrfProtection, AuthController.resetPassword);
+
+// ==================== Any signed-in account: own password ====================
+
+router.post("/change-password", authLimiter, authenticateAny, AuthController.changeOwnPassword);
 router.get("/getDistrict", AuthController.getDistrict);
 router.post("/getSubDistrict", AuthController.getSubDistrict);
 router.post("/getVillage", AuthController.getVillage);
@@ -100,14 +118,10 @@ router.post("/update-profile", authenticateToken, AuthController.updateProfile);
 
 router.post("/driver-registration", authenticateToken, AuthController.registerDriver);
 router.post("/delete-driver", authenticateToken, AuthController.deleteDriver);
-router.post("/driverstatus", authenticateToken, AuthController.driverstatus);
 router.post("/get-driver-list", authenticateToken, AuthController.getDriveListbyRegId);
-router.get("/getlicense", authenticateToken, AuthController.getByLicense);
-router.get("/getdriver", authenticateToken, AuthController.getByMobilenumber);
 
 router.post("/vehicle-new", authenticateToken, AuthController.registerVehicle);
 router.post("/delete-vehicle", authenticateToken, AuthController.deleteVehicle);
-router.post("/vehiclestatus", authenticateToken, AuthController.vehiclestatus);
 router.get("/get-vehicle-list", authenticateToken, AuthController.getVehicleListbyRegId);
 
 router.post("/trip-new", authenticateToken, AuthController.newtrip);
@@ -149,8 +163,8 @@ router.post("/get-all-details-by-tripid", authenticatePoliceToken, AuthControlle
 router.post("/get-Verified-trip-details", authenticatePoliceToken, AuthController.getallVerifiedTrips);
 router.post("/getapprovecount", authenticatePoliceToken, AuthController.getapprovecount);
 
-router.post("/trip-verify", authenticatePoliceToken, AuthController.tripVerify);
-router.post("/trip-approval", authenticatePoliceToken, AuthController.tripApproval);
+router.post("/trip-verify", authenticatePoliceToken, auditRoute(A.TRIP_VERIFY, target("trip", "tId")), AuthController.tripVerify);
+router.post("/trip-approval", authenticatePoliceToken, auditRoute(A.TRIP_APPROVAL, (req) => ({ targetType: "trip", targetId: req.body?.tId, details: `status ${req.body?.astatus}` })), AuthController.tripApproval);
 
 router.post("/start-convoy", authenticatePoliceToken, AuthController.addConveyControl);
 router.post("/stop-convoy", authenticatePoliceToken, AuthController.stopConveyControl);
@@ -177,12 +191,18 @@ router.post("/todays-trip-details", authenticatePoliceOrAdmin, highLimitApiLimit
 
 // ==================== Admin ====================
 
-router.post("/policeregister", authenticateAdmin, AuthController.registerPolice);
-router.post("/update-police-profile", authenticateAdmin, AuthController.updatePoliceProfile);
-router.post("/change-police-password", authenticateAdmin, AuthController.changePolicePassword);
-router.post("/delete-police-user", authenticateAdmin, AuthController.deletePoliceUser);
-router.post("/freeze-police-user", authenticateAdmin, AuthController.freezePoliceUser);
-router.post("/Unfreeze-police-user", authenticateAdmin, AuthController.unfreezePoliceUser);
+router.post("/policeregister", authenticateAdmin, auditRoute(A.POLICE_REGISTER, target("police", "email")), AuthController.registerPolice);
+router.post("/update-police-profile", authenticateAdmin, auditRoute(A.POLICE_UPDATE, target("police", "userid")), AuthController.updatePoliceProfile);
+router.post("/change-police-password", authenticateAdmin, auditRoute(A.POLICE_PASSWORD_SET, target("police", "userid")), AuthController.changePolicePassword);
+router.post("/delete-police-user", authenticateAdmin, auditRoute(A.POLICE_DELETE, target("police", "policeId")), AuthController.deletePoliceUser);
+router.post("/freeze-police-user", authenticateAdmin, auditRoute(A.POLICE_FREEZE, target("police", "policeId")), AuthController.freezePoliceUser);
+router.post("/Unfreeze-police-user", authenticateAdmin, auditRoute(A.POLICE_UNFREEZE, target("police", "policeId")), AuthController.unfreezePoliceUser);
+
+router.post("/admin/citizens", authenticateAdmin, AuthController.listCitizens);
+router.post("/admin/freeze-citizen", authenticateAdmin, auditRoute(A.CITIZEN_FREEZE, target("user", "userId")), AuthController.freezeCitizen);
+router.post("/admin/unfreeze-citizen", authenticateAdmin, auditRoute(A.CITIZEN_UNFREEZE, target("user", "userId")), AuthController.unfreezeCitizen);
+router.post("/admin/unlock-account", authenticateAdmin, auditRoute(A.ACCOUNT_UNLOCK, (req) => ({ targetType: req.body?.accountType, targetId: req.body?.id })), AuthController.unlockAccount);
+router.post("/admin/audit-logs", authenticateAdmin, AuthController.getAuditLogs);
 router.post("/get-frozen-police-users", authenticateAdmin, AuthController.getFrozenPoliceUsers);
 router.post("/get-registered-police", authenticateAdmin, AuthController.getRegisteredPolice);
 router.post("/get-police-designation", authenticateAdmin, AuthController.getPoliceDesignation);

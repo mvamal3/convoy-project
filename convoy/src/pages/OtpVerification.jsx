@@ -17,7 +17,10 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ShieldCheck } from "lucide-react";
-import { postCitizenOtpVerify } from "@/contexts/PostApi";
+import { postCitizenOtpVerify, resendOtpAPI } from "@/contexts/PostApi";
+
+// Seconds before another OTP can be requested (matches OTP_RESEND_SECONDS)
+const RESEND_SECONDS = 60;
 
 const OtpVerification = () => {
   const [otp, setOtp] = useState("");
@@ -98,8 +101,33 @@ const OtpVerification = () => {
     }
   };
 
-  const handleResend = () => {
-    toast.info("Resend OTP clicked. Implement API call here.");
+  // A code was just sent on registration, so start with the cooldown running
+  const [resendIn, setResendIn] = useState(RESEND_SECONDS);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
+
+  const handleResend = async () => {
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email.trim())) {
+      toast.error("Please enter your registered email address.");
+      return;
+    }
+
+    setResending(true);
+    const res = await resendOtpAPI(email.trim());
+    setResending(false);
+
+    if (res?.success) {
+      toast.success(res.message || "A new OTP has been sent.");
+      setOtp("");
+      setResendIn(RESEND_SECONDS);
+    } else {
+      toast.error(res?.message || "Unable to send OTP. Please try again.");
+    }
   };
 
   return (
@@ -165,8 +193,13 @@ const OtpVerification = () => {
                   onClick={handleResend}
                   variant="outline"
                   className="w-full"
+                  disabled={resending || resendIn > 0}
                 >
-                  Resend OTP
+                  {resending
+                    ? "Sending..."
+                    : resendIn > 0
+                      ? `Resend OTP in ${resendIn}s`
+                      : "Resend OTP"}
                 </Button>
               </form>
             </CardContent>

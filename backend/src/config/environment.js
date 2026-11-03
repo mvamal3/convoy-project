@@ -18,9 +18,9 @@ module.exports = {
   DB_PASS: process.env.DB_PASS || "",
 
   // JWT
-  JWT_SECRET: process.env.JWT_SECRET || "your-super-secret-key",
+  JWT_SECRET: process.env.JWT_SECRET,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "15m",
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "refresh-secret",
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
   // Refresh token lifetime doubles as the server-side idle timeout:
   // a session not refreshed within this time cannot be resumed.
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "20m",
@@ -39,6 +39,22 @@ module.exports = {
   COOKIE_SECURE: process.env.COOKIE_SECURE
     ? process.env.COOKIE_SECURE === "true"
     : (process.env.NODE_ENV || "development") === "production",
+
+  // Account lockout: failed logins allowed before the account is locked,
+  // and how long the lock lasts.
+  LOCKOUT_MAX_ATTEMPTS: parseInt(process.env.LOCKOUT_MAX_ATTEMPTS, 10) || 5,
+  LOCKOUT_MINUTES: parseInt(process.env.LOCKOUT_MINUTES, 10) || 15,
+
+  // One-time passwords
+  OTP_TTL_MINUTES: parseInt(process.env.OTP_TTL_MINUTES, 10) || 5,
+  OTP_MAX_ATTEMPTS: parseInt(process.env.OTP_MAX_ATTEMPTS, 10) || 5,
+  OTP_RESEND_SECONDS: parseInt(process.env.OTP_RESEND_SECONDS, 10) || 60,
+  OTP_MAX_PER_HOUR: parseInt(process.env.OTP_MAX_PER_HOUR, 10) || 5,
+  // Fixed code for environments without an SMS/email gateway. Never set
+  // this on a server the auditors test.
+  OTP_FIXED: /^\d{6}$/.test(process.env.OTP_FIXED || "")
+    ? process.env.OTP_FIXED
+    : null,
 
   // Rate Limiting
   RATE_LIMIT_WINDOW: parseInt(process.env.RATE_LIMIT_WINDOW, 10) || 15,
@@ -63,7 +79,10 @@ module.exports = {
     parseInt(process.env.CREATE_ACCOUNT_RATE_LIMIT_MAX, 10) || 3,
 };
 
-// Validate required security configuration
-if (!module.exports.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET is required in the environment");
+// Validate required security configuration. No defaults: a known secret
+// would let anyone sign their own tokens.
+for (const key of ["SESSION_SECRET", "JWT_SECRET", "JWT_REFRESH_SECRET"]) {
+  if (!module.exports[key]) {
+    throw new Error(`${key} is required in the environment`);
+  }
 }

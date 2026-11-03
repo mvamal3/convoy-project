@@ -1,12 +1,12 @@
 const AuthService = require("../services/authService");
 const BaseResponseDTO = require("../dto/response/BaseResponseDTO");
-const { CaptchaGenerator } = require("captcha-canvas");
 const db = require("../models"); // make sure index.js in /models returns db with initialized models
 const {
   REFRESH_COOKIE,
   setRefreshCookie,
   clearAuthCookies,
 } = require("../utils/authSession");
+const { AUDIT_ACTIONS, audit, actorFrom } = require("../utils/auditLog");
 
 ////new dto
 const GetTripDetailsByDateRequestDTO = require("../dto/request/new/GetTripDetailsByDateRequestDTO");
@@ -45,15 +45,18 @@ static async canAccessTrips(req, tIds) {
 }
 
 static sendLoginError(res, error) {
+  // Account lockout and similar messages that are safe to show
+  if (error.expose) {
+    return res.status(error.status).json(BaseResponseDTO.error(error.message));
+  }
+
   if (
     error.message ===
       "Invalid or expired CAPTCHA. Please refresh and try again." ||
     error.message ===
       "CAPTCHA session missing. Please refresh CAPTCHA."
   ) {
-    return res.status(400).json(
-      BaseResponseDTO.error(error.message)
-    );
+    return AuthController.sendError(res, error);
   }
 
   if (
@@ -82,139 +85,16 @@ static async login(req, res) {
 }
 
 
-  static async register(req, res) {
-    try {
-      console.log("Registering new user with data:", req.body);
-      const result = await AuthService.register(req.body);
-      res
-        .status(201)
-        .json(BaseResponseDTO.success(result, "Registration successful"));
-    } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
-    }
-  }
-
-  ///////////registerPolice
-  static async policeregisterNew(req, res) {
-    try {
-      console.log("Registering new user with data:", req.body);
-      const result = await AuthService.registerNew(req.body);
-      res
-        .status(201)
-        .json(BaseResponseDTO.success(result, "Registration successful"));
-    } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
-    }
-  }
-
-  //===============Driver Status Registration================
-  static async driverstatus(req, res) {
-    try {
-      console.log("Registering driver status with data:", req.body);
-      const result = await AuthService.driverstatus(req.body);
-      res
-        .status(201)
-        .json(
-          BaseResponseDTO.success(
-            result,
-            "Driver status registration successful",
-          ),
-        );
-    } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
-    }
-  }
-  //===========================vehicle status registration=============
-  static async vehiclestatus(req, res) {
-    try {
-      console.log("Registering vehicle status with data:", req.body);
-      const result = await AuthService.vehiclestatus(req.body);
-      res
-        .status(201)
-        .json(
-          BaseResponseDTO.success(
-            result,
-            "Vehicle status registration successful",
-          ),
-        );
-    } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
-    }
-  }
-  //===================================================================
-
   static async registerNew(req, res) {
     try {
-      console.log("Registering new user with data:", req.body);
       const result = await AuthService.registerNew(req.body);
       res
         .status(201)
         .json(BaseResponseDTO.success(result, "Registration successful"));
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
-
-  //===================getbyLicense========================
-  static async getByLicense(req, res) {
-    try {
-      const { license } = req.query;
-
-      if (!license) {
-        return res
-          .status(400)
-          .json(BaseResponseDTO.error("License number is required"));
-      }
-
-      console.log("Fetching user by license:", license);
-
-      const result = await AuthService.getByLicense(license);
-
-      if (!result) {
-        return res.status(404).json(BaseResponseDTO.error("User not found"));
-      }
-
-      res.json(BaseResponseDTO.success(result, "User fetched successfully"));
-    } catch (error) {
-      console.error("Error fetching user by license:", error);
-      res
-        .status(500)
-        .json(BaseResponseDTO.error("Server error: " + error.message));
-    }
-  }
-
-  //=======================getByMobilenumber==============================
-  static async getByMobilenumber(req, res) {
-    try {
-      let mobile = req.body.Mobilenumber;
-      console.log(
-        "11111111111111111111111111111111111111111111111111111getByMobilenumber called with mobile:",
-        mobile,
-      );
-
-      if (!mobile) {
-        return res
-          .status(400)
-          .json(BaseResponseDTO.error("Mobile number is required"));
-      }
-
-      // console.log('Fetching user by mobile number:', mobile);
-
-      const result = await AuthService.getByMobilenumber(mobile);
-
-      if (!result) {
-        return res.status(404).json(BaseResponseDTO.error("User not found"));
-      }
-
-      res.json(BaseResponseDTO.success(result, "User fetched successfully"));
-    } catch (error) {
-      console.error("Error fetching user by mobile number:", error);
-      res
-        .status(500)
-        .json(BaseResponseDTO.error("Server error: " + error.message));
-    }
-  }
-  //=============================================================================
 
   //driver_tbl registration
   static async registerDriver(req, res) {
@@ -228,66 +108,45 @@ static async login(req, res) {
           BaseResponseDTO.success(result, "Driver registration successful"),
         );
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
-  //driver delete
+  // Soft-delete a driver or vehicle owned by the caller
   static async deleteDriver(req, res) {
-    try {
-      const { dId } = req.body;
-      console.log("Deleting driver with dId:", dId);
-
-      if (!dId) {
-        return res
-          .status(400)
-          .json(BaseResponseDTO.error("Driver ID is required"));
-      }
-
-      const result = await AuthService.deleteDriver(dId);
-
-      if (!result) {
-        return res.status(404).json(BaseResponseDTO.error("Driver not found"));
-      }
-
-      res.json(BaseResponseDTO.success(result, "Driver deleted successfully"));
-    } catch (error) {
-      res
-        .status(500)
-        .json(BaseResponseDTO.error("Server error: " + error.message));
-    }
+    return AuthController.deleteOwned(res, req.body?.dId, "Driver", (id) =>
+      AuthService.deleteDriver(id, req.user.id),
+    );
   }
 
-  //vehicle delete
   static async deleteVehicle(req, res) {
+    return AuthController.deleteOwned(res, req.body?.vId, "Vehicle", (id) =>
+      AuthService.deleteVehicle(id, req.user.id),
+    );
+  }
+
+  static async deletetrip(req, res) {
+    return AuthController.deleteOwned(res, req.body?.tId, "Trip", (id) =>
+      AuthService.deletetrip(id, req.user.id),
+    );
+  }
+
+  static async deleteOwned(res, id, label, remove) {
+    if (!id || typeof id === "object") {
+      return res.status(400).json(BaseResponseDTO.error(`${label} ID is required`));
+    }
     try {
-      //console.log("Deleting vehicle with data:", req.body);
-      const { vId } = req.body;
-
-      if (!vId) {
-        return res
-          .status(400)
-          .json(BaseResponseDTO.error("Vehicle ID is required"));
+      if (!(await remove(id))) {
+        return res.status(404).json(BaseResponseDTO.error(`${label} not found`));
       }
-
-      const result = await AuthService.deleteVehicle(vId);
-
-      if (!result) {
-        return res.status(404).json(BaseResponseDTO.error("Vehicle not found"));
-      }
-
-      res.json(BaseResponseDTO.success(result, "Vehicle deleted successfully"));
+      return res.json(BaseResponseDTO.success(null, `${label} deleted successfully`));
     } catch (error) {
-      res
-        .status(500)
-        .json(BaseResponseDTO.error("Server error: " + error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
   //vehicle registration
   static async registerVehicle(req, res) {
     try {
-      // console.log('Registering new vehicle with data:', req.body);
-      // console.log(req.user.id);
       const result = await AuthService.registerVehicle(req.body, req.user.id);
       res
         .status(201)
@@ -295,37 +154,9 @@ static async login(req, res) {
           BaseResponseDTO.success(result, "Vehicle registration successful"),
         );
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
-
-  //vehicle delete
-  static async deleteVehicle(req, res) {
-    try {
-      //console.log("Deleting vehicle with data:", req.body);
-      const { vId } = req.body;
-
-      if (!vId) {
-        return res
-          .status(400)
-          .json(BaseResponseDTO.error("Vehicle ID is required"));
-      }
-
-      const result = await AuthService.deleteVehicle(vId);
-
-      if (!result) {
-        return res.status(404).json(BaseResponseDTO.error("Vehicle not found"));
-      }
-
-      res.json(BaseResponseDTO.success(result, "Vehicle deleted successfully"));
-    } catch (error) {
-      res
-        .status(500)
-        .json(BaseResponseDTO.error("Server error: " + error.message));
-    }
-  }
-
-
 
 static async refreshToken(req, res) {
   try {
@@ -374,7 +205,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Driver List Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //---------------------------------------
@@ -390,7 +221,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Vehicle List Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //-----------------------------------
@@ -398,15 +229,13 @@ static async refreshToken(req, res) {
   // Get Destrict-----------------------
   static async getDistrict(req, res) {
     try {
-      //throw Error('No districts found in database');
-      //console.log(req.bod);
       const result = await AuthService.getDistrict(req.body);
       //throw Error('No districts found in database');
       res.json(
         BaseResponseDTO.success(result, "District List Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //-----------------------------------------
@@ -419,7 +248,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "SubDistrict Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //-------------------------------------------
@@ -432,7 +261,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Vehicle List Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -444,7 +273,7 @@ static async refreshToken(req, res) {
       const result = await AuthService.newtrip(req.body, req.user.id);
       res.json(BaseResponseDTO.success(result, "Trip Created Successfully"));
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -456,7 +285,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Special Trip Created Successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -469,37 +298,11 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Nationality list loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
   //--------------------------------
-  //-----------------delete trip
-  static async deletetrip(req, res) {
-    try {
-      //console.log("Deleting vehicle with data:", req.body);
-      const { tId } = req.body;
-
-      if (!tId) {
-        return res
-          .status(400)
-          .json(BaseResponseDTO.error("Trip ID is required"));
-      }
-
-      const result = await AuthService.deletetrip(tId);
-
-      if (!result) {
-        return res.status(404).json(BaseResponseDTO.error("Trip not found"));
-      }
-
-      res.json(BaseResponseDTO.success(result, "Trip deleted successfully"));
-    } catch (error) {
-      res
-        .status(500)
-        .json(BaseResponseDTO.error("Server error: " + error.message));
-    }
-  }
-
   //get_trip_details_by_RegId
   static async getTripDetailsbyRegId(req, res) {
     try {
@@ -511,7 +314,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Trip Details Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //-------------------------
@@ -526,7 +329,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Trip Details Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -542,7 +345,7 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(result, "Trip Details Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //-------------------------
@@ -557,7 +360,7 @@ static async refreshToken(req, res) {
 
       res.json(BaseResponseDTO.success(result, "Trip Details by date"));
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //---------------------------------getPendingTripDetailsbydt
@@ -568,46 +371,31 @@ static async refreshToken(req, res) {
       const result = await AuthService.getPendingTripDetailsbydt(req.body);
       res.json(BaseResponseDTO.success(result, "Pending Trip Details by date"));
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
-  //-------get tip approval--------------------
+  //-------trip approval / verification--------------------
   static async tripApproval(req, res) {
     try {
-      console.log("Trip approval request received with data:", req.body);
-
-      const result = await AuthService.tripApproval(req.body);
-
-      return res.json(
-        BaseResponseDTO.success(result, "Trip Approved Successfully"),
+      const result = await AuthService.tripApproval(
+        req.body,
+        req.user.registration?.reg_id,
       );
+      return res.json(BaseResponseDTO.success(result, "Trip Approved Successfully"));
     } catch (error) {
-      console.error("Trip approval failed:", error.message);
-
-      return res
-        .status(500) // changed from 401
-        .json(BaseResponseDTO.error(error.message || "Trip approval failed"));
+      return AuthController.sendError(res, error, "Trip approval failed");
     }
   }
 
-  //--------------------------Trip Verify---------------------
   static async tripVerify(req, res) {
     try {
-      console.log("Trip Verification request received with data:", req.body);
-
-      const result = await AuthService.tripVerify(req.body);
-
-      return res.json(
-        BaseResponseDTO.success(result, "Trip Verified Successfully"),
+      const result = await AuthService.tripVerify(
+        req.body,
+        req.user.registration?.reg_id,
       );
+      return res.json(BaseResponseDTO.success(result, "Trip Verified Successfully"));
     } catch (error) {
-      console.error("Trip Verification failed:", error.message);
-
-      return res
-        .status(500) // changed from 401
-        .json(
-          BaseResponseDTO.error(error.message || "Trip verification failed"),
-        );
+      return AuthController.sendError(res, error, "Trip verification failed");
     }
   }
 
@@ -615,7 +403,6 @@ static async refreshToken(req, res) {
 
   static async getallVerifiedTrips(req, res) {
     try {
-      console.log("📥 Verified Trip list request received");
 
       const checkpostid = req.body?.locationid || null;
       const convey = req.body?.selectedconvoy || null;
@@ -636,13 +423,7 @@ static async refreshToken(req, res) {
     } catch (error) {
       console.error("❌ Verified Trip fetch failed:", error.message);
 
-      return res
-        .status(500)
-        .json(
-          BaseResponseDTO.error(
-            error.message || "Failed to fetch verified trips",
-          ),
-        );
+      return AuthController.sendError(res, error);
     }
   }
   //==========================
@@ -655,19 +436,9 @@ static async refreshToken(req, res) {
         BaseResponseDTO.success(userResponse, "Profile retrieved successfully"),
       );
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
-  // //get tripdetails by date
-  // static async getTripDetails(res) {
-  //   try {
-  //     const result = await AuthService.getallTripDetails();
-  //     //console.log("Trip details fetched successfully:", result);
-  //     res.json(BaseResponseDTO.success(result, "Trip Details by date"));
-  //   } catch (error) {
-  //     res.status(401).json(BaseResponseDTO.error(error.message));
-  //   }
-  // }
   static async getTripDetails(req, res) {
     try {
       // req.body contains { checkpostid: someValue }
@@ -677,18 +448,17 @@ static async refreshToken(req, res) {
       res.json(BaseResponseDTO.success(result, "All Trip Details"));
     } catch (error) {
       console.error("Error fetching trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async getuserprofile(req, res) {
     try {
       // Citizens can only read their own profile
       const result = await AuthService.getProfileByUserId(req.user.id);
-      console.log("User profile fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "User Profile Details"));
     } catch (error) {
       console.error("Error fetching user profile:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -734,11 +504,10 @@ static async refreshToken(req, res) {
       const userId =
         req.accountType === "admin" ? req.body?.userId : req.user.id;
       const result = await AuthService.getPoliceProfileByUserId(userId);
-      console.log("User profile fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "User Profile Details"));
     } catch (error) {
       console.error("Error fetching user profile:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -752,13 +521,12 @@ static async refreshToken(req, res) {
       }
 
       const result = await AuthService.editTripDetailsByTripId(tripId);
-      console.log("Trip details updated successfully:", result);
       res.json(
         BaseResponseDTO.success(result, "Trip details updated successfully"),
       );
     } catch (error) {
       console.error("Error updating trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   
@@ -803,11 +571,10 @@ static async updateTripPolice(req, res) {
       // req.body contains { checkpostid: someValue }
       const params = req.body;
       const result = await AuthService.getCheckOutReport(params);
-      console.log("Check out report fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "Check out Details"));
     } catch (error) {
       console.error("Error fetching check out details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async getSpecialCheckOutReport(req, res) {
@@ -815,11 +582,10 @@ static async updateTripPolice(req, res) {
       // req.body contains { checkpostid: someValue }
       const params = req.body;
       const result = await AuthService.splconvoygetCheckOutReport(params);
-      console.log("Check out report fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "Check out Details"));
     } catch (error) {
       console.error("Error fetching check out details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -836,7 +602,7 @@ static async updateTripPolice(req, res) {
       res.json(BaseResponseDTO.success(result, "All Trip Details"));
     } catch (error) {
       console.error("Error fetching trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -855,7 +621,7 @@ static async updateTripPolice(req, res) {
       res.json(BaseResponseDTO.success(result, "All Trip Details"));
     } catch (error) {
       console.error("Error fetching trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   //update for backend pagination
@@ -873,115 +639,15 @@ static async updateTripPolice(req, res) {
       res.json(BaseResponseDTO.success(result, "All Trip Details"));
     } catch (error) {
       console.error("Error fetching trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
   // Today's Trip Details
-  //   static async getTodaysTripDetails(req, res) {
-  //   try {
-  //     const db = require("../models");
-
-  //     // Today date in YYYY-MM-DD (matches DATEONLY)
-  //     const today = new Date().toISOString().split("T")[0];
-
-  //     // You can later make checkpost_id dynamic
-  //     const checkpostId = 1;
-
-  //     const result = await db.ApproveTrip.findAll({
-  //       where: {
-  //         checkpost_id: checkpostId,
-  //         astatus: 1,
-  //         arrdate: today,
-  //       },
-  //       include: [
-  //         { model: db.Trip, as: "trip" },
-  //         { model: db.TConvey, as: "convey" },
-  //         { model: db.OriginDestination, as: "checkpost" },
-  //         { model: db.PoliceRegistration, as: "approverOfficer" },
-  //       ],
-  //       order: [["arrtime", "ASC"]],
-  //     });
-
-  //     return res.json(
-  //       BaseResponseDTO.success(result, "Today's Trip Details fetched successfully")
-  //     );
-  //   } catch (error) {
-  //     console.error("Error fetching today's trip details:", error);
-  //     return res
-  //       .status(500)
-  //       .json(BaseResponseDTO.error(error.message));
-  //   }
-  // }
-
-  // ================= TODAY'S TRIP DETAILS =================
-  // static async getTodaysTripDetails(req, res) {
-  //   try {
-  //     const data = await AuthService.getTodaysTripDetails();
-
-  //     return res.json(
-  //       BaseResponseDTO.success(
-  //         data,
-  //         "Today's Trip Details fetched successfully"
-  //       )
-  //     );
-  //   } catch (error) {
-  //     console.error("Today's Trip Details Error:", error.message);
-  //     return res
-  //       .status(500)
-  //       .json(BaseResponseDTO.error(error.message));
-  //   }
-  // }
-
-  //   static async getTodaysTripDetails(req, res) {
-  //   try {
-  //     const checkpostid = 1; // for now (can be dynamic later)
-
-  //     const result = await AuthService.getTodaysTripDetails(checkpostid);
-
-  //     return res.json({
-  //       success: true,
-  //       data: result,
-  //     });
-  //   } catch (error) {
-  //     console.error("Error in getTodaysTripDetails:", error.message);
-  //     return res.status(500).json({
-  //       success: false,
-  //       message: error.message,
-  //     });
-  //   }
-  // }
-
-  // static async getTodaysTripDetails(req, res, next) {
-  //   try {
-  //     const { checkpostid } = req.body;
-
-  //     if (!checkpostid) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "checkpostid is required",
-  //       });
-  //     }
-
-  //     const data = await AuthService.getTodaysTripDetails({
-  //       checkpostid,
-  //     });
-
-  //     return res.json({
-  //       success: true,
-  //       data,
-  //     });
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // }
-
   static async getTodayConvoyTrips(req, res) {
     try {
       const payload = req.body.payload || req.body;
 
-      console.log("Fetching convoy trips");
-      console.log("Payload received:", payload);
 
       const result = await AuthService.todayConvoyTrips(payload);
 
@@ -993,13 +659,12 @@ static async updateTripPolice(req, res) {
       );
     } catch (error) {
       console.error("❌ getTodayConvoyTrips error:", error);
-      return res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
   static async freezePoliceUser(req, res) {
     try {
-      // console.log("🟡 CONTROLLER BODY:", req.body);
       // console.log("🟡 CONTROLLER USER:", req.user);
 
       const result = await AuthService.freezePoliceUser(req.body, req.user);
@@ -1011,16 +676,11 @@ static async updateTripPolice(req, res) {
       });
     } catch (error) {
       console.error("Freeze Police Controller Error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Freeze failed",
-        error: error.message,
-      });
+      return AuthController.sendError(res, error, "Freeze failed");
     }
   }
   static async unfreezePoliceUser(req, res) {
     try {
-      // console.log("🟡 CONTROLLER BODY:", req.body);
       // console.log("🟡 CONTROLLER USER:", req.user);
 
       const result = await AuthService.unfreezePoliceUser(req.body, req.user);
@@ -1032,35 +692,10 @@ static async updateTripPolice(req, res) {
       });
     } catch (error) {
       console.error("Unfreeze Police Controller Error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Freeze failed",
-        error: error.message,
-      });
+      return AuthController.sendError(res, error, "Unfreeze failed");
     }
   }
-  static async getTodaysTripDetails(req, res) {
-    try {
-      const checkpostid = 1; // fixed for now
-      const today = new Date().toISOString().split("T")[0];
 
-      const data = await AuthService.getTodaysTripDetails({
-        checkpostid,
-        today,
-      });
-
-      return res.json({
-        success: true,
-        data,
-      });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  }
   static async changePolicePassword(req, res) {
     try {
       const { userid, password } = req.body;
@@ -1081,10 +716,7 @@ static async updateTripPolice(req, res) {
     } catch (error) {
       console.error("❌ changePolicePassword error:", error);
 
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Failed to update password",
-      });
+      return AuthController.sendError(res, error, "Failed to update password");
     }
   }
 
@@ -1093,11 +725,10 @@ static async updateTripPolice(req, res) {
   static async tripfilterdata(req, res) {
     try {
       const result = await AuthService.getAllFilterdata(req.body);
-      console.log("Trip details fetched successfully:", result);
       res.json(BaseResponseDTO.success(result, "All Trip Details"));
     } catch (error) {
       console.error("Error fetching trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async getOriginDestination(req, res) {
@@ -1109,7 +740,7 @@ static async updateTripPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching origin/destination records:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1122,7 +753,7 @@ static async updateTripPolice(req, res) {
       res.json(BaseResponseDTO.success(result, "Registered police details"));
     } catch (error) {
       console.error("Error fetching registered police details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1133,7 +764,7 @@ static async updateTripPolice(req, res) {
       res.json(BaseResponseDTO.success(result, "Freezed police details"));
     } catch (error) {
       console.error("Error fetching freezed  police details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1141,7 +772,6 @@ static async updateTripPolice(req, res) {
     try {
       const { policeId } = req.body;
 
-      console.log("🗑️ Delete Police Request:", policeId);
 
       if (!policeId) {
         return res.status(400).json({
@@ -1159,11 +789,7 @@ static async updateTripPolice(req, res) {
       });
     } catch (error) {
       console.error("Delete Police Controller Error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Delete failed",
-        error: error.message,
-      });
+      return AuthController.sendError(res, error, "Delete failed");
     }
   }
 
@@ -1184,13 +810,12 @@ static async updateTripPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching convey time:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   ///////////registerPolice
   static async registerPolice(req, res) {
     try {
-      console.log("Registering new police user with data:", req.body);
       const result = await AuthService.registerPolice(req.body);
       res
         .status(201)
@@ -1198,7 +823,7 @@ static async updateTripPolice(req, res) {
           BaseResponseDTO.success(result, "Police registration successful"),
         );
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1262,6 +887,7 @@ static async loginPolice(req, res) {
   static async logout(req, res) {
     try {
       await AuthService.logout(req.accountType, req.user.id);
+      await audit(req, { ...actorFrom(req), action: AUDIT_ACTIONS.LOGOUT });
     } catch (error) {
       console.error("Logout error:", error.message);
     }
@@ -1278,7 +904,6 @@ static async loginPolice(req, res) {
   static async getconveywiseReport(req, res) {
     try {
       const result = await AuthService.conveywise(req.body);
-      console.log("Convey wise report fetched successfully:", result);
       res.json(
         BaseResponseDTO.success(
           result,
@@ -1286,16 +911,130 @@ static async loginPolice(req, res) {
         ),
       );
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async otpVerification(req, res) {
     try {
-      const result = await AuthService.verifyCitizenOtp(req.body);
-      console.log("OTP verification successful:", result);
+      const result = await AuthService.verifyCitizenOtp(req.body, req);
       res.json(BaseResponseDTO.success(result, "OTP verification successful"));
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      AuthController.sendSafeError(res, error, "OTP verification failed");
+    }
+  }
+
+  // Send an error's message only when it is meant for the client.
+  static sendSafeError(res, error, fallback) {
+    if (error.expose) {
+      return res.status(error.status).json(BaseResponseDTO.error(error.message));
+    }
+    if (
+      error.message ===
+        "Invalid or expired CAPTCHA. Please refresh and try again." ||
+      error.message === "CAPTCHA session missing. Please refresh CAPTCHA."
+    ) {
+      return AuthController.sendError(res, error);
+    }
+    console.error(`${fallback}:`, error.message);
+    return res.status(500).json(BaseResponseDTO.error(fallback));
+  }
+
+  // Error reply for the business endpoints. Messages from httpError() and
+  // plain `new Error("...")` thrown by the services are shown (400);
+  // database and runtime errors (Error subclasses) get a generic 500.
+  static sendError(res, error, fallback = "Request failed") {
+    if (error.expose) {
+      return res.status(error.status).json(BaseResponseDTO.error(error.message));
+    }
+    if (error.constructor === Error && error.message) {
+      return res.status(400).json(BaseResponseDTO.error(error.message));
+    }
+    console.error(`${fallback}:`, error);
+    return res.status(500).json(BaseResponseDTO.error(fallback));
+  }
+
+  // ==================== Account security ====================
+
+  static async resendOtp(req, res) {
+    try {
+      const result = await AuthService.resendRegistrationOtp(req.body, req);
+      res.json(BaseResponseDTO.success(null, result.message));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to send OTP");
+    }
+  }
+
+  static async forgotPassword(req, res) {
+    try {
+      const result = await AuthService.requestPasswordReset(req.body, req);
+      res.json(BaseResponseDTO.success(null, result.message));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to send OTP");
+    }
+  }
+
+  static async resetPassword(req, res) {
+    try {
+      const result = await AuthService.resetPassword(req.body, req);
+      res.json(BaseResponseDTO.success(null, result.message));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to reset password");
+    }
+  }
+
+  // Changing the password ends every session, so clear this one's cookies.
+  static async changeOwnPassword(req, res) {
+    try {
+      const result = await AuthService.changeOwnPassword(req, req.body);
+      clearAuthCookies(res);
+      res.json(BaseResponseDTO.success(null, result.message));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to change password");
+    }
+  }
+
+  static async listCitizens(req, res) {
+    try {
+      const result = await AuthService.listCitizens(req.body);
+      res.json(BaseResponseDTO.success(result, "Citizens fetched"));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to fetch citizens");
+    }
+  }
+
+  static async freezeCitizen(req, res) {
+    try {
+      const result = await AuthService.setCitizenFrozen(req.body, true);
+      res.json(BaseResponseDTO.success(result, result.message));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to freeze citizen");
+    }
+  }
+
+  static async unfreezeCitizen(req, res) {
+    try {
+      const result = await AuthService.setCitizenFrozen(req.body, false);
+      res.json(BaseResponseDTO.success(result, result.message));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to unfreeze citizen");
+    }
+  }
+
+  static async unlockAccount(req, res) {
+    try {
+      const result = await AuthService.unlockAccount(req.body);
+      res.json(BaseResponseDTO.success(result, result.message));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to unlock account");
+    }
+  }
+
+  static async getAuditLogs(req, res) {
+    try {
+      const result = await AuthService.getAuditLogs(req.body);
+      res.json(BaseResponseDTO.success(result, "Audit log fetched"));
+    } catch (error) {
+      AuthController.sendSafeError(res, error, "Unable to fetch audit log");
     }
   }
   static async getConveyDetails(req, res) {
@@ -1303,13 +1042,12 @@ static async loginPolice(req, res) {
       const { checkpostid } = req.body; // extract only the ID
       const result = await AuthService.getConveyDetails(checkpostid);
 
-      console.log("Convey details fetched successfully:", result);
       res.json(
         BaseResponseDTO.success(result, "Convey details fetched successfully"),
       );
     } catch (error) {
       console.error("Error fetching convey details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async getAllTodayConveyReports(req, res) {
@@ -1321,7 +1059,6 @@ static async loginPolice(req, res) {
         locationid,
       });
 
-      console.log("All today's convey reports fetched successfully:", result);
 
       res.json(
         BaseResponseDTO.success(
@@ -1331,7 +1068,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching all today's convey reports:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async getAllDetailsByTripId(req, res) {
@@ -1343,7 +1080,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async addConveyControl(req, res) {
@@ -1361,11 +1098,7 @@ static async loginPolice(req, res) {
       res.json(BaseResponseDTO.success(result.data, result.message));
     } catch (error) {
       console.error("Error adding convey control:", error);
-      res
-        .status(500)
-        .json(
-          BaseResponseDTO.error("Failed to add convey control", error.message),
-        );
+      return AuthController.sendError(res, error, "Failed to add convey control");
     }
   }
   static async getRunningConvey(req, res) {
@@ -1385,7 +1118,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching running convey:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async getStopConvey(req, res) {
@@ -1404,7 +1137,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching stopped convey:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1413,32 +1146,23 @@ static async loginPolice(req, res) {
       // ✅ Read from request body
       const { checkpostid } = req.body;
 
-      console.log(
-        "🛰️ Incoming request for arrival list, checkpost_id:",
-        checkpostid,
-      );
 
       // ✅ Call service with checkpostid
       const result = await AuthService.getarrivalist(checkpostid);
 
       if (!result) {
-        console.log(
-          "⚠️ No running convey found for today at checkpost:",
-          checkpostid,
-        );
         return res.json(
           BaseResponseDTO.error("No running convey found for today"),
         );
       }
 
-      console.log("✅ Running convey fetched successfully:", result);
 
       return res.json(
         BaseResponseDTO.success(result, "Running convey fetched successfully"),
       );
     } catch (error) {
       console.error("❌ Error in getarrivalist controller:", error);
-      return res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1457,11 +1181,7 @@ static async loginPolice(req, res) {
       res.json(BaseResponseDTO.success(result.data, result.message));
     } catch (error) {
       console.error("Error Stop convey control:", error);
-      res
-        .status(500)
-        .json(
-          BaseResponseDTO.error("Failed to stop convey control", error.message),
-        );
+      return AuthController.sendError(res, error, "Failed to stop convey control");
     }
   }
 
@@ -1474,7 +1194,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching approve count:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1489,7 +1209,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching current date and time:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
   static async getCheckOutTrip(req, res) {
@@ -1504,7 +1224,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching check-out trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1521,7 +1241,7 @@ static async loginPolice(req, res) {
       );
     } catch (error) {
       console.error("Error fetching check-out trip details:", error);
-      res.status(500).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1540,14 +1260,7 @@ static async loginPolice(req, res) {
       res.json(BaseResponseDTO.success(result.data, result.message));
     } catch (error) {
       console.error("Error updating check-out trip:", error);
-      res
-        .status(500)
-        .json(
-          BaseResponseDTO.error(
-            "Failed to update check-out trip",
-            error.message,
-          ),
-        );
+      return AuthController.sendError(res, error, "Failed to update check-out trip");
     }
   }
 
@@ -1566,9 +1279,7 @@ static async loginPolice(req, res) {
       return res.json(BaseResponseDTO.success(result.data, result.message));
     } catch (error) {
       console.error("❌ Start checkout error:", error);
-      return res
-        .status(500)
-        .json(BaseResponseDTO.error("Failed to start checkout", error.message));
+      return AuthController.sendError(res, error, "Failed to start checkout");
     }
   }
 
@@ -1610,16 +1321,13 @@ static async loginPolice(req, res) {
       return res.json(BaseResponseDTO.success(result.data, result.message));
     } catch (error) {
       console.error("❌ Stop checkout error:", error);
-      return res
-        .status(500)
-        .json(BaseResponseDTO.error("Failed to stop checkout", error.message));
+      return AuthController.sendError(res, error, "Failed to stop checkout");
     }
   }
   static async generateCheckoutReport(req, res) {
     try {
       const { conveyid, checkpostid } = req.body;
 
-      console.log("Generating checkout report for:", { conveyid, checkpostid });
 
       if (!conveyid || !checkpostid) {
         return res.status(400).json({
@@ -1639,10 +1347,7 @@ static async loginPolice(req, res) {
       });
     } catch (error) {
       console.error("❌ generateCheckoutReport error:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Failed to generate checkout report",
-      });
+      return AuthController.sendError(res, error, "Failed to generate checkout report");
     }
   }
 
@@ -1668,7 +1373,6 @@ static async loginPolice(req, res) {
   static async getSpReport(req, res) {
     try {
       const { date } = req.body; // 👈 READ DATE FROM BODY
-      console.log("datata", date);
       const report = await AuthService.getSpReport(date);
 
       return res.json({
@@ -1677,10 +1381,7 @@ static async loginPolice(req, res) {
       });
     } catch (error) {
       console.error("❌ getSpReport error:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Failed to generate SP report",
-      });
+      return AuthController.sendError(res, error, "Failed to generate SP report");
     }
   }
 
@@ -1692,10 +1393,7 @@ static async loginPolice(req, res) {
         data,
       });
     } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1710,7 +1408,7 @@ static async loginPolice(req, res) {
         BaseResponseDTO.success(result, "Trip Details Loaded successfully"),
       );
     } catch (error) {
-      res.status(401).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 
@@ -1725,7 +1423,7 @@ static async loginPolice(req, res) {
         ),
       );
     } catch (error) {
-      res.status(400).json(BaseResponseDTO.error(error.message));
+      return AuthController.sendError(res, error);
     }
   }
 }

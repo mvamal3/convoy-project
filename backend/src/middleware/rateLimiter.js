@@ -1,26 +1,6 @@
 const rateLimit = require("express-rate-limit");
 const config = require("../config/environment");
 
-// General API rate limiter
-const generalLimiter = rateLimit({
-  windowMs: config.RATE_LIMIT_WINDOW * 60 * 1000, // 15 minutes by default
-  max: 100000,
-  message: {
-    success: false,
-    message: "Too many requests from this IP, please try again later.",
-    retryAfter: config.RATE_LIMIT_WINDOW * 60, // seconds
-  },
-  standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false, // Disable X-RateLimit-* headers
-  handler: (req, res) => {
-    res.status(429).json({
-      success: false,
-      message: "Too many requests from this IP, please try again later.",
-      retryAfter: config.RATE_LIMIT_WINDOW * 60,
-    });
-  },
-});
-
 // Strict rate limiter for auth endpoints (login, register)
 const authLimiter = rateLimit({
   windowMs: config.AUTH_RATE_LIMIT_WINDOW * 60 * 1000,
@@ -40,27 +20,6 @@ const authLimiter = rateLimit({
       message:
         "Too many authentication attempts, please try again after 15 minutes.",
       retryAfter: 15 * 60,
-    });
-  },
-});
-
-// Password reset rate limiter
-const passwordResetLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // 3 password reset attempts per hour
-  message: {
-    success: false,
-    message: "Too many password reset attempts, please try again after 1 hour.",
-    retryAfter: 60 * 60,
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      success: false,
-      message:
-        "Too many password reset attempts, please try again after 1 hour.",
-      retryAfter: 60 * 60,
     });
   },
 });
@@ -87,22 +46,10 @@ const createAccountLimiter = rateLimit({
   },
 });
 
-// API endpoint specific limiter
-const apiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 300, // 300 requests per minute
-  message: {
-    success: false,
-    message: "API rate limit exceeded, please slow down your requests.",
-    retryAfter: 60,
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 // High-limit API limiter for heavy endpoints
 const highLimitApiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 300, // 1 million requests per minute
+  max: 300, // requests per minute per IP
   message: {
     success: false,
     message: "Too many requests from this IP, please slow down.",
@@ -126,12 +73,26 @@ const refreshLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// OTP requests (resend OTP, forgot password). Every request counts, because
+// these endpoints always reply with success to avoid revealing accounts.
+const otpRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // OTP requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: "Too many OTP requests, please try again after 15 minutes.",
+      retryAfter: 15 * 60,
+    });
+  },
+});
+
 module.exports = {
-  generalLimiter,
   authLimiter,
+  otpRequestLimiter,
   refreshLimiter,
-  passwordResetLimiter,
   createAccountLimiter,
-  apiLimiter,
   highLimitApiLimiter,
 };

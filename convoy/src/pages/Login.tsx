@@ -107,6 +107,14 @@ const handleSubmit = async (e) => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                 />
+                <div className="text-right -mt-2">
+                  <Link
+                    to="/ForgotPassword"
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 {/* CAPTCHA */}
                 <Captcha
                   onChange={setCaptcha}

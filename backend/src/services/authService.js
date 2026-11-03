@@ -4,15 +4,11 @@ const Registration = db.Registration;
 
 const JWTConfig = require("../config/jwt");
 const LoginRequestDTO = require("../dto/request/LoginRequestDTO");
-const RegisterRequestDTO = require("../dto/request/RegisterRequestDTO");
 const AuthResponseDTO = require("../dto/response/AuthResponseDTO");
 const RegistrationDtoV1 = require("../dto/request/RegistrationDtoV1");
 const VehicleDto = require("../dto/request/VehicleRequestDTO_V1");
 const DriverRequestDTO_V1 = require("../dto/request/DriverRequestDTO_V1");
 const TripRequestDTO = require("../dto/request/TripRequestDTO");
-const DriverStatusRequestDTO = require("../dto/request/DriverStatusRequestDTO");
-const VehicleStatusRequestDTO = require("../dto/request/VehicleStatusRequestDTO");
-const VehicleStatusResponseDTO = require("../dto/response/VehicleStatusResponseDTO");
 const LoginResponseDTO = require("../dto/response/LoginResponseDTO");
 const VehicleRequestDTO = require("../dto/request/VehicleRequestDTO_V1");
 const PoliceRegistrationDto = require("../dto/request/PoliceRegistrationDto");
@@ -29,6 +25,32 @@ const {
   issueTokens,
   isSessionExpired,
 } = require("../utils/authSession");
+const config = require("../config/environment");
+const httpError = require("../utils/httpError");
+const { checkPassword } = require("../utils/passwordPolicy");
+const {
+  isLocked,
+  assertNotLocked,
+  recordFailedLogin,
+  clearFailedLogins,
+  lockedMessage,
+} = require("../utils/loginLockout");
+const {
+  OTP_PURPOSES,
+  createOtp,
+  verifyOtp,
+  deliverOtp,
+} = require("../utils/otp");
+const { AUDIT_ACTIONS, audit } = require("../utils/auditLog");
+const {
+  ResendOtpDTO,
+  ForgotPasswordRequestDTO,
+  ResetPasswordDTO,
+  ChangePasswordDTO,
+  CitizenListDTO,
+  AuditLogListDTO,
+  AccountRefDTO,
+} = require("../dto/request/AccountSecurityDTO");
 
 //new dto
 
@@ -38,7 +60,7 @@ const CheckoutReportRequestDTO = require("../dto/request/new/CheckoutReportReque
 const CheckoutReportResponseDTO = require("../dto/response/new/CheckoutReportResponseDTO");
 
 const Driver = db.Driver;
-const { v4: uuidv4 } = require("uuid");
+const crypto = require("crypto");
 const DriverStatus = db.DriverStatus;
 const Trip = db.Trip;
 const tripRelation = db.tripRelation;
@@ -62,179 +84,6 @@ const { json } = require("express/lib/response");
 // const VehicleStatus = db.VehicleStatus;
 // Assuming you have a DriverStatus model
 class AuthService {
-  // static async login(loginData) {
-  //   const loginDTO = new LoginRequestDTO(loginData);
-  //   const validation = loginDTO.validate();
-
-  //   if (!validation.isValid) {
-  //     throw new Error(validation.errors.join(", "));
-  //   }
-
-  //   const user = await User.findOne({
-  //     where: { email: loginDTO.email, isActive: 1 },
-  //     include: [
-  //       {
-  //         model: Registration,
-  //         as: "registration",
-  //         attributes: ["firstName", "lastName", "isOrg", "orgName"],
-  //       },
-  //     ],
-  //   });
-
-  //   if (!user || !(await user.validatePassword(loginDTO.password))) {
-  //     throw new Error("Invalid credentials");
-  //   }
-
-  //   // Update last login
-  //   user.lastLoginAt = new Date();
-
-  //   // Generate tokens
-  //   const accessToken = JWTConfig.generateAccessToken({
-  //     userId: user.id,
-  //     email: user.email,
-  //     //name: user.name, // Assuming you have a name field in User model
-  //     role: user.role,
-  //   });
-
-  //   const refreshToken = JWTConfig.generateRefreshToken({
-  //     userId: user.id,
-  //   });
-
-  //   // Store refresh token
-  //   user.refreshToken = refreshToken;
-  //   await user.save();
-  //   // console.log("Authuser", user.registration);
-
-  //   return new LoginResponseDTO(user, accessToken, refreshToken);
-  // }
-
-  // static async login(loginData) {
-  //   const loginDTO = new LoginRequestDTO(loginData);
-  //   const validation = loginDTO.validate();
-
-  //   if (!validation.isValid) {
-  //     throw new Error(validation.errors.join(", "));
-  //   }
-
-  //   const user = await User.findOne({
-  //     where: { email: loginDTO.email, isActive: 1 },
-  //     include: [
-  //       {
-  //         model: Registration,
-  //         as: "registration",
-  //         attributes: ["firstName", "lastName", "isOrg", "orgName"],
-  //       },
-  //     ],
-  //   });
-
-  //   if (!user || !(await user.validatePassword(loginDTO.password))) {
-  //     throw new Error("Invalid credentials");
-  //   }
-
-  //   // Update last login
-  //   user.lastLoginAt = new Date();
-
-  //   // Generate tokens
-  //   const accessToken = JWTConfig.generateAccessToken({
-  //     userId: user.id,
-  //     email: user.email,
-  //     //name: user.name, // Assuming you have a name field in User model
-  //     role: user.role,
-  //   });
-
-  //   const refreshToken = JWTConfig.generateRefreshToken({
-  //     userId: user.id,
-  //   });
-
-  //   // Store refresh token
-  //   user.refreshToken = refreshToken;
-  //   await user.save();
-  //   // console.log("Authuser", user.registration);
-
-  //   return new LoginResponseDTO(user, accessToken, refreshToken);
-  // }
-
-  // static async login(loginData, req) {
-
-  //    const userCaptcha = String(loginData.captcha || "").trim();
-  // const sessionCaptcha = String(req.session?.captcha || "").trim();
-  // const captchaTime = Number(req.session?.captchaTime || 0);
-
-  // // Capture the expected answer, then consume the CAPTCHA.
-  // delete req.session.captcha;
-  // delete req.session.captchaTime;
-
-  // // Persist consumption before processing authentication.
-  // await new Promise((resolve, reject) => {
-  //   req.session.save((err) => {
-  //     if (err) reject(err);
-  //     else resolve();
-  //   });
-  // });
-
-  // const expired =
-  //   !captchaTime ||
-  //   Date.now() - captchaTime > 2 * 60 * 1000;
-
-  // if (
-  //   !/^\d{6}$/.test(userCaptcha) ||
-  //   !/^\d{6}$/.test(sessionCaptcha) ||
-  //   expired ||
-  //   userCaptcha !== sessionCaptcha
-  // ) {
-  //   throw new Error("Invalid or expired CAPTCHA");
-  // }
-    
-
-  //   //console.log("LOGIN SESSION ID:", req.sessionID);
-  //   //console.log("SESSION CAPTCHA:", req.session.captcha);
-  //   // console.log("USER CAPTCHA:", loginData.captcha);
-
-  //   if (!userCaptcha || !sessionCaptcha || userCaptcha !== sessionCaptcha) {
-  //     throw new Error("Invalid captcha");
-  //   }
-
-  //   req.session.captcha = null;
-
-  //   const loginDTO = new LoginRequestDTO(loginData);
-  //   const validation = loginDTO.validate();
-
-  //   if (!validation.isValid) {
-  //     throw new Error(validation.errors.join(", "));
-  //   }
-
-  //   const user = await User.findOne({
-  //     where: { email: loginDTO.email, isActive: 1 },
-  //     include: [
-  //       {
-  //         model: Registration,
-  //         as: "registration",
-  //         attributes: ["firstName", "lastName", "isOrg", "orgName"],
-  //       },
-  //     ],
-  //   });
-
-  //   if (!user || !(await user.validatePassword(loginDTO.password))) {
-  //     throw new Error("Invalid credentials");
-  //   }
-
-  //   user.lastLoginAt = new Date();
-
-  //   const accessToken = JWTConfig.generateAccessToken({
-  //     userId: user.id,
-  //     email: user.email,
-  //     role: user.role,
-  //   });
-
-  //   const refreshToken = JWTConfig.generateRefreshToken({
-  //     userId: user.id,
-  //   });
-
-  //   user.refreshToken = refreshToken;
-  //   await user.save();
-
-  //   return new LoginResponseDTO(user, accessToken, refreshToken);
-  // }
 
 
 
@@ -253,6 +102,7 @@ static async login(loginData, req) {
     where: {
       email: loginDTO.email,
       isActive: 1,
+      isFrozen: 0,
     },
     include: [
       {
@@ -263,9 +113,13 @@ static async login(loginData, req) {
     ],
   });
 
-  if (!user || !(await user.validatePassword(loginDTO.password))) {
-    throw new Error("Invalid credentials");
-  }
+  await AuthService.checkLoginPassword(
+    req,
+    ACCOUNT_TYPES.USER,
+    loginDTO.email,
+    user,
+    loginDTO.password,
+  );
 
   user.lastLoginAt = new Date();
 
@@ -280,52 +134,7 @@ static async login(loginData, req) {
 }
 
 
-  static async register(registerData) {
-    const registerDTO = new RegisterRequestDTO(registerData);
-    const validation = registerDTO.validate();
-
-    if (!validation.isValid) {
-      throw new Error(validation.errors.join(", "));
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      where: { email: registerDTO.email },
-    });
-
-    if (existingUser) {
-      throw new Error("User already exists with this email");
-    }
-
-    // Create user
-    const user = await User.create({
-      email: registerDTO.email,
-      password: registerDTO.password,
-      firstName: registerDTO.firstName,
-      lastName: registerDTO.lastName,
-    });
-    console.log("User created:", user);
-    // Generate tokens
-    const accessToken = JWTConfig.generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    const refreshToken = JWTConfig.generateRefreshToken({
-      userId: user.id,
-    });
-
-    // Store refresh token
-    user.refreshToken = refreshToken;
-    await user.save();
-
-    return new AuthResponseDTO(user, accessToken, refreshToken);
-  }
-
-  // REGISTER NEW
   static async registerNew(registerData) {
-    console.log("Registering new user with data:", registerData);
     const registerDTO = new RegistrationDtoV1(registerData);
 
     const validation = registerDTO.validate();
@@ -333,141 +142,131 @@ static async login(loginData, req) {
       throw new Error(validation.errors.join(", "));
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      where: { email: registerDTO.email },
-    });
-    if (existingUser) {
-      throw new Error("User already exists with this email");
+    // Same reply whether or not the email is taken, so registration cannot
+    // be used to find out which accounts exist.
+    const reply = {
+      message:
+        "If this email can be registered, an OTP has been sent to it. Please verify to complete registration.",
+    };
+
+    if (await User.findOne({ where: { email: registerDTO.email }, attributes: ["id"] })) {
+      return reply;
     }
 
-    // Create user
-    const user = await User.create({
-      email: registerDTO.email,
-      password: registerDTO.password,
-      firstName: registerDTO.firstName,
-      lastName: registerDTO.lastName,
-      role: "user",
-      isActive: 0,
-    });
+    let user;
+    try {
+      // Both rows or neither: a half-created account would block the email
+      user = await db.sequelize.transaction(async (transaction) => {
+        const created = await User.create(
+          {
+            email: registerDTO.email,
+            password: registerDTO.password,
+            firstName: registerDTO.firstName,
+            lastName: registerDTO.lastName,
+            role: "user",
+            isActive: 0,
+          },
+          { transaction },
+        );
 
-    // Generate unique registration ID
-    //const randomString = Math.random().toString(36).substr(2, 8).toUpperCase();
+        await Registration.create(
+          {
+            reg_id: `REG_${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
+            userId: created.id,
+            title: registerDTO.title,
+            firstName: registerDTO.firstName,
+            lastName: registerDTO.lastName,
+            orgName: registerDTO.orgName,
+            orgId: registerDTO.orgId,
+            docId: registerDTO.docId,
+            docIdtype: registerDTO.docIdtype,
+            ownContact: registerDTO.ownContact,
+            ownAddress: registerDTO.ownAddress,
+            village_code: registerDTO.village_code,
+            subdistrict_code: registerDTO.subdistrict_code,
+            district_code: registerDTO.district_code,
+            isOrg: registerDTO.isOrg,
+            deptSubCat: registerDTO.govtsubcategory,
+            deptName: registerDTO.govtDeptName,
+            status: 0,
+          },
+          { transaction },
+        );
 
-    const reg_id = `REG_${uuidv4()
-      .replace(/-/g, "")
-      .substring(0, 8)
-      .toUpperCase()}`;
-    // Create registration record
-    const registration = await Registration.create({
-      reg_id,
-      userId: user.id,
-      title: registerDTO.title,
-      firstName: registerDTO.firstName,
-      lastName: registerDTO.lastName,
-      orgName: registerDTO.orgName,
-      orgId: registerDTO.orgId,
-      docId: registerDTO.docId,
-      docIdtype: registerDTO.docIdtype,
-      ownContact: registerDTO.ownContact,
-      ownAddress: registerDTO.ownAddress,
-      village_code: registerDTO.village_code,
-      subdistrict_code: registerDTO.subdistrict_code,
-      district_code: registerDTO.district_code,
-      isOrg: registerDTO.isOrg,
-      deptSubCat: registerDTO.govtsubcategory,
-      deptName: registerDTO.govtDeptName,
-      status: 0,
-    });
+        return created;
+      });
+    } catch (error) {
+      // A parallel request registered the same email first
+      if (error.name === "SequelizeUniqueConstraintError") return reply;
+      throw error;
+    }
 
-    // ✅ Generate OTP (6 digits)
-    const otpCode = 111111;
+    // Random single-use OTP (stored hashed), sent to the registered contacts.
+    // The OTP itself is never returned to the browser.
+    const otpCode = await createOtp(
+      ACCOUNT_TYPES.USER,
+      user.id,
+      OTP_PURPOSES.REGISTER,
+    );
+    await deliverOtp(
+      { mobile: registerDTO.ownContact, email: registerDTO.email },
+      otpCode,
+      OTP_PURPOSES.REGISTER,
+    );
 
-    // Save OTP in otp table
-    await Otp.create({
-      otp: otpCode,
-      regid: reg_id,
-      userid: user.id,
-      status: 0, // 1 = used
-    });
-
-    // Generate JWT tokens
-    // const accessToken = JWTConfig.generateAccessToken({
-    //   userId: user.id,
-    //   email: user.email,
-    //   role: user.role,
-    // });
-
-    // const refreshToken = JWTConfig.generateRefreshToken({
-    //   userId: user.id,
-    // });
-
-    // Save refresh token
-    // user.refreshToken = refreshToken;
-    // await user.save();
-
-    await registration.reload({
-      include: [
-        {
-          model: User,
-          as: "user", // must match alias in association
-        },
-      ],
-    });
-
-    // Optionally send OTP via SMS or Email here
-
-    return {
-      //auth: new AuthResponseDTO(registration, accessToken, refreshToken),
-      auth: new AuthResponseDTO(registration),
-      otp: otpCode, // you might hide this in prod
-      message: "OTP sent successfully",
-    };
+    return reply;
   }
 
-  // static async refreshToken(token) {
-  //   if (!token) {
-  //     throw new Error("Refresh token required");
-  //   }
+  /**
+   * Password check shared by the three logins. Applies the account lockout,
+   * counts wrong passwords and writes the audit trail. `account` is null
+   * when no active account matched `identifier`.
+   */
+  static async checkLoginPassword(req, type, identifier, account, password) {
+    const entry = {
+      actorType: type,
+      actorId: account?.id,
+      actorName: identifier,
+      action: AUDIT_ACTIONS.LOGIN,
+    };
 
-  //   const decoded = JWTConfig.verifyRefreshToken(token);
+    if (!account) {
+      await audit(req, { ...entry, status: "failure", details: "Unknown or inactive account" });
+      throw new Error("Invalid credentials");
+    }
 
-  //   const user = await User.findOne({
-  //     where: {
-  //       id: decoded.userId,
-  //       refreshToken: token,
-  //       isActive: true,
-  //     },
-  //   });
+    if (isLocked(account)) {
+      await audit(req, { ...entry, action: AUDIT_ACTIONS.LOGIN_LOCKED, status: "failure" });
+      assertNotLocked(account);
+    }
 
-  //   if (!user) {
-  //     throw new Error("Invalid refresh token");
-  //   }
+    if (!(await account.validatePassword(password))) {
+      const locked = await recordFailedLogin(account);
+      await audit(req, { ...entry, status: "failure", details: "Wrong password" });
 
-  //   // Generate new tokens
-  //   const accessToken = JWTConfig.generateAccessToken({
-  //     userId: user.id,
-  //     email: user.email,
-  //     role: user.role,
-  //   });
+      if (locked) {
+        await audit(req, {
+          ...entry,
+          action: AUDIT_ACTIONS.ACCOUNT_LOCKED,
+          status: "success",
+          details: `Locked for ${config.LOCKOUT_MINUTES} minutes after ${config.LOCKOUT_MAX_ATTEMPTS} failed logins`,
+        });
+        throw httpError(lockedMessage(Number(account.lockedUntil)), 423);
+      }
+      throw new Error("Invalid credentials");
+    }
 
-  //   const newRefreshToken = JWTConfig.generateRefreshToken({
-  //     userId: user.id,
-  //   });
-
-  //   // Update refresh token
-  //   user.refreshToken = newRefreshToken;
-  //   await user.save();
-
-  //   return new AuthResponseDTO(user, accessToken, newRefreshToken);
-  // }
+    // issueTokens() saves the record
+    clearFailedLogins(account);
+    await audit(req, { ...entry, status: "success" });
+  }
 
   // Load an active account (with the data its login response needs)
   // for the given account type.
   static async findSessionAccount(type, id) {
     if (type === ACCOUNT_TYPES.USER) {
       return User.findOne({
-        where: { id, isActive: 1 },
+        where: { id, isActive: 1, isFrozen: 0 },
         include: [
           {
             model: Registration,
@@ -480,7 +279,7 @@ static async login(loginData, req) {
 
     if (type === ACCOUNT_TYPES.POLICE) {
       return db.PoliceUser.findOne({
-        where: { id, isActive: 1 },
+        where: { id, isActive: 1, status: 1 },
         include: [
           {
             model: db.PoliceRegistration,
@@ -514,19 +313,26 @@ static async login(loginData, req) {
     return null;
   }
 
+  // reg_id of the account `userId`, or null. Trips, drivers and vehicles
+  // are owned through this reg_id.
+  static async regIdOf(userId) {
+    const registration = await Registration.findOne({
+      where: { userId },
+      attributes: ["reg_id"],
+    });
+    return registration?.reg_id || null;
+  }
+
   // True when every trip ID belongs to the citizen account `userId`.
   static async userOwnsTrips(userId, tIds) {
     const ids = [...new Set(tIds.filter(Boolean).map(String))];
     if (ids.length === 0) return false;
 
-    const registration = await Registration.findOne({
-      where: { userId },
-      attributes: ["reg_id"],
-    });
-    if (!registration) return false;
+    const reg_id = await AuthService.regIdOf(userId);
+    if (!reg_id) return false;
 
     const count = await db.Trip.count({
-      where: { tId: ids, reg_id: registration.reg_id },
+      where: { tId: ids, reg_id },
     });
     return count === ids.length;
   }
@@ -729,24 +535,14 @@ static async login(loginData, req) {
     }
 
     const reg_id = regIdObj.get("reg_id");
-    console.log("Registration ID:", reg_id);
 
     const vehicleDTO = new VehicleRequestDTO(registerData);
     const validation = vehicleDTO.validate();
-
-    // if (!validation.isValid) {
-    //   // Stop execution immediately
-    //   return {
-    //     success: false,
-    //     errors: validation.errors,
-    //   };
-    // }
 
     if (!validation.isValid) {
       throw new Error(validation.errors.join(", "));
     }
 
-    console.log("Vehicle data:", vehicleDTO);
 
     // Save vehicle info into DB
     const newVehicle = await db.Vehicle.create({
@@ -763,7 +559,6 @@ static async login(loginData, req) {
       regDate: vehicleDTO.regDate,
     });
 
-    console.log("New vehicle created:", newVehicle);
 
     // Add vehicle status after vehicle creation
     const vehicleStatus = await db.VehicleStatus.create({
@@ -773,7 +568,6 @@ static async login(loginData, req) {
       end_date: null, // Default to null
     });
 
-    console.log("Vehicle status created:", vehicleStatus);
 
     return {
       success: true,
@@ -782,149 +576,11 @@ static async login(loginData, req) {
     };
   }
 
-  static async driverstatus(registerData, user) {
-    const registerDTO = new DriverStatusRequestDTO(registerData);
-    const validation = registerDTO.validate();
-
-    if (!validation.isValid) {
-      throw new Error(validation.errors.join(", "));
-    }
-
-    // Extract fields
-    const { reg_id, d_id, Phone_no, Status } = registerDTO;
-
-    const errors = [];
-
-    // Field validation
-    if (!reg_id) errors.push("Registration ID (reg_id) is required");
-    if (!d_id) errors.push("Driver ID (d_id) is required");
-    if (!Phone_no || !/^[6-9]\d{9}$/.test(Phone_no)) {
-      errors.push("Valid Phone number is required");
-    }
-
-    const allowedStatuses = ["Active", "Inactive"];
-    if (!allowedStatuses.includes(Status)) {
-      errors.push(`Status must be one of: ${allowedStatuses.join(", ")}`);
-    }
-
-    if (errors.length > 0) {
-      throw new Error(errors.join(", "));
-    }
-
-    // Create entry in driver_status_tbl
-    const DriverStatus = db.DriverStatus; // Assuming model is named like this
-
-    const createdStatus = await DriverStatus.create({
-      reg_id,
-      d_id,
-      Phone_no,
-      Status,
-    });
-
-    // Optional: associate with user
-    console.log("Driver status registered by user:", user?.id);
-
-    // Return DTO or raw object
-    return createdStatus; // Or wrap with response DTO if needed
-  }
-
-  //===========================vehicle status registration=============
-
-  static async vehiclestatus(data) {
-    const dto = new VehicleStatusRequestDTO(data);
-    const validation = dto.validate();
-
-    if (!validation.isValid) {
-      throw new Error(validation.errors.join(", "));
-    }
-
-    const { reg_id, start_date, end_date, status } = dto;
-
-    try {
-      const VehicleStatus = db.VehicleStatus;
-
-      const createdStatus = await VehicleStatus.create({
-        //v_id,
-        reg_id,
-        start_date,
-        end_date,
-        status,
-      });
-
-      return new VehicleStatusResponseDTO(createdStatus);
-    } catch (err) {
-      console.error(
-        "Error in VehicleStatusService.registerVehicleStatus:",
-        err,
-      );
-      throw new Error("Failed to create vehicle status record");
-    }
-  }
-
-  static async getAllStatuses() {
-    try {
-      const VehicleStatus = db.VehicleStatus;
-      const allStatuses = await VehicleStatus.findAll();
-      return allStatuses.map((status) => new VehicleStatusResponseDTO(status));
-    } catch (err) {
-      console.error("Error in VehicleStatusService.getAllStatuses:", err);
-      throw new Error("Failed to fetch vehicle status records");
-    }
-  }
-
-  static async getByMobilenumber(mobileNumber) {
-    console.log("Fetching driver by mobile number:", mobileNumber);
-    if (!mobileNumber) {
-      throw new Error("Mobile number is required");
-    }
-
-    const driver = await Driver.findOne({
-      include: [
-        {
-          model: DriverStatus,
-          where: { Phone_no: mobileNumber },
-          required: true,
-        },
-      ],
-    });
-
-    if (!driver) {
-      throw new Error("No driver found with this mobile number");
-    }
-
-    return driver;
-  }
-
-  static async getByLicense(license) {
-    if (!license) {
-      throw new Error("License number is required");
-    }
-
-    const driver = await Driver.findOne({
-      where: { license_no: license },
-      include: [
-        {
-          model: DriverStatus,
-          required: false,
-        },
-      ],
-    });
-
-    if (!driver) {
-      throw new Error("No driver found with this license number");
-    }
-
-    return driver;
-  }
-  //----------------------------------
-
   // =============get_driver_list_by_regId========================
   static async getDriveListbyRegId(registerData, id) {
     try {
       const { Op } = require("sequelize");
 
-      console.log("=================================");
-      console.log("REGISTER DATA:", registerData);
 
       // ===============================
       // OPTIONAL PAGINATION
@@ -963,7 +619,6 @@ static async login(loginData, req) {
       if (registerData.searchTerm && registerData.searchTerm.trim() !== "") {
         const querySearch = registerData.searchTerm.trim();
 
-        console.log("SEARCH TERM:", querySearch);
 
         whereClause[Op.or] = [
           {
@@ -984,7 +639,6 @@ static async login(loginData, req) {
         ];
       }
 
-      console.log("WHERE CLAUSE:", whereClause);
       // ===============================
       // QUERY OPTIONS
       // ===============================
@@ -1024,7 +678,6 @@ static async login(loginData, req) {
         queryOptions.col = "dId";
       }
 
-      console.log("QUERY OPTIONS:", queryOptions);
 
       // ===============================
       // FETCH DATA
@@ -1057,72 +710,9 @@ static async login(loginData, req) {
     } catch (error) {
       console.error("ERROR:", error);
 
-      throw new Error(error.message || "Failed");
+      throw error;
     }
   }
-
-  // =============get_Vehicle_list_by_regId========================
-  // static async getVehicleListbyRegId(registerData, id) {
-  //   try {
-  //     // 🔍 Fetch registration ID for given user
-  //     const regIdObj = await Registration.findOne({
-  //       where: { userId: id },
-  //       attributes: ["reg_id"],
-  //     });
-
-  //     const reg_id = regIdObj ? regIdObj.get("reg_id") : null;
-  //     console.log("Registration ID found:", reg_id);
-
-  //     if (!reg_id) {
-  //       return {
-  //         success: false,
-  //         message: "No registration ID found for this user",
-  //         vehicle: [],
-  //       };
-  //     }
-
-  //     // ✅ Fetch only active vehicles (status = 1)
-  //     const vehicles = await db.Vehicle.findAll({
-  //       include: [
-  //         {
-  //           model: db.VehicleStatus,
-  //           as: "sts",
-  //           attributes: ["reg_id"],
-  //           where: { reg_id }, // Filter by registration ID
-  //         },
-  //       ],
-  //       where: {
-  //         status: 1, // ✅ Only active vehicles
-  //       },
-  //       attributes: [
-  //         "vId",
-  //         "vNum",
-  //         "vOwnName",
-  //         "vCat",
-  //         "otherCat",
-  //         "ownershipType",
-  //         "deptName",
-  //         "vPurpose",
-  //         "otherPurpose",
-  //         "vSeating",
-  //       ],
-  //       order: [["vId", "DESC"]],
-  //     });
-
-  //     return {
-  //       success: true,
-  //       message: "Vehicle list loaded successfully",
-  //       vehicle: vehicles,
-  //     };
-  //   } catch (error) {
-  //     console.error("Error fetching vehicle list by regId:", error);
-  //     return {
-  //       success: false,
-  //       message: "Error loading vehicle list",
-  //       error: error.message,
-  //     };
-  //   }
-  // }
 
   static async getVehicleListbyRegId(registerData, id) {
     try {
@@ -1137,7 +727,6 @@ static async login(loginData, req) {
 
       const reg_id = regIdObj ? regIdObj.get("reg_id") : null;
 
-      console.log("Registration ID found:", reg_id);
 
       if (!reg_id) {
         return {
@@ -1171,7 +760,6 @@ static async login(loginData, req) {
       if (registerData.searchTerm && registerData.searchTerm.trim() !== "") {
         const querySearch = registerData.searchTerm.trim();
 
-        console.log("VEHICLE SEARCH TERM:", querySearch);
 
         whereClause.vNum = {
           [Op.like]: `%${querySearch}%`,
@@ -1451,7 +1039,6 @@ static async login(loginData, req) {
     let tripWithConvey;
     let returnTrip = null;
     let createdReturnTrip = null;
-    console.log("Creating new trip with data:", tripData);
 
     // 🔐 Declaration enforcement
     if (tripData.declarationAccepted !== true) {
@@ -1474,21 +1061,6 @@ static async login(loginData, req) {
     });
     let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
 
-    // ===== Generate forward tId =====
-    // const today = new Date();
-    // const day = String(today.getDate()).padStart(2, "0");
-    // const month = String(today.getMonth() + 1).padStart(2, "0");
-    // const year = today.getFullYear();
-    // const dateString = `${day}${month}${year}`;
-    // const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
-    //   6,
-    //   "0",
-    // );
-    // const combined = dateString + randomNum;
-    // const base36Value = BigInt(combined).toString(36).toUpperCase();
-    // const tId = base36Value;
-
-    // ===== Generate forward tId =====
     const tId = await this.generateUniqueTripId();
 
     // ===== Create forward trip =====
@@ -1549,19 +1121,6 @@ static async login(loginData, req) {
 
     // ================= RETURN TRIP LOGIC =================
     if (tripData.isReturn) {
-      // 🔁 Generate return tId
-      // const today = new Date();
-      // const day = String(today.getDate()).padStart(2, "0");
-      // const month = String(today.getMonth() + 1).padStart(2, "0");
-      // const year = today.getFullYear();
-      // const dateString = `${day}${month}${year}`;
-      // const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
-      //   6,
-      //   "0",
-      // );
-      // const combined = dateString + randomNum;
-      // const returnTId = BigInt(combined).toString(36).toUpperCase();
-      // 🔁 Generate return tId
       const returnTId = await this.generateUniqueTripId();
 
       let passengersForReturn;
@@ -1650,8 +1209,6 @@ static async login(loginData, req) {
   //--------------special convoy trip----------------
 
   static async splnewtrip(tripData, id) {
-    console.log("Creating new trip with data:", tripData);
-    console.log("User ID:", id);
 
     const { Op, fn, col, where } = require("sequelize");
 
@@ -1701,7 +1258,6 @@ static async login(loginData, req) {
     // ===== GENERATE conveyid =====
     let newConveyId = lastConvey ? lastConvey.conveyid + 1 : baseStart;
 
-    console.log("Final Convey ID:", newConveyId);
 
     // ===== INSERT INTO ConveyControl =====
     await db.ConveyControl.create({
@@ -1712,19 +1268,6 @@ static async login(loginData, req) {
       closetime: tripDTO.convoyTime,
       status: 0,
     });
-
-    // ===== GENERATE tId =====
-    // const today = new Date();
-    // const day = String(today.getDate()).padStart(2, "0");
-    // const month = String(today.getMonth() + 1).padStart(2, "0");
-    // const year = today.getFullYear();
-    // const dateString = `${day}${month}${year}`;
-    // const randomNum = String(Math.floor(Math.random() * 1000000)).padStart(
-    //   6,
-    //   "0",
-    // );
-    // const combined = dateString + randomNum;
-    // const tId = BigInt(combined).toString(36).toUpperCase();
 
     const tId = await this.generateUniqueTripId();
 
@@ -1747,7 +1290,6 @@ static async login(loginData, req) {
       verifiystatus: 2,
     });
 
-    console.log("✅ Trip Created:", newTrip.toJSON());
 
     // ===== ADD PASSENGERS (SPECIAL CONVOY) =====
     if (tripDTO.Passengers && tripDTO.Passengers.length > 0) {
@@ -1815,9 +1357,7 @@ static async login(loginData, req) {
   //---------get_trip_details_by_reg_id--------------
 
   static async getTripDetailsbyRegId(tripData, id) {
-    console.log("Fetching trip details with data:", tripData);
 
-    console.log("fetch trip details with data:", id);
 
     // =========================================
     // GET REGISTRATION ID
@@ -1829,7 +1369,6 @@ static async login(loginData, req) {
 
     let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
 
-    console.log("Registration ID found:", reg_id);
 
     if (!reg_id) {
       throw new Error("No registration ID found for the given user.");
@@ -1989,7 +1528,6 @@ static async login(loginData, req) {
     try {
       const { Op, fn, col, where } = require("sequelize");
 
-      console.log("tripData:", tripData);
 
       // ===============================
       // PAGINATION
@@ -2141,13 +1679,6 @@ static async login(loginData, req) {
       const trips = result.rows;
       const totalRecords = result.count;
 
-      console.log("=================================");
-      console.log("PAGE:", page);
-      console.log("LIMIT:", limit);
-      console.log("OFFSET:", offset);
-      console.log("TOTAL RECORDS:", totalRecords);
-      console.log("FETCHED ROWS:", trips.length);
-      console.log("=================================");
 
       // ===============================
       // CONVOY FIX LOGIC
@@ -2213,12 +1744,11 @@ static async login(loginData, req) {
     } catch (error) {
       console.error("Error:", error);
 
-      throw new Error(error.message || "Failed");
+      throw error;
     }
   }
 
   static async getTripDetailsbyTripId(tripData, id) {
-    console.log("Fetching trip details with data:", tripData);
 
     // ✅ Fetch main Trip with associations
     const trips = await db.Trip.findOne({
@@ -2479,8 +2009,6 @@ static async login(loginData, req) {
     });
 
     // ✅ Logs
-    console.log("✅ Current Kolkata Date:", currentDate);
-    console.log("📍 Location ID:", param?.locationid);
 
     // ✅ DTO Response
     return {
@@ -2564,8 +2092,6 @@ static async login(loginData, req) {
       ],
     });
 
-    console.log("✅ Current Kolkata Date:", currentDate);
-    console.log("📍 Location ID:", param?.locationid);
 
     return {
       message: "Trip details loaded successfully",
@@ -2581,8 +2107,13 @@ static async login(loginData, req) {
     checkpost_id,
     remarks,
     astatus,
-    approveby,
-  }) {
+  }, approveby) {
+    // `approveby` is the signed-in officer's reg_id, never the request body.
+    // Trip status 2 = approved, 3 = rejected.
+    if (![2, 3].includes(Number(buttonId)) || ![0, 1].includes(Number(astatus))) {
+      throw httpError("Invalid approval status");
+    }
+
     const transaction = await db.sequelize.transaction();
 
     try {
@@ -2592,7 +2123,7 @@ static async login(loginData, req) {
       });
 
       if (!trip) {
-        throw new Error("Trip not found");
+        throw httpError("Trip not found", 404);
       }
 
       // 1️⃣ Insert approval record
@@ -2610,7 +2141,6 @@ static async login(loginData, req) {
         { transaction },
       );
 
-      console.log("Approval status:", astatus);
       // 2️⃣ Update trip status + verification status
       await trip.update(
         {
@@ -2659,10 +2189,10 @@ static async login(loginData, req) {
         error.name === "SequelizeUniqueConstraintError" ||
         error.original?.code === "ER_DUP_ENTRY"
       ) {
-        throw new Error("Trip already approved");
+        throw httpError("Trip already approved", 409);
       }
 
-      throw new Error(error.message || "Trip approval failed");
+      throw error;
     }
   }
 
@@ -2708,7 +2238,6 @@ static async login(loginData, req) {
 
   static async getallApproveTripDetails(params, res) {
     try {
-      console.log("Params received:", params);
 
       // Extract parameters safely
       const statuscode =
@@ -2848,13 +2377,12 @@ static async login(loginData, req) {
       };
     } catch (error) {
       console.error("Error fetching approved trip details:", error.message);
-      throw new Error(error.message || "Failed to fetch approved trip details");
+      throw error;
     }
   }
 
   static async getallApproveTrip(params, res) {
     try {
-      console.log("🟦 Incoming Parameters to getallApproveTrip:", params);
 
       const approveCheckpostId =
         typeof params === "object" ? params?.checkpostid?.toString() : null;
@@ -3027,7 +2555,6 @@ static async login(loginData, req) {
           vehicleCounts[type]++;
         }
       });
-      console.log("Vehicle Counts:", vehicleCounts);
 
       // ================= PASSENGER COUNTS =================
 
@@ -3058,24 +2585,8 @@ static async login(loginData, req) {
           else if (gender === "female") totalFemale++;
         });
 
-        // if (gender === "male") totalMale++;
-        // if (gender === "female") totalFemale++;
-        // if (typeof age === "number" && age < 12) {
-        //   totalChild++;
-        //   // ✅ store child details
-        //   trip.childPassengers.push({
-        //     name: p.name || `${p.firstName || ""} ${p.lastName || ""}`.trim(),
-        //     age: p.age,
-        //     gender: p.gender,
-        //   });
-        // }
-        // });
       });
 
-      console.log("👨‍🦰 Total Male:", totalMale);
-      console.log("👩‍🦰 Total Female:", totalFemale);
-      console.log("🧒 Total Child:", totalChild);
-      console.log("🧍‍♂️ Total Passengers:", totalPassengers);
 
       // ✅ Get current server time (Kolkata timezone)
       const moment = require("moment-timezone");
@@ -3104,16 +2615,12 @@ static async login(loginData, req) {
       };
     } catch (error) {
       console.error("❌ Error fetching approved trip details:", error.message);
-      throw new Error(error.message || "Failed to fetch approved trip details");
+      throw error;
     }
   }
 
   static async getallApproeveRejectedPendingTripDetails(params) {
     try {
-      console.log(
-        "🟩 Incoming Parameters to getallApproeveRejectedPendingTripDetails:",
-        params,
-      );
 
       const { Op } = require("sequelize");
 
@@ -3316,7 +2823,6 @@ static async login(loginData, req) {
         subQuery: false,
       });
 
-      console.log("✅ Trips Count:", trips.length);
 
       return {
         message: "Trips fetched successfully",
@@ -3334,7 +2840,7 @@ static async login(loginData, req) {
     } catch (error) {
       console.error("❌ Error:", error.message);
 
-      throw new Error(error.message || "Failed to fetch trips");
+      throw error;
     }
   }
 
@@ -3538,69 +3044,6 @@ static async login(loginData, req) {
     }
   }
 
-  ///////////////Police Registration
-
-  // static async registerPolice(registerData) {
-  //   const registerDTO = new PoliceRegistrationDto(registerData);
-  //   const validation = registerDTO.validate();
-
-  //   if (!validation.isValid) {
-  //     throw new Error(validation.errors.join(", "));
-  //   }
-
-  //   const existingUser = await PoliceUser.findOne({
-  //     where: { email: registerDTO.email },
-  //   });
-
-  //   if (existingUser) {
-  //     throw new Error("Police user already exists with this email");
-  //   }
-
-  //   const user = await PoliceUser.create({
-  //     email: registerDTO.email,
-  //     password: registerDTO.password,
-  //     isActive: registerDTO.isActive,
-  //     status: 1,
-  //   });
-
-  //   const reg_id = `POLREG_${Math.random()
-  //     .toString(36)
-  //     .substr(2, 8)
-  //     .toUpperCase()}`;
-
-  //   const registration = await PoliceRegistration.create({
-  //     reg_id: reg_id,
-  //     userId: user.id,
-  //     title: registerDTO.title,
-  //     firstName: registerDTO.firstName,
-  //     lastName: registerDTO.lastName,
-  //     designation: registerDTO.designation,
-  //     emp_id: registerDTO.emp_id,
-  //     checkpost: registerDTO.checkpost,
-  //     contact: registerDTO.contact,
-  //     status: registerDTO.status,
-  //   });
-
-  //   const accessToken = JWTConfig.generateAccessToken({
-  //     userId: user.id,
-  //     email: user.email,
-  //     role: registerDTO.role,
-  //   });
-
-  //   const refreshToken = JWTConfig.generateRefreshToken({
-  //     userId: user.id,
-  //   });
-
-  //   user.refreshToken = refreshToken;
-  //   await user.save();
-
-  //   await registration.reload({
-  //     include: [{ model: PoliceUser, as: "user" }],
-  //   });
-
-  //   return new AuthResponseDTO(registration, accessToken, refreshToken);
-  // }
-
 static async registerPolice(registerData) {
   const registerDTO = new PoliceRegistrationDto(registerData);
   const validation = registerDTO.validate();
@@ -3700,9 +3143,9 @@ static async registerPolice(registerData) {
       throw new Error(validation.errors.join(", "));
     }
 
-    // ✅ Find police user by email
+    // ✅ Find police user by email (status 0 = frozen by admin)
     const user = await db.PoliceUser.findOne({
-      where: { email: loginDTO.email, isActive: 1 },
+      where: { email: loginDTO.email, isActive: 1, status: 1 },
       include: [
         {
           model: db.PoliceRegistration,
@@ -3725,9 +3168,13 @@ static async registerPolice(registerData) {
       ],
     });
 
-    if (!user || !(await user.validatePassword(loginDTO.password))) {
-      throw new Error("Invalid credentials");
-    }
+    await AuthService.checkLoginPassword(
+      req,
+      ACCOUNT_TYPES.POLICE,
+      loginDTO.email,
+      user,
+      loginDTO.password,
+    );
 
     // ✅ Update last login
     user.lastLoginAt = new Date();
@@ -3741,46 +3188,6 @@ static async registerPolice(registerData) {
 
     return new PoliceLoginResponseDTO(user, accessToken, refreshToken);
   }
-
-  // static async conveywise(payload) {
-  //   const { fn, col, where, Op } = require("sequelize");
-
-  //   // ✅ Extract date from request body or default to today
-  //   const inputDate =
-  //     typeof payload === "object" && payload?.date
-  //       ? payload.date
-  //       : new Date().toISOString().split("T")[0];
-
-  //   console.log("Filter date =", inputDate);
-
-  //   // ✅ Fetch all trips for the input date where status = 2
-  //   const trips = await db.Trip.findAll({
-  //     where: {
-  //       [Op.and]: [where(fn("DATE", col("date")), inputDate), { status: 2 }],
-  //     },
-  //     attributes: ["convoyTime", "vId"],
-  //   });
-
-  //   // ✅ Group by convoyTime and count ALL vId entries
-  //   const convoyCounts = {};
-
-  //   for (const trip of trips) {
-  //     const { convoyTime } = trip;
-
-  //     if (!convoyTime) continue;
-
-  //     if (!convoyCounts[convoyTime]) {
-  //       convoyCounts[convoyTime] = 0;
-  //     }
-
-  //     convoyCounts[convoyTime] += 1; // ✅ Count every trip, even if same vId
-  //   }
-
-  //   return {
-  //     message: `Vehicle count by convoy time for ${inputDate}`,
-  //     vehicleCountByConvoyTime: convoyCounts,
-  //   };
-  // }
 
   static async loginAdmin(loginData, req) {
     await consumeCaptcha(req, loginData?.captcha);
@@ -3807,13 +3214,16 @@ static async registerPolice(registerData) {
 
     //console.log("🔹 Admin found:", admin ? admin.userid : "NOT FOUND");
 
-    if (!admin || !(await admin.validatePassword(loginDTO.password))) {
-      throw new Error("Invalid credentials");
-    }
+    const isAdmin =
+      admin && (admin.role === "admin" || Number(admin.isadmin) === 1);
 
-    if (admin.role !== "admin" && Number(admin.isadmin) !== 1) {
-      throw new Error("Unauthorized admin access");
-    }
+    await AuthService.checkLoginPassword(
+      req,
+      ACCOUNT_TYPES.ADMIN,
+      loginDTO.userid,
+      isAdmin ? admin : null,
+      loginDTO.password,
+    );
 
     admin.lastLoginAt = new Date();
 
@@ -3842,7 +3252,6 @@ static async registerPolice(registerData) {
         ? payload.date
         : new Date().toISOString().split("T")[0];
 
-    console.log("Filter date =", inputDate);
 
     // ✅ Fetch all approved trips for that date from ApproveTrip
     const approveTrips = await db.ApproveTrip.findAll({
@@ -3877,53 +3286,452 @@ static async registerPolice(registerData) {
     };
   }
 
-  static async verifyCitizenOtp({ email, otp }) {
-    try {
-      console.log("Received OTP verification request:", { email, otp });
+  // Activate a citizen account with its registration OTP. Every failure
+  // gets the same message, so the endpoint cannot be used to probe emails.
+  static async verifyCitizenOtp(data, req) {
+    const dto = new ResendOtpDTO(data);
+    const otp = String(data?.otp || "").trim();
 
-      // Find user by email (get id)
-      const user = await db.User.findOne({
-        where: { email },
-        attributes: ["id", "isActive"],
-      });
-      if (!user) throw new Error("User not found");
-      console.log("User found:", user);
+    const user = dto.validate().isValid
+      ? await db.User.findOne({
+          where: { email: dto.email },
+          attributes: ["id", "isActive", "isFrozen"],
+        })
+      : null;
 
-      // Find latest OTP record by user id
-      const otpRecord = await db.Otp.findOne({
-        where: { userid: user.id },
-        order: [["datetime", "DESC"]],
-      });
-      if (!otpRecord) throw new Error("OTP record not found");
-      console.log("OTP record found:", otpRecord);
+    const valid = Boolean(
+      user &&
+        !user.isActive &&
+        !user.isFrozen &&
+        (await verifyOtp(
+          ACCOUNT_TYPES.USER,
+          user.id,
+          OTP_PURPOSES.REGISTER,
+          otp,
+        )),
+    );
 
-      // Compare OTP values
-      if (otpRecord.otp !== Number(otp)) {
-        throw new Error("Invalid OTP");
-      }
+    await audit(req, {
+      actorType: ACCOUNT_TYPES.USER,
+      actorId: user?.id,
+      actorName: dto.email,
+      action: AUDIT_ACTIONS.OTP_VERIFY,
+      status: valid ? "success" : "failure",
+    });
 
-      // Update otp status to 1
-      await otpRecord.update({ status: 1 });
-
-      // Update registration status = 1 for this user
-      await db.Registration.update(
-        { status: 1 },
-        { where: { userId: user.id } },
+    if (!valid) {
+      throw httpError(
+        "Invalid or expired OTP. Please try again or request a new OTP.",
       );
-
-      // Update user isActive = 1
-      await user.update({ isActive: 1 });
-
-      return { success: true, message: "OTP verified and user activated" };
-    } catch (error) {
-      console.error("Error in verifyCitizenOtp:", error.message);
-      throw error;
     }
+
+    await db.Registration.update(
+      { status: 1 },
+      { where: { userId: user.id } },
+    );
+    await user.update({ isActive: 1 });
+
+    return { success: true, message: "OTP verified and user activated" };
+  }
+
+  // Send a new registration OTP. The reply is the same whether or not a
+  // pending registration exists for the email.
+  static async resendRegistrationOtp(data, req) {
+    const dto = new ResendOtpDTO(data);
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const user = await db.User.findOne({
+      where: { email: dto.email, isActive: 0, isFrozen: 0 },
+      attributes: ["id", "email"],
+      include: [
+        { model: Registration, as: "registration", attributes: ["ownContact"] },
+      ],
+    });
+
+    let status = "failure";
+    let details = "No pending registration";
+
+    if (user) {
+      try {
+        const code = await createOtp(
+          ACCOUNT_TYPES.USER,
+          user.id,
+          OTP_PURPOSES.REGISTER,
+        );
+        await deliverOtp(
+          { mobile: user.registration?.ownContact, email: user.email },
+          code,
+          OTP_PURPOSES.REGISTER,
+        );
+        status = "success";
+        details = null;
+      } catch (error) {
+        if (!error.expose) throw error;
+        details = error.message;
+      }
+    }
+
+    await audit(req, {
+      actorType: ACCOUNT_TYPES.USER,
+      actorId: user?.id,
+      actorName: dto.email,
+      action: AUDIT_ACTIONS.OTP_RESEND,
+      status,
+      details,
+    });
+
+    return {
+      message:
+        "If a registration is pending for this email, a new OTP has been sent.",
+    };
+  }
+
+  // Active citizen or police account that may reset its password.
+  static async findResetAccount(type, email) {
+    if (type === ACCOUNT_TYPES.USER) {
+      return User.findOne({
+        where: { email, isActive: 1, isFrozen: 0 },
+        include: [
+          { model: Registration, as: "registration", attributes: ["ownContact"] },
+        ],
+      });
+    }
+
+    return db.PoliceUser.findOne({
+      where: { email, isActive: 1, status: 1 },
+      include: [
+        {
+          model: db.PoliceRegistration,
+          as: "registration",
+          attributes: ["contact"],
+        },
+      ],
+    });
+  }
+
+  // Forgot password, step 1: send a reset OTP. The reply never says
+  // whether the account exists.
+  static async requestPasswordReset(data, req) {
+    await consumeCaptcha(req, data?.captcha);
+
+    const dto = new ForgotPasswordRequestDTO(data);
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const account = await AuthService.findResetAccount(
+      dto.accountType,
+      dto.email,
+    );
+
+    let status = "failure";
+    let details = "No active account";
+
+    if (account) {
+      try {
+        const code = await createOtp(
+          dto.accountType,
+          account.id,
+          OTP_PURPOSES.RESET,
+        );
+        const registration = account.registration;
+        await deliverOtp(
+          {
+            mobile: registration?.ownContact || registration?.contact,
+            email: account.email,
+          },
+          code,
+          OTP_PURPOSES.RESET,
+        );
+        status = "success";
+        details = null;
+      } catch (error) {
+        if (!error.expose) throw error;
+        details = error.message;
+      }
+    }
+
+    await audit(req, {
+      actorType: dto.accountType,
+      actorId: account?.id,
+      actorName: dto.email,
+      action: AUDIT_ACTIONS.PASSWORD_RESET_REQUEST,
+      status,
+      details,
+    });
+
+    return {
+      message:
+        "If an account exists for this email, an OTP has been sent to the registered mobile number and email.",
+    };
+  }
+
+  // Forgot password, step 2: set a new password with the reset OTP.
+  // Signs the account out everywhere and clears any login lockout.
+  static async resetPassword(data, req) {
+    const dto = new ResetPasswordDTO(data);
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const account = await AuthService.findResetAccount(
+      dto.accountType,
+      dto.email,
+    );
+
+    const valid = Boolean(
+      account &&
+        (await verifyOtp(
+          dto.accountType,
+          account.id,
+          OTP_PURPOSES.RESET,
+          dto.otp,
+        )),
+    );
+
+    await audit(req, {
+      actorType: dto.accountType,
+      actorId: account?.id,
+      actorName: dto.email,
+      action: AUDIT_ACTIONS.PASSWORD_RESET,
+      status: valid ? "success" : "failure",
+    });
+
+    if (!valid) {
+      throw httpError(
+        "Invalid or expired OTP. Please try again or request a new OTP.",
+      );
+    }
+
+    // The model hook hashes the password
+    account.password = dto.newPassword;
+    account.refreshToken = null;
+    account.tokenVersion = (Number(account.tokenVersion) || 0) + 1;
+    clearFailedLogins(account);
+    await account.save();
+
+    return { message: "Password reset successfully. Please login." };
+  }
+
+  // Signed-in account changes its own password (current password required).
+  // All sessions, including this one, are signed out afterwards.
+  static async changeOwnPassword(req, data) {
+    const dto = new ChangePasswordDTO(data);
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const models = {
+      [ACCOUNT_TYPES.USER]: db.User,
+      [ACCOUNT_TYPES.POLICE]: db.PoliceUser,
+      [ACCOUNT_TYPES.ADMIN]: db.Admin,
+    };
+    const account = await models[req.accountType].findByPk(req.user.id);
+
+    const entry = {
+      actorType: req.accountType,
+      actorId: req.user.id,
+      actorName: req.user.email || req.user.userid,
+      action: AUDIT_ACTIONS.PASSWORD_CHANGE,
+    };
+
+    if (!account || !(await account.validatePassword(dto.oldPassword))) {
+      await audit(req, { ...entry, status: "failure", details: "Wrong current password" });
+      throw httpError("Current password is incorrect");
+    }
+
+    // User and police models hash in a hook; the admin model has none
+    account.password =
+      req.accountType === ACCOUNT_TYPES.ADMIN
+        ? await require("bcryptjs").hash(dto.newPassword, 10)
+        : dto.newPassword;
+    account.refreshToken = null;
+    account.tokenVersion = (Number(account.tokenVersion) || 0) + 1;
+    clearFailedLogins(account);
+    await account.save();
+
+    await audit(req, { ...entry, status: "success" });
+
+    return { message: "Password changed successfully. Please login again." };
+  }
+
+  // ==================== Admin: citizen accounts ====================
+
+  static async listCitizens(data) {
+    const dto = new CitizenListDTO(data);
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const now = Date.now();
+    const userWhere = {
+      active: { isActive: 1, isFrozen: 0 },
+      pending: { isActive: 0, isFrozen: 0 },
+      frozen: { isFrozen: 1 },
+      locked: { lockedUntil: { [Op.gt]: now } },
+      all: {},
+    }[dto.status];
+
+    const where = {};
+    if (dto.search) {
+      const like = `%${dto.search.replace(/[\\%_]/g, "\\$&")}%`;
+      where[Op.or] = [
+        { reg_id: { [Op.like]: like } },
+        { firstName: { [Op.like]: like } },
+        { lastName: { [Op.like]: like } },
+        { orgName: { [Op.like]: like } },
+        { ownContact: { [Op.like]: like } },
+        { "$user.email$": { [Op.like]: like } },
+      ];
+    }
+
+    const { rows, count } = await Registration.findAndCountAll({
+      where,
+      attributes: ["reg_id", "title", "firstName", "lastName", "orgName", "ownContact"],
+      include: [
+        {
+          model: User,
+          as: "user",
+          where: userWhere,
+          required: true,
+          attributes: ["id", "email", "isActive", "isFrozen", "lockedUntil", "lastLoginAt", "createdAt"],
+        },
+      ],
+      order: [[{ model: User, as: "user" }, "createdAt", "DESC"]],
+      limit: dto.limit,
+      offset: (dto.page - 1) * dto.limit,
+      subQuery: false,
+      distinct: true,
+    });
+
+    return {
+      total: count,
+      page: dto.page,
+      limit: dto.limit,
+      rows: rows.map((r) => {
+        const u = r.user;
+        const locked = (Number(u.lockedUntil) || 0) > now;
+        return {
+          userId: u.id,
+          reg_id: r.reg_id,
+          name: [r.title, r.firstName, r.lastName].filter(Boolean).join(" "),
+          orgName: r.orgName,
+          mobile: r.ownContact,
+          email: u.email,
+          registeredAt: u.createdAt,
+          lastLoginAt: u.lastLoginAt,
+          locked,
+          status: u.isFrozen
+            ? "frozen"
+            : !u.isActive
+              ? "pending"
+              : locked
+                ? "locked"
+                : "active",
+        };
+      }),
+    };
+  }
+
+  // Freeze (true) or unfreeze (false) a citizen. Freezing signs them out.
+  static async setCitizenFrozen(data, frozen) {
+    const dto = new AccountRefDTO({ accountType: "user", id: data?.userId });
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const user = await User.findByPk(dto.id);
+    if (!user) throw httpError("Citizen not found", 404);
+
+    user.isFrozen = frozen;
+    if (frozen) {
+      user.refreshToken = null;
+      user.tokenVersion = (Number(user.tokenVersion) || 0) + 1;
+    }
+    await user.save();
+
+    return {
+      userId: user.id,
+      message: frozen
+        ? "Citizen account frozen successfully"
+        : "Citizen account unfrozen successfully",
+    };
+  }
+
+  // Clear the login lockout of a citizen or police account.
+  static async unlockAccount(data) {
+    const dto = new AccountRefDTO(data);
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const model =
+      dto.accountType === ACCOUNT_TYPES.USER ? db.User : db.PoliceUser;
+    const account = await model.findByPk(dto.id);
+    if (!account) throw httpError("Account not found", 404);
+
+    clearFailedLogins(account);
+    await account.save({ hooks: false });
+
+    return { id: account.id, message: "Account unlocked successfully" };
+  }
+
+  // ==================== Admin: audit log ====================
+
+  static async getAuditLogs(data) {
+    const dto = new AuditLogListDTO(data);
+    const validation = dto.validate();
+    if (!validation.isValid) {
+      throw httpError(validation.errors.join(", "));
+    }
+
+    const where = {};
+    if (dto.action) where.action = dto.action;
+    if (dto.actorType) where.actorType = dto.actorType;
+    if (dto.status) where.status = dto.status;
+    if (dto.from || dto.to) {
+      where.createdAt = {
+        ...(dto.from ? { [Op.gte]: `${dto.from} 00:00:00` } : {}),
+        ...(dto.to ? { [Op.lte]: `${dto.to} 23:59:59` } : {}),
+      };
+    }
+    if (dto.search) {
+      const like = `%${dto.search.replace(/[\\%_]/g, "\\$&")}%`;
+      where[Op.or] = [
+        { actorName: { [Op.like]: like } },
+        { actorId: { [Op.like]: like } },
+        { targetId: { [Op.like]: like } },
+        { ip: { [Op.like]: like } },
+      ];
+    }
+
+    const { rows, count } = await db.AuditLog.findAndCountAll({
+      where,
+      order: [["id", "DESC"]],
+      limit: dto.limit,
+      offset: (dto.page - 1) * dto.limit,
+    });
+
+    return {
+      total: count,
+      page: dto.page,
+      limit: dto.limit,
+      actions: Object.values(AUDIT_ACTIONS),
+      rows,
+    };
   }
 
   static async getConveyDetails(checkpostid) {
     try {
-      console.log("Fetching convey details with payload:", checkpostid);
 
       let whereCondition = {};
 
@@ -4052,7 +3860,6 @@ static async registerPolice(registerData) {
   }
 
   static async getAllDetailsByTripId(tripData) {
-    console.log("Fetching trip details with data:", tripData);
 
     const trips = await db.Trip.findOne({
       where: {
@@ -4158,20 +3965,12 @@ static async registerPolice(registerData) {
 
       if (existingConvoy) {
         if (existingConvoy.status === 1) {
-          console.log(
-            "⚠️ Convey already active today:",
-            existingConvoy.toJSON(),
-          );
           return {
             success: false,
             message: "Convey already started today at this checkpost",
             data: existingConvoy,
           };
         } else if (existingConvoy.status === 0) {
-          console.log(
-            "⚠️ Convey was already started & closed today:",
-            existingConvoy.toJSON(),
-          );
           return {
             success: false,
             message: "Convey already started earlier today and is closed",
@@ -4193,7 +3992,6 @@ static async registerPolice(registerData) {
         status: 1,
       });
 
-      console.log("✅ New convoy created:", newConvoy.toJSON());
 
       return {
         success: true,
@@ -4201,12 +3999,15 @@ static async registerPolice(registerData) {
         data: newConvoy,
       };
     } catch (error) {
+      // uq_convey_day: a parallel request started this convoy first
+      if (error.name === "SequelizeUniqueConstraintError") {
+        return {
+          success: false,
+          message: "Convey already started today at this checkpost",
+        };
+      }
       console.error("❌ Error starting convoy:", error);
-      return {
-        success: false,
-        message: "Error starting convoy",
-        error: error.message,
-      };
+      return { success: false, message: "Error starting convoy" };
     }
   }
   static async getCurrentRunningConvey(checkpost_id) {
@@ -4240,7 +4041,6 @@ static async registerPolice(registerData) {
   }
   static async getStopConvey(checkpost_id, date) {
     try {
-      console.log("selected date", date);
 
       const stopconvey = await db.ConveyControl.findAll({
         where: {
@@ -4307,7 +4107,6 @@ static async registerPolice(registerData) {
 
       await existingConvoy.save();
 
-      console.log("✅ Convey stopped:", existingConvoy.toJSON());
 
       return {
         success: true,
@@ -4716,25 +4515,6 @@ static async registerPolice(registerData) {
         }),
       );
 
-      console.log(
-        "FINAL RESPONSE:",
-        JSON.stringify(
-          {
-            success: true,
-            closed: true,
-            convey: {
-              conveyid: closedConvey.conveyid,
-              name: closedConvey.tconvey?.convey_name,
-              time: closedConvey.tconvey?.convey_time,
-              starttime: closedConvey.starttime,
-              closetime: closedConvey.closetime,
-            },
-            data: formattedTrips,
-          },
-          null,
-          2,
-        ),
-      );
       // ================= FINAL RESPONSE =================
       return {
         success: true,
@@ -4760,145 +4540,10 @@ static async registerPolice(registerData) {
       };
     }
   }
-  ////new fetch checkout trip and update approve trip status
-
-  // static async getCheckOutTrip(checkpostId) {
-  //   try {
-  //     // ================= DATE (IST) =================
-  //     const kolkata = new Date().toLocaleString("en-US", {
-  //       timeZone: "Asia/Kolkata",
-  //     });
-  //     const dateObj = new Date(kolkata);
-
-  //     const today = `${dateObj.getFullYear()}-${String(
-  //       dateObj.getMonth() + 1,
-  //     ).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
-
-  //     // ================= FLIP CHECKPOST =================
-  //     let targetCheckpostId = checkpostId;
-  //     if (checkpostId == 1) targetCheckpostId = 2;
-  //     else if (checkpostId == 2) targetCheckpostId = 1;
-
-  //     // ================= FETCH APPROVED TRIPS =================
-  //     const approvedTrips = await db.ApproveTrip.findAll({
-  //       where: {
-  //         checkpost_id: targetCheckpostId,
-  //         astatus: 1, // ✅ approved only
-  //         arrdate: today, // ✅ today's trips
-  //       },
-  //       include: [
-  //         {
-  //           model: db.Trip,
-  //           as: "trip",
-  //           include: [
-  //             {
-  //               model: db.Driver,
-  //               as: "driver",
-  //               attributes: ["dFirstName", "dLastName"],
-  //             },
-  //             {
-  //               model: db.Vehicle,
-  //               as: "vehicle",
-  //               attributes: ["vNum"],
-  //             },
-  //             {
-  //               model: db.Passenger,
-  //               as: "passengers",
-  //               attributes: ["pId"],
-  //               through: { attributes: [], where: { status: 1 } },
-  //             },
-  //             {
-  //               model: db.OriginDestination,
-  //               as: "originLocation",
-  //               attributes: ["id", "location"],
-  //             },
-  //             {
-  //               model: db.OriginDestination,
-  //               as: "destinationLocation",
-  //               attributes: ["id", "location"],
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           model: db.TConvey,
-  //           as: "convey",
-  //           attributes: ["id", "convey_name", "convey_time"],
-  //         },
-  //         {
-  //           model: db.PoliceRegistration,
-  //           as: "approverOfficer",
-  //           attributes: ["title", "firstName", "lastName", "designation"],
-  //         },
-  //       ],
-  //       order: [["id", "ASC"]],
-  //     });
-
-  //     // ❌ NO TRIPS FOUND
-  //     if (!approvedTrips.length) {
-  //       return {
-  //         success: true,
-  //         message: `No approved trips found for today (checkpost ${targetCheckpostId})`,
-  //         data: [],
-  //         timestamp: new Date().toISOString(),
-  //       };
-  //     }
-
-  //     // ================= FORMAT RESPONSE =================
-  //     const formattedTrips = approvedTrips.map((trip) => {
-  //       const officer = trip.approverOfficer;
-
-  //       return {
-  //         trip_id: trip.tId,
-  //         origin_name: trip.trip?.originLocation?.location || null,
-  //         destination_name: trip.trip?.destinationLocation?.location || null,
-  //         vehicle_number: trip.trip?.vehicle?.vNum || null,
-  //         date: trip.trip?.date || null,
-
-  //         total_passengers: trip.trip?.passengers?.length || 0,
-
-  //         driver_name: trip.trip?.driver
-  //           ? `${trip.trip.driver.dFirstName} ${trip.trip.driver.dLastName}`
-  //           : null,
-
-  //         arr_time: trip.arrtime,
-  //         checkpost_id: trip.checkpost_id,
-
-  //         convey_name: trip.convey?.convey_name || null,
-  //         convey_time: trip.convey?.convey_time || null,
-
-  //         approved_by: officer
-  //           ? `${officer.title ? officer.title + " " : ""}${
-  //               officer.firstName
-  //             } ${officer.lastName}`
-  //           : null,
-
-  //         approver_designation: officer?.designation || null,
-  //       };
-  //     });
-
-  //     return {
-  //       success: true,
-  //       message: `Approved trips fetched for today (checkpost ${targetCheckpostId})`,
-  //       data: formattedTrips,
-  //       timestamp: new Date().toISOString(),
-  //     };
-  //   } catch (error) {
-  //     console.error("Error fetching checkout trips:", error);
-  //     return {
-  //       success: false,
-  //       message: "Failed to fetch checkout trips",
-  //       error: error.message,
-  //       timestamp: new Date().toISOString(),
-  //     };
-  //   }
-  // }
-
-  // AuthService.js
 
   static async updateCheckOutTrip(data) {
     try {
       // 1. Validation
-      console.log("Updating checkout trip with data:", data);
 
       if (!data.tId || !data.checkpostId) {
         return {
@@ -4934,7 +4579,6 @@ static async registerPolice(registerData) {
         conveyid: data.runningConveyId || null,
       });
 
-      console.log("✅ New checkout trip created:", newCheckout.toJSON());
 
       // 4. Update approve_trip -> set astatus = 3
       const [rowsUpdated] = await db.ApproveTrip.update(
@@ -4945,7 +4589,6 @@ static async registerPolice(registerData) {
       );
 
       if (rowsUpdated > 0) {
-        console.log(`✅ ApproveTrip updated for tId=${data.tId}`);
       } else {
         console.warn(`⚠️ No ApproveTrip found for tId=${data.tId}`);
       }
@@ -4982,7 +4625,6 @@ static async registerPolice(registerData) {
 
   static async getProfileByUserId(userId) {
     try {
-      console.log("Fetching profile for userId:", userId);
       const record = await db.Registration.findOne({
         where: { userId, status: 1 },
 
@@ -5049,7 +4691,6 @@ static async registerPolice(registerData) {
   // AuthService.js (or PoliceService.js)
   static async getPoliceProfileByUserId(userId) {
     try {
-      console.log("Fetching Police profile for userId:", userId);
 
       const record = await db.PoliceRegistration.findOne({
         where: { userId, status: 1 },
@@ -5061,7 +4702,6 @@ static async registerPolice(registerData) {
           },
         ],
       });
-      console.log("recoedddd", record);
 
       if (!record) {
         return {
@@ -5102,231 +4742,9 @@ static async registerPolice(registerData) {
       };
     }
   }
-  // AuthService.js
-
-  // AuthService.js
-  // static async editTripDetailsByTripId(tripId) {
-  //   try {
-  //     console.log("Fetching Trip details for tripId:", tripId);
-
-  //     const trip = await db.Trip.findOne({
-  //       where: { tId: tripId },
-  //       include: [
-  //         {
-  //           model: db.Passenger,
-  //           as: "passengers",
-  //           through: { attributes: [] },
-  //           attributes: [
-  //             "pId",
-  //             "passengerName",
-  //             "phoneNo",
-  //             "age",
-  //             "gender",
-  //             "docType",
-  //             "docId",
-  //           ],
-  //           through: {
-  //             attributes: [], // hide junction fields
-  //             where: { status: 1 }, // ✅ only passengers with status = 1
-  //           },
-  //         },
-  //       ],
-  //     });
-  //     //console.log("rawwwwww", trip);
-
-  //     if (!trip) {
-  //       return {
-  //         success: true,
-  //         message: "No trip found for this tripId",
-  //         timestamp: new Date().toISOString(),
-  //         selecteddata: {
-  //           success: true,
-  //           message: "No trip found for this tripId",
-  //           data: null,
-  //         },
-  //         availabledata: {},
-  //       };
-  //     }
-
-  //     // 🔹 Selected Trip Data
-  //     const cleanData = {
-  //       tId: trip.tId,
-  //       reg_id: trip.reg_id,
-  //       vId: trip.vId,
-  //       dId: trip.dId,
-  //       origin: trip.origin,
-  //       destination: trip.destination,
-  //       date: trip.date,
-  //       conveytime: trip.convoyTime,
-  //       status: trip.status,
-  //       isTourist: trip.isTourist,
-  //       entrydatetime: trip.entrydatetime,
-  //       updatedate: trip.updatedate,
-  //       passengers: trip.passengers
-  //         ? trip.passengers.map((p) => ({
-  //             pId: p.pId,
-  //             passengerName: p.passengerName,
-  //             phoneNo: p.phoneNo,
-  //             age: p.age,
-  //             gender: p.gender,
-  //             docType: p.docType,
-  //             docId: p.docId,
-  //           }))
-  //         : [],
-  //     };
-  //     console.log("Clean Trip Data:", cleanData);
-
-  //     const reg_id = trip.reg_id; // ✅ use this for filtering
-
-  //     // 🔹 All available drivers for this reg_id
-  //     const drivers = await db.Driver.findAll({
-  //       include: [
-  //         {
-  //           model: db.DriverStatus,
-  //           as: "sts",
-  //           attributes: ["reg_id", "phNo"],
-  //           where: { reg_id },
-  //         },
-  //       ],
-  //       attributes: ["dId", "dFirstName", "dLastName", "licenseNo", "title"],
-  //     });
-
-  //     // 🔹 All available vehicles for this reg_id
-  //     const vehicles = await db.Vehicle.findAll({
-  //       include: [
-  //         {
-  //           model: db.VehicleStatus,
-  //           as: "sts",
-  //           attributes: ["reg_id"],
-  //           where: { reg_id },
-  //         },
-  //       ],
-  //       attributes: [
-  //         "vId",
-  //         "vNum",
-  //         "vOwnName",
-  //         "vCat",
-  //         "otherCat",
-  //         "ownershipType",
-  //         "deptName",
-  //         "vPurpose",
-  //         "otherPurpose",
-  //       ],
-  //       order: [["vId", "DESC"]],
-  //     });
-
-  //     return {
-  //       success: true,
-  //       message: "Trip details updated successfully",
-  //       timestamp: new Date().toISOString(),
-  //       selecteddata: {
-  //         success: true,
-  //         message: "Trip details loaded successfully",
-  //         data: cleanData,
-  //       },
-  //       availabledata: {
-  //         drivers: {
-  //           message: "Driver List Loaded successfully",
-  //           driver: drivers,
-  //         },
-  //         vehicles: {
-  //           message: "Vehicle List Loaded successfully",
-  //           vehicle: vehicles,
-  //         },
-  //       },
-  //     };
-  //   } catch (error) {
-  //     console.error("Error in editTripDetailsByTripId service:", error);
-  //     return {
-  //       success: false,
-  //       message: "Failed to fetch trip details",
-  //       error: error.message,
-  //       timestamp: new Date().toISOString(),
-  //     };
-  //   }
-  // }
-  // static async updateTripPolice(tripDataArray) {
-  //   try {
-  //     for (const item of tripDataArray) {
-  //       const { payload } = item;
-  //       if (!payload) continue;
-
-  //       const { action, tId, pId, data } = payload;
-
-  //       // ✅ Case 1: Trip update
-  //       if (action === "updateTrip") {
-  //         console.log("🛠️ updateTrip action detected");
-
-  //         await Trip.update(
-  //           {
-  //             vId: data.vId,
-  //             dId: data.dId,
-  //             origin: data.origin,
-  //             destination: data.destination,
-  //             date: data.date,
-  //             convoyTime: data.convoyTime,
-  //           },
-  //           { where: { tId } },
-  //         );
-  //       }
-  //       // ✅ Case 2: Update Passenger
-  //       else if (action === "updatePassenger") {
-  //         console.log("✏️ updatePassenger action detected");
-  //         await tripRelation.update({ status: 0 }, { where: { tId, pId } });
-
-  //         const newPassenger = await Passenger.create({
-  //           passengerName: data.name || data.passengerName,
-  //           phoneNo: data.phone || data.phoneNo,
-  //           age: data.age,
-  //           gender: data.gender,
-  //           docType: data.documentType || data.docType,
-  //           docId: data.documentId || data.docId,
-  //         });
-
-  //         await tripRelation.create({
-  //           tId: tId,
-  //           pId: newPassenger.pId,
-  //           status: 1,
-  //         });
-  //       }
-  //       // ✅ Case 3: Add Passenger
-  //       else if (action === "addPassenger") {
-  //         console.log("🆕 addPassenger action detected");
-  //         const newPassenger = await Passenger.create({
-  //           passengerName: data.name || data.passengerName,
-  //           phoneNo: data.phone || data.phoneNo,
-  //           age: data.age,
-  //           gender: data.gender,
-  //           docType: data.documentType || data.docType,
-  //           docId: data.documentId || data.docId,
-  //         });
-
-  //         await tripRelation.create({
-  //           tId: tId,
-  //           pId: newPassenger.pId,
-  //           status: 1,
-  //         });
-  //       }
-  //       // ✅ Case 4: Delete Passenger
-  //       else if (action === "deletePassenger") {
-  //         console.log("🗑️ deletePassenger action detected");
-  //         await tripRelation.update({ status: 0 }, { where: { tId, pId } });
-  //       }
-  //     }
-
-  //     return { success: true, message: "All payloads processed successfully" };
-  //   } catch (error) {
-  //     return {
-  //       success: false,
-  //       message: "Failed to process tripData",
-  //       error: error.message,
-  //     };
-  //   }
-  // }
 
   static async editTripDetailsByTripId(tripId) {
     try {
-      console.log("Fetching Trip details for tripId:", tripId);
 
       const trip = await db.Trip.findOne({
         where: { tId: tripId },
@@ -5410,7 +4828,6 @@ static async registerPolice(registerData) {
         })),
       };
 
-      console.log("Clean Trip Data:", cleanData);
 
       const reg_id = trip.reg_id;
 
@@ -5969,7 +5386,6 @@ static async updateProfile(profileData) {
 
   static async updatePoliceProfile(profileData) {
     try {
-      console.log("Updating police profile  data:", profileData);
 
       const {
         title,
@@ -5981,7 +5397,6 @@ static async updateProfile(profileData) {
         contact,
         userid,
       } = profileData;
-      console.log("Received userid:", userid);
       if (!userid) {
         return { success: false, message: "User ID is required" };
       }
@@ -6044,8 +5459,6 @@ static async updateProfile(profileData) {
       const [day, month, year] = today.split("/");
       const kolkataDate = `${year}-${month}-${day}`;
 
-      console.log("Fetching approved counts for checkpostid:", checkpostid);
-      console.log("Kolkata current date:", kolkataDate);
 
       const approvedCounts = await db.ApproveTrip.findAll({
         attributes: [
@@ -6061,7 +5474,6 @@ static async updateProfile(profileData) {
         raw: true,
       });
 
-      console.log("Approved counts fetched:", approvedCounts);
 
       const result = approvedCounts.map((item) => ({
         conveyId: item.convey_id,
@@ -6112,11 +5524,6 @@ static async updateProfile(profileData) {
       };
       const locale = new Intl.DateTimeFormat("en-GB", options).format(now);
 
-      console.log("Current date and time fetched (Kolkata):", {
-        date,
-        time,
-        locale,
-      });
 
       return { date, time, timestamp: now.toISOString(), locale };
     } catch (error) {
@@ -6125,213 +5532,31 @@ static async updateProfile(profileData) {
     }
   }
 
-  static async deleteVehicle(vehicleData) {
-    try {
-      console.log("Deleting vehicle with data:", vehicleData);
-
-      // ✅ Handle both object and direct ID input
-      const vehicleId =
-        typeof vehicleData === "object" ? vehicleData.vehicleId : vehicleData;
-
-      if (!vehicleId) {
-        return { success: false, message: "Vehicle ID is required" };
-      }
-
-      // ✅ Soft delete: mark vehicle as inactive (status = 0)
-      const [updatedCount] = await db.Vehicle.update(
-        { status: 0 },
-        {
-          where: {
-            vId: vehicleId,
-            status: 1, // Only delete if active
-          },
-        },
-      );
-
-      if (updatedCount === 0) {
-        return {
-          success: false,
-          message: "Vehicle not found or already deleted",
-        };
-      }
-
-      return {
-        success: true,
-        message: "✅ Vehicle deleted successfully (status set to 0)",
-      };
-    } catch (error) {
-      console.error("💥 Error deleting vehicle:", error);
-      return {
-        success: false,
-        message: "Error deleting vehicle",
-        error: error.message,
-      };
+  // Soft-delete records owned by the account `userId`. Each returns false
+  // when the record does not exist, is already deleted, or is not the caller's.
+  static async deleteVehicle(vId, userId) {
+    const reg_id = await AuthService.regIdOf(userId);
+    if (!reg_id || !(await db.VehicleStatus.count({ where: { vId, reg_id } }))) {
+      return false;
     }
+    const [updated] = await db.Vehicle.update(
+      { status: 0 },
+      { where: { vId, status: 1 } },
+    );
+    return updated > 0;
   }
-  // ✅ Soft delete driver (set status = 0 instead of hard delete)
-  static async deleteDriver(driverData) {
-    try {
-      console.log("Deleting driver with data:", driverData);
 
-      // ✅ Handle both object and direct ID input
-      const driverId =
-        typeof driverData === "object" ? driverData.driverId : driverData;
-
-      if (!driverId) {
-        return { success: false, message: "Driver ID is required" };
-      }
-
-      // ✅ Soft delete: mark driver as inactive (dStatus = "inactive")
-      const [updatedCount] = await db.Driver.update(
-        { dStatus: "inactive" },
-        {
-          where: {
-            dId: driverId,
-            dStatus: "active", // Only deactivate if active
-          },
-        },
-      );
-
-      if (updatedCount === 0) {
-        return {
-          success: false,
-          message: "Driver not found or already inactive",
-        };
-      }
-
-      return {
-        success: true,
-        message: "✅ Driver deleted successfully (status set to 'inactive')",
-      };
-    } catch (error) {
-      console.error("💥 Error deleting driver:", error);
-      return {
-        success: false,
-        message: "Error deleting driver",
-        error: error.message,
-      };
+  static async deleteDriver(dId, userId) {
+    const reg_id = await AuthService.regIdOf(userId);
+    if (!reg_id || !(await db.DriverStatus.count({ where: { dId, reg_id } }))) {
+      return false;
     }
+    const [updated] = await db.Driver.update(
+      { dStatus: "inactive" },
+      { where: { dId, dStatus: "active" } },
+    );
+    return updated > 0;
   }
-  // static async getCheckOutReport(params) {
-  //   try {
-  //     const whereClause = {};
-
-  //     // Filter by Checkpost ID
-  //     if (params.checkpostid !== undefined) {
-  //       whereClause.checkpostid = params.checkpostid;
-  //     }
-
-  //     // Filter by Status
-  //     if (params.status !== undefined) {
-  //       whereClause.status = params.status;
-  //     }
-
-  //     // Filter by Date (checkoutdate)
-  //     if (params.checkoutdate !== undefined) {
-  //       whereClause.checkoutdate = params.checkoutdate;
-  //     }
-
-  //     // Only fetch normal convoy (<= 99)
-  //     whereClause.conveyid = {
-  //       [Op.lte]: 99,
-  //     };
-
-  //     const approveWhere = {};
-  //     if (
-  //       params.conveyId !== undefined &&
-  //       params.conveyId !== null &&
-  //       params.conveyId !== ""
-  //     ) {
-  //       approveWhere.convey_id = params.conveyId;
-  //     }
-  //     console.log("wherease", whereClause);
-
-  //     // If conveyId is undefined or null, approveWhere remains empty, meaning no filter
-
-  //     // Fetch with associations
-  //     const checkOutTrips = await db.CheckoutTrip.findAll({
-  //       where: whereClause,
-  //       include: [
-  //         {
-  //           model: db.OriginDestination,
-  //           as: "checkpostLocation",
-  //           attributes: ["id", "location"],
-  //         },
-  //         {
-  //           model: db.Trip,
-  //           as: "trip",
-  //           include: [
-  //             {
-  //               model: db.OriginDestination,
-  //               as: "originLocation",
-  //               attributes: ["id", "location"],
-  //             },
-  //             {
-  //               model: db.OriginDestination,
-  //               as: "destinationLocation",
-  //               attributes: ["id", "location"],
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           model: db.ApproveTrip,
-  //           as: "approveTrip",
-  //           required: !!params.conveyId,
-  //           where: Object.keys(approveWhere).length ? approveWhere : undefined, // Only apply when conveyId is given
-  //           include: [
-  //             {
-  //               model: db.TConvey,
-  //               as: "convey",
-  //               required: false,
-  //             },
-  //           ],
-  //         },
-  //       ],
-  //       order: [["id", "DESC"]],
-  //     });
-
-  //     // ✅ Reshape response into nested JSON
-  //     const formatted = checkOutTrips.map((trip) => {
-  //       return {
-  //         id: trip.id,
-  //         tId: trip.tId,
-  //         checkoutdate: trip.checkoutdate,
-  //         checkouttime: trip.checkouttime,
-  //         status: trip.status,
-  //         remarks: trip.remarks,
-
-  //         // ✅ Nested Checkpost Details
-  //         checkpostDetails: trip.checkpostLocation
-  //           ? {
-  //               id: trip.checkpostLocation.id,
-  //               location: trip.checkpostLocation.location,
-  //             }
-  //           : null,
-
-  //         // ✅ Nested ApproveTrip Details
-  //         approveDetails: trip.approveTrip
-  //           ? {
-  //               id: trip.approveTrip.id,
-  //               tId: trip.approveTrip.tId,
-  //               arrdate: trip.approveTrip.arrdate,
-  //               arrtime: trip.approveTrip.arrtime,
-  //               remarks: trip.approveTrip.remarks,
-  //               astatus: trip.approveTrip.astatus,
-  //               convey: trip.approveTrip.convey || null,
-  //             }
-  //           : null,
-  //       };
-  //     });
-
-  //     return {
-  //       message: "Checkout report loaded successfully",
-  //       data: formatted,
-  //     };
-  //   } catch (error) {
-  //     console.error("Error loading checkout report:", error);
-  //     throw new Error("Failed to load checkout report");
-  //   }
-  // }
 
   static async getCheckOutReport(params) {
     try {
@@ -6525,8 +5750,6 @@ static async updateProfile(profileData) {
   // ✅ AuthService.getarrivalist (final corrected)
   static async getarrivalist(checkpost_id) {
     try {
-      //const checkpost_id = 2; // ✅ Static checkpost ID
-      //console.log("paramcheckpost", checkpost_id);
       const oppositeCheckpostId =
         checkpost_id === 1 ? 2 : checkpost_id === 2 ? 1 : null;
 
@@ -6536,10 +5759,6 @@ static async updateProfile(profileData) {
           : oppositeCheckpostId === 2
             ? "Middle Strait"
             : null;
-      //console.log("targeed ceckpost", oppositeCheckpostId);
-      //console.log("🛰️ Fetching running convoy for checkpost:", checkpost_id);
-
-      // ✅ Get current date in Kolkata timezone (YYYY-MM-DD)
       const nowUtc = new Date();
       const kolkataOffset = 5.5 * 60; // IST offset in minutes
       const localTime = new Date(nowUtc.getTime() + kolkataOffset * 60 * 1000);
@@ -6573,9 +5792,6 @@ static async updateProfile(profileData) {
       });
 
       if (!runningConvey) {
-        console.log(
-          `⚠️ No running convoy found for checkpost ${oppositeCheckpostId} on ${currentDate}`,
-        );
         // Format date as dd-mm-yyyy
         const dateforpolice = new Date(currentDate).toLocaleDateString(
           "en-GB",
@@ -6602,10 +5818,6 @@ static async updateProfile(profileData) {
         status: runningConvey.status,
       };
 
-      console.log(
-        "✅ Running convoy details fetched successfully:",
-        conveyDetails,
-      );
 
       // ✅ Step 2️⃣: Fetch approved trips for this convey, checkpost & date
       // ✅ Step 2️⃣: Fetch approved trips for this convey, checkpost & date
@@ -6643,13 +5855,7 @@ static async updateProfile(profileData) {
       });
 
       const totalTrips = approvedTrips.length;
-      console.log(
-        `✅ Found ${totalTrips} approved trips for opposite checkpost ${oppositeCheckpostId}`,
-      );
 
-      console.log(
-        `✅ Found ${approvedTrips.length} approved trips for convoy ${runningConvey.conveyid}`,
-      );
 
       // ✅ Step 3️⃣: Build final combined response
       const response = {
@@ -6669,7 +5875,6 @@ static async updateProfile(profileData) {
         })),
       };
 
-      console.log("✅ Final Response JSON:", JSON.stringify(response, null, 2));
       return response;
     } catch (error) {
       console.error("❌ Error in getarrivalist service:", error);
@@ -6677,155 +5882,53 @@ static async updateProfile(profileData) {
     }
   }
 
-  static async deletetrip(tripData) {
-    try {
-      console.log("🗑️ Deleting trip with data:", tripData);
-
-      // ✅ Handle both object and direct ID input
-      const tripId =
-        typeof tripData === "object"
-          ? tripData.tId || tripData.tripId
-          : tripData;
-
-      if (!tripId) {
-        return { success: false, message: "Trip ID is required" };
-      }
-
-      // ✅ Soft delete: mark trip as inactive (status = 0)
-      const [updatedCount] = await db.Trip.update(
-        { status: 0 },
-        {
-          where: {
-            tId: tripId,
-            status: { [db.Sequelize.Op.ne]: 0 }, // only if not already deleted
-          },
-        },
-      );
-
-      if (updatedCount === 0) {
-        return {
-          success: false,
-          message: "Trip not found or already deleted",
-        };
-      }
-
-      return {
-        success: true,
-        message: "✅ Trip deleted successfully (status set to 0)",
-      };
-    } catch (error) {
-      console.error("💥 Error deleting trip:", error);
-      return {
-        success: false,
-        message: "Error deleting trip",
-        error: error.message,
-      };
-    }
+  // Soft-delete a trip owned by the account `userId` (false if not found).
+  static async deletetrip(tId, userId) {
+    const reg_id = await AuthService.regIdOf(userId);
+    if (!reg_id) return false;
+    const [updated] = await db.Trip.update(
+      { status: 0 },
+      { where: { tId, reg_id, status: { [Op.ne]: 0 } } },
+    );
+    return updated > 0;
   }
   //-----------Trip Verification------------
 
-  static async tripVerify(data) {
-    try {
-      console.log(
-        "📩 Trip verification request received with data (AuthService):",
-        data,
-      );
-
-      // 1️⃣ Find the trip record
-      const trip = await db.Trip.findOne({ where: { tId: data.tId } });
-
-      if (!trip) {
-        throw new Error("Trip not found");
-      }
-
-      //2️⃣ Update verification status
-      await trip.update({
-        verifiystatus: data.buttonId,
-      });
-
-      await db.VerifiedTrip.create({
-        tripId: data.tId,
-        verifiedby: data.verifiedby || null, // optional
-        remarks: data.remarks || null,
-        status: data.astatus,
-      });
-
-      //✅ MySQL trigger will automatically update 'verifiedtime' when verifiystatus changes
-
-      console.log(
-        `✅ Trip ${data.tId} verification status updated to: ${data.buttonId}`,
-      );
-
-      return {
-        message: "Trip verification updated successfully",
-        trip,
-      };
-    } catch (error) {
-      console.error("❌ Trip verification failed:", error.message);
-      throw new Error(error.message || "Trip verification failed");
+  // `verifiedby` is the signed-in officer's reg_id, never the request body.
+  static async tripVerify(data, verifiedby) {
+    const buttonId = Number(data?.buttonId);
+    const astatus = Number(data?.astatus);
+    if (![1, 2, 3].includes(buttonId) || ![0, 1].includes(astatus)) {
+      throw httpError("Invalid verification status");
     }
+
+    const trip = await db.Trip.findOne({ where: { tId: data.tId } });
+    if (!trip) {
+      throw httpError("Trip not found", 404);
+    }
+
+    await db.sequelize.transaction(async (transaction) => {
+      await trip.update({ verifiystatus: buttonId }, { transaction });
+      // A MySQL trigger updates 'verifiedtime' when verifiystatus changes
+      await db.VerifiedTrip.create(
+        {
+          tripId: data.tId,
+          verifiedby,
+          remarks: data.remarks || null,
+          status: astatus,
+        },
+        { transaction },
+      );
+    });
+
+    return {
+      message: "Trip verification updated successfully",
+      trip,
+    };
   }
 
-  // static async getVerifiedTripDetails({ checkpostid }) {
-  //   try {
-  //     console.log("📥 Fetching verified trips for checkpost:", checkpostid);
-
-  //     const trips = await db.Trip.findAll({
-  //       include: [
-  //         {
-  //           model: db.VerifiedTrip,
-  //           as: "verifiedDetails",
-  //           attributes: ["vdate", "vtime", "remarks", "status"],
-  //           where: { status: 1 }, // ✅ verified trips only
-  //           required: true, // INNER JOIN
-  //           include: [
-  //             {
-  //               model: db.PoliceRegistration,
-  //               as: "verifiedOfficer",
-  //               attributes: [
-  //                 "reg_id",
-  //                 "title",
-  //                 "firstName",
-  //                 "lastName",
-  //                 "designation",
-  //               ],
-  //             },
-  //           ],
-  //         },
-  //         {
-  //           model: db.OriginDestination,
-  //           as: "originLocation",
-  //           attributes: ["location"],
-  //         },
-  //         {
-  //           model: db.OriginDestination,
-  //           as: "destinationLocation",
-  //           attributes: ["location"],
-  //         },
-  //         {
-  //           model: db.Driver,
-  //           as: "driver",
-  //           attributes: ["dFirstName", "dLastName", "licenseNo"],
-  //         },
-  //         {
-  //           model: db.Vehicle,
-  //           as: "vehicle",
-  //           attributes: ["vNum"],
-  //         },
-  //       ],
-  //       order: [["entrydatetime", "DESC"]],
-  //     });
-
-  //     return { trips };
-  //   } catch (error) {
-  //     console.error("❌ Failed to fetch verified trips:", error.message);
-  //     throw new Error(error.message || "Failed to fetch verified trips");
-  //   }
-  // }
   static async getVerifiedTripDetails({ checkpostid, convey }) {
     try {
-      console.log("📥 Fetching verified trips for checkpost:", checkpostid);
-      console.log("📥 Fetching verified trips for convey:", convey);
       // ✅ Build where condition dynamically
       const tripWhere = {};
 
@@ -6896,94 +5999,10 @@ static async updateProfile(profileData) {
       return { trips };
     } catch (error) {
       console.error("❌ Failed to fetch verified trips:", error.message);
-      throw new Error(error.message || "Failed to fetch verified trips");
+      throw error;
     }
   }
 
-  // ================= TODAY'S TRIP DETAILS =================
-  // static async getTodaysTripDetails() {
-  //   try {
-  //     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
-  //     const rows = await db.ApproveTrip.findAll({
-  //       where: {
-  //         checkpost_id: 1,
-  //         astatus: 1,
-  //         arrdate: today,
-  //       },
-  //       order: [["arrtime", "ASC"]],
-  //     });
-
-  //     return rows;
-  //   } catch (error) {
-  //     console.error("Error fetching today's trip details:", error.message);
-  //     throw new Error(error.message || "Failed to fetch today's trip details");
-  //   }
-  // }
-
-  // static async getTodaysTripDetails(checkpostid) {
-  //   try {
-  //     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
-  //     //TEMPORARY LOG TO CONFIRM QUERY INPUTS
-  //     console.log("🔍 Today:", today);
-  //     console.log("🔍 Checkpost:", checkpostid);
-
-  //     const rows = await db.ApproveTrip.findAll({
-  //       where: {
-  //         checkpost_id: checkpostid,
-  //         astatus: 1,
-  //         arrdate: today,
-  //       },
-  //       order: [["arrtime", "ASC"]],
-  //     });
-
-  //     return rows;
-  //   } catch (error) {
-  //     console.error("Service error:", error.message);
-  //     throw error;
-  //   }
-  // }
-  //   static async getTodaysTripDetails({ checkpostid, today }) {
-  //   return await db.ApproveTrip.findAll({
-  //     where: {
-  //       checkpost_id: checkpostid,
-  //       astatus: 1,
-  //       arrdate: today,
-  //     },
-  //     attributes: [
-  //       "id",
-  //       "tId",
-  //       "arrdate",
-  //       "arrtime",
-  //       "convey_id",
-  //       "checkpost_id",
-  //       "remarks",
-  //       "astatus",
-  //       "approveby",
-  //     ],
-  //     order: [["arrtime", "ASC"]],
-  //   });
-  // }
-
-  // static async getTodaysTripDetails({ checkpostid, today }) {
-  //   return await db.ApproveTrip.findAll({
-  //     where: {
-  //       checkpost_id: checkpostid,
-  //       astatus: 1,
-  //       arrdate: today,
-  //     },
-  //     attributes: [
-  //       "convey_id",
-  //       [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "tripCount"],
-  //     ],
-  //     group: ["convey_id"],
-  //     order: [["convey_id", "ASC"]],
-  //     raw: true,
-  //   });
-  // }
-
-  // Today's Trip details
   static async todayConvoyTrips(payload) {
     const { fn, col, where, Op, Sequelize } = require("sequelize");
 
@@ -7025,9 +6044,6 @@ static async updateProfile(profileData) {
 
     const checkpostId = payload?.checkpostId || payload?.checkpost_id || null;
 
-    console.log("FROM DATE:", fromDate);
-    console.log("TO DATE:", toDate);
-    console.log("CHECKPOST ID:", checkpostId);
 
     /* =========================
      3️⃣ CONVEY CONTROL (START / END TIME)
@@ -7601,7 +6617,6 @@ static async updateProfile(profileData) {
         status: 1,
       });
 
-      console.log("✅ Checkout started:", checkout.toJSON());
 
       return {
         success: true,
@@ -7709,7 +6724,6 @@ static async updateProfile(profileData) {
         status: 0,
       });
 
-      console.log("⛔ Checkout stopped:", runningCheckout.toJSON());
 
       return {
         success: true,
@@ -7841,7 +6855,6 @@ static async updateProfile(profileData) {
         order: [["checkouttime", "ASC"]],
       });
 
-      console.log(`✅ Checkout rows found: ${rows.length}`);
 
       // ================= VEHICLE CATEGORY COUNTS =================
       const vehicleCounts = {
@@ -7885,11 +6898,6 @@ static async updateProfile(profileData) {
         });
       });
 
-      console.log("🚗 Vehicle Counts:", vehicleCounts);
-      console.log("👨 Male:", totalMale);
-      console.log("👩 Female:", totalFemale);
-      console.log("🧒 Child:", totalChild);
-      console.log("🧍 Total Passengers:", totalPassengers);
 
       // ================= REPORT GENERATED TIME =================
       const moment = require("moment-timezone");
@@ -7912,7 +6920,7 @@ static async updateProfile(profileData) {
       };
     } catch (error) {
       console.error("❌ Error fetching checkout report:", error.message);
-      throw new Error(error.message || "Failed to fetch checkout report");
+      throw error;
     }
   }
 
@@ -8030,10 +7038,6 @@ static async updateProfile(profileData) {
     try {
       const { policeId } = body;
 
-      //console.log("🔥 FREEZE SERVICE CALLED");
-      //.log("Requested PoliceUser ID:", policeId);
-      //console.log("Requested by:", loggedInUser?.reg_id);
-
       if (!policeId) {
         throw new Error("policeId is required");
       }
@@ -8049,8 +7053,15 @@ static async updateProfile(profileData) {
         throw new Error("Police user not found");
       }
 
-      // 2️⃣ Freeze police user
-      await PoliceUser.update({ status: 0 }, { where: { id: policeId } });
+      // 2️⃣ Freeze police user and sign them out everywhere
+      await PoliceUser.update(
+        {
+          status: 0,
+          refreshToken: null,
+          tokenVersion: db.sequelize.literal("tokenVersion + 1"),
+        },
+        { where: { id: policeId } },
+      );
 
       // 3️⃣ Freeze police registration
       await PoliceRegistration.update(
@@ -8058,7 +7069,6 @@ static async updateProfile(profileData) {
         { where: { userId: policeId } },
       );
 
-      console.log("✅ POLICE FROZEN:", policeId);
 
       return {
         policeId,
@@ -8075,10 +7085,6 @@ static async updateProfile(profileData) {
   static async unfreezePoliceUser(body, loggedInUser) {
     try {
       const { policeId } = body;
-
-      console.log("🔥 FREEZE SERVICE CALLED");
-      console.log("Requested PoliceUser ID:", policeId);
-      console.log("Requested by:", loggedInUser?.reg_id);
 
       if (!policeId) {
         throw new Error("policeId is required");
@@ -8104,7 +7110,6 @@ static async updateProfile(profileData) {
         { where: { userId: policeId } },
       );
 
-      console.log("✅ POLICE unFROZEN:", policeId);
 
       return {
         policeId,
@@ -8122,9 +7127,6 @@ static async updateProfile(profileData) {
     const t = await db.sequelize.transaction();
 
     try {
-      console.log("🔥 DELETE POLICE SERVICE");
-      console.log("Police ID:", policeId);
-      console.log("Requested by:", loggedInUser?.reg_id);
 
       // 1️⃣ Check if user exists
       const user = await db.PoliceUser.findOne({
@@ -8190,7 +7192,6 @@ static async updateProfile(profileData) {
 
   static async getSpReport(selecteddate) {
     try {
-      console.log("✅ AuthService.getSpReport() called");
 
       // ✅ USE SELECTED DATE OR TODAY
       const reportDate =
@@ -8198,7 +7199,6 @@ static async updateProfile(profileData) {
           ? selecteddate
           : new Date().toISOString().split("T")[0];
 
-      console.log("📅 Report date:", reportDate);
 
       // 🔹 Helper: origin condition by checkpost
       const getOriginCondition = (checkpostid) =>
@@ -8446,7 +7446,6 @@ static async updateProfile(profileData) {
           },
         });
 
-        console.log("🧍 Total Arrived Passengers:", passengerCount);
         return passengerCount;
       };
       const getArrivalPassengerCount = async (tripIds) => {
@@ -8459,7 +7458,6 @@ static async updateProfile(profileData) {
           },
         });
 
-        console.log("🧍 Arrival Passenger Count:", passengerCount);
 
         return passengerCount;
       };
@@ -8491,8 +7489,6 @@ static async updateProfile(profileData) {
       // Middle Strait
       const middleStraitTripIds = await getArrivalTripIds(2);
 
-      console.log("🆔 Jirkatang Trip IDs:", jirkatangTripIds);
-      console.log("🆔 Middle Strait Trip IDs:", middleStraitTripIds);
 
       // 🔹 Get arrival passenger totals
       const jirkatangArrivalPassengers =
@@ -8876,18 +7872,9 @@ static async updateProfile(profileData) {
         throw new Error("User ID and password are required");
       }
 
-      if (
-        typeof password !== "string" ||
-        password.length < 8 ||
-        password.length > 100 ||
-        !/[a-z]/.test(password) ||
-        !/[A-Z]/.test(password) ||
-        !/\d/.test(password) ||
-        !/[^A-Za-z0-9]/.test(password)
-      ) {
-        throw new Error(
-          "Password must be 8-100 characters with upper and lower case letters, a number and a special character"
-        );
+      const passwordError = checkPassword(password);
+      if (passwordError) {
+        throw new Error(passwordError);
       }
 
       // 2️⃣ Find police user
@@ -8958,8 +7945,6 @@ static async updateProfile(profileData) {
   }
 
   static async getSplConvoyTripDetailsbyRegId(tripData, id) {
-    console.log("Fetching trip details with data:", tripData);
-    console.log("fetch trip details with data:", id);
     const { Op, fn, col, where, literal } = require("sequelize");
 
     // Get reg_id associated with the userId
@@ -8969,7 +7954,6 @@ static async updateProfile(profileData) {
     });
 
     let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
-    console.log("Registration ID found:", reg_id);
 
     if (!reg_id) {
       throw new Error("No registration ID found for the given user.");
@@ -9078,7 +8062,6 @@ static async updateProfile(profileData) {
     const { Op } = require("sequelize");
 
     try {
-      console.log("📥 Payload:", body);
 
       const { checkpostid, date } = body;
 
@@ -9142,7 +8125,6 @@ static async updateProfile(profileData) {
         order: [["entrydatetime", "DESC"]],
       });
 
-      console.log("✅ Trips:", trips.length);
 
       const result = trips.map((trip) => {
         const latestCheckout =

@@ -18,3 +18,13 @@ Thumbs.db
 
 # Zip
 *.zip
+
+# Database dumps with real data (accounts, passengers, drivers) never go in git.
+# Schema-only scripts (dbscript.sql, 25042026.sql) stay tracked.
+28042026.sql
+29052026.sql
+convoydb23072026.sql
+convoydb*/
+driver.sql
+veh.sql
+*.dump.sql

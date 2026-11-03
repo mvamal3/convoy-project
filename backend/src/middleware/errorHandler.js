@@ -1,47 +1,36 @@
 const BaseResponseDTO = require('../dto/response/BaseResponseDTO');
-const config = require('../config/environment');
 
+// Final error handler. Only messages marked safe (httpError's `expose`)
+// or the fixed ones below reach the client; never raw database or
+// runtime messages, and never stack traces.
 const errorHandler = (err, req, res, next) => {
   console.error('Error:', err);
 
-  // Default error
-  let error = {
-    message: err.message || 'Internal Server Error',
-    status: err.status || 500
-  };
+  let status = 500;
+  let message = 'Internal Server Error';
 
-  // Sequelize validation error
-  if (err.name === 'SequelizeValidationError') {
-    error.message = err.errors.map(e => e.message).join(', ');
-    error.status = 400;
+  if (err.type === 'entity.parse.failed' || err.type === 'entity.too.large') {
+    // body-parser errors (checked first: they also carry `expose`)
+    status = err.status;
+    message = 'Invalid request body';
+  } else if (err.expose) {
+    status = err.status || 400;
+    message = err.message;
+  } else if (err.name === 'SequelizeValidationError') {
+    status = 400;
+    message = 'Invalid input';
+  } else if (err.name === 'SequelizeUniqueConstraintError') {
+    status = 409;
+    message = 'Resource already exists';
+  } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    status = 401;
+    message = 'Invalid or expired token';
+  } else if (err.message === 'Origin not allowed by CORS') {
+    status = 403;
+    message = 'Origin not allowed';
   }
 
-  // Sequelize unique constraint error
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    error.message = 'Resource already exists';
-    error.status = 409;
-  }
-
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    error.message = 'Invalid token';
-    error.status = 401;
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    error.message = 'Token expired';
-    error.status = 401;
-  }
-
-  // Send response
-  const response = BaseResponseDTO.error(error.message);
-  
-  // Include stack trace in development
-  if (config.NODE_ENV === 'development') {
-    response.stack = err.stack;
-  }
-
-  res.status(error.status).json(response);
+  res.status(status).json(BaseResponseDTO.error(message));
 };
 
 module.exports = errorHandler;

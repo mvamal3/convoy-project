@@ -764,3 +764,72 @@ export const changePolicePasswordAPI = async (accessToken, payload) => {
     return { success: false, message: "Network error" };
   }
 };
+
+// ==================== Account security ====================
+
+// POST to a public auth endpoint (CSRF token + session cookie).
+// Always resolves to the server's { success, message, data } body.
+const postPublic = async (path, payload) => {
+  try {
+    const csrfToken = await getCsrfToken();
+    const res = await fetch(`${BASE_URL}/${path}`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    return res.ok ? data : { ...data, success: false };
+  } catch (error) {
+    return { success: false, message: "Network error. Please try again." };
+  }
+};
+
+// POST to an endpoint that needs the signed-in account's access token.
+const postWithToken = async (path, accessToken, payload) => {
+  try {
+    const res = await fetch(`${BASE_URL}/${path}`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    return res.ok ? data : { ...data, success: false };
+  } catch (error) {
+    return { success: false, message: "Network error. Please try again." };
+  }
+};
+
+export const resendOtpAPI = (email) => postPublic("resend-otp", { email });
+
+// accountType: "user" (citizen) or "police"
+export const forgotPasswordAPI = (payload) =>
+  postPublic("forgot-password", payload);
+
+export const resetPasswordAPI = (payload) =>
+  postPublic("reset-password", payload);
+
+export const changeOwnPasswordAPI = (accessToken, payload) =>
+  postWithToken("change-password", accessToken, payload);
+
+export const getCitizensAPI = (accessToken, params) =>
+  postWithToken("admin/citizens", accessToken, params);
+
+export const freezeCitizenAPI = (accessToken, userId) =>
+  postWithToken("admin/freeze-citizen", accessToken, { userId });
+
+export const unfreezeCitizenAPI = (accessToken, userId) =>
+  postWithToken("admin/unfreeze-citizen", accessToken, { userId });
+
+export const unlockAccountAPI = (accessToken, accountType, id) =>
+  postWithToken("admin/unlock-account", accessToken, { accountType, id });
+
+export const getAuditLogsAPI = (accessToken, params) =>
+  postWithToken("admin/audit-logs", accessToken, params);

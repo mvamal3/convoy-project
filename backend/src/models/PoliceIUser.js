@@ -55,6 +55,19 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 0,
       },
 
+      // Account lockout (see utils/loginLockout.js)
+      failedLoginAttempts: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      // Epoch milliseconds; login is refused until then
+      lockedUntil: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+      },
+
+      // 1 = active, 0 = frozen by an admin
       status: {
         type: DataTypes.INTEGER,
         allowNull: false,
