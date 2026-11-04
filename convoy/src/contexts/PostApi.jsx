@@ -128,7 +128,10 @@ export async function handleAddVehicleAPI(formData, accessToken, onSuccess) {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error("Failed to register vehicle");
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      throw new Error(result?.message || "Failed to register vehicle");
+    }
 
    toast({
   title: "Vehicle added successfully",
@@ -201,7 +204,6 @@ export async function handleAddDriverAPI(
       status: "active",
       isOwner: formData.is_owner,
     };
-    console.log("payload", payload);
     const response = await fetch(`${BASE_URL}/driver-registration`, {
       method: "POST",
       headers: {
@@ -211,7 +213,10 @@ export async function handleAddDriverAPI(
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error("Driver registration failed");
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      throw new Error(result?.message || "Driver registration failed");
+    }
 
     toast({
   title: "Driver added successfully",

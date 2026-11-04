@@ -461,15 +461,6 @@ static async login(loginData, req) {
     // Normalize licenseNo for consistent checks
     const licenseNoTrimmed = registerDTO.licenseNo?.trim();
 
-    // Check if driver already exists
-    const existingDriver = await Driver.findOne({
-      where: { licenseNo: licenseNoTrimmed },
-    });
-
-    if (existingDriver) {
-      throw new Error("Driver already exists with this license number");
-    }
-
     // Find reg_id for the user
     const regIdObj = await Registration.findOne({
       where: { userId: id },
@@ -481,6 +472,30 @@ static async login(loginData, req) {
     }
 
     const reg_id = regIdObj.get("reg_id");
+
+    // Same user + same license + active is a duplicate. Other users may hold the
+    // license (a driver can change employer), and a deleted driver may be re-added.
+    const duplicates = await DriverStatus.count({
+      where: { reg_id },
+      include: [
+        {
+          model: Driver,
+          as: "sts",
+          required: true,
+          where: {
+            dStatus: "active",
+            [Op.and]: where(
+              fn("REPLACE", fn("REPLACE", col("sts.licenseNo"), "-", ""), "/", ""),
+              licenseNoTrimmed.replace(/[-/]/g, ""),
+            ),
+          },
+        },
+      ],
+    });
+
+    if (duplicates > 0) {
+      throw httpError("This license number is already added.", 409);
+    }
 
     // Use transaction to avoid partial inserts
     return await db.sequelize.transaction(async (transaction) => {
@@ -543,6 +558,29 @@ static async login(loginData, req) {
       throw new Error(validation.errors.join(", "));
     }
 
+    // Same user + same number + active is a duplicate. Other users may hold the
+    // number (a sold vehicle), and a deleted vehicle (status 0) may be re-added.
+    const duplicates = await db.VehicleStatus.count({
+      where: { reg_id },
+      include: [
+        {
+          model: db.Vehicle,
+          as: "vehicle",
+          required: true,
+          where: {
+            status: 1,
+            [Op.and]: where(
+              fn("REPLACE", fn("REPLACE", col("vehicle.vNum"), " ", ""), "-", ""),
+              vehicleDTO.vNum.replace(/[\s-]/g, ""),
+            ),
+          },
+        },
+      ],
+    });
+
+    if (duplicates > 0) {
+      throw httpError("This vehicle number is already added.", 409);
+    }
 
     // Save vehicle info into DB
     const newVehicle = await db.Vehicle.create({

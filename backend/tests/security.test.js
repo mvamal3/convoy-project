@@ -16,6 +16,79 @@ afterEach(() => jest.restoreAllMocks());
 const ownerOf = (reg_id) =>
   jest.spyOn(db.Registration, "findOne").mockResolvedValue(reg_id ? { reg_id } : null);
 
+describe("duplicate vehicle numbers", () => {
+  const vehicle = {
+    vOwnName: "Asha",
+    vNum: "an-01 m9003",
+    vCat: "Car",
+    ownershipType: "Private",
+    vPurpose: "Passenger",
+    vSeating: 4,
+  };
+
+  test("same user with the number active is refused", async () => {
+    jest.spyOn(db.Registration, "findOne").mockResolvedValue({ get: () => "REG_A" });
+    const count = jest.spyOn(db.VehicleStatus, "count").mockResolvedValue(1);
+    const create = jest.spyOn(db.Vehicle, "create");
+
+    await expect(AuthService.registerVehicle(vehicle, 1)).rejects.toMatchObject({
+      status: 409,
+      expose: true,
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(count.mock.calls[0][0].where).toEqual({ reg_id: "REG_A" });
+    expect(count.mock.calls[0][0].include[0].where.status).toBe(1);
+  });
+
+  test("no active match is saved", async () => {
+    jest.spyOn(db.Registration, "findOne").mockResolvedValue({ get: () => "REG_A" });
+    jest.spyOn(db.VehicleStatus, "count").mockResolvedValue(0);
+    jest.spyOn(db.VehicleStatus, "create").mockResolvedValue({});
+    const create = jest.spyOn(db.Vehicle, "create").mockResolvedValue({ vId: 5 });
+
+    await AuthService.registerVehicle(vehicle, 1);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("duplicate driver licenses", () => {
+  const driver = {
+    licenseNo: "an-01/2020",
+    title: "Mr",
+    dFirstName: "Ravi",
+    dLastName: "Kumar",
+    son_of: "Mohan",
+    residence_of: "Port Blair",
+    gender: "Male",
+    phNo: "9876543210",
+  };
+
+  test("same user with the license active is refused", async () => {
+    jest.spyOn(db.Registration, "findOne").mockResolvedValue({ get: () => "REG_A" });
+    const count = jest.spyOn(db.DriverStatus, "count").mockResolvedValue(1);
+    const create = jest.spyOn(db.Driver, "create");
+
+    await expect(AuthService.registerDriver(driver, 1)).rejects.toMatchObject({
+      status: 409,
+      expose: true,
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(count.mock.calls[0][0].where).toEqual({ reg_id: "REG_A" });
+    expect(count.mock.calls[0][0].include[0].where.dStatus).toBe("active");
+  });
+
+  test("no active match is saved", async () => {
+    jest.spyOn(db.Registration, "findOne").mockResolvedValue({ get: () => "REG_A" });
+    jest.spyOn(db.DriverStatus, "count").mockResolvedValue(0);
+    jest.spyOn(db.DriverStatus, "create").mockResolvedValue({});
+    jest.spyOn(db.sequelize, "transaction").mockImplementation((work) => work({}));
+    const create = jest.spyOn(db.Driver, "create").mockResolvedValue({ dId: 5 });
+
+    await AuthService.registerDriver(driver, 1);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("citizens can only delete their own records", () => {
   test("trip delete is limited to the caller's reg_id", async () => {
     ownerOf("REG_B");

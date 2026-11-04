@@ -16,7 +16,6 @@ module.exports = (sequelize, DataTypes) => {
       licenseNo: {
         type: DataTypes.STRING(50),
         allowNull: false,
-        unique: true,
       },
 
       title: {
