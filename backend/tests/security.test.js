@@ -125,6 +125,84 @@ describe("citizens can only delete their own records", () => {
   });
 });
 
+describe("special convoy route", () => {
+  const JWTConfig = require("../src/config/jwt");
+  const { authenticateScs } = require("../src/middleware/auth");
+
+  const callAs = async (typ, role) => {
+    jest.spyOn(JWTConfig, "verifyAccessToken").mockReturnValue({ typ, userId: "u1", tv: 0 });
+    const account = { isActive: 1, isFrozen: 0, status: 1, role, tokenVersion: 0 };
+    jest.spyOn(db.User, "findByPk").mockResolvedValue(account);
+    jest.spyOn(db.PoliceUser, "findByPk").mockResolvedValue(account);
+
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    const next = jest.fn();
+    await authenticateScs({ headers: { authorization: "Bearer x" } }, res, next);
+    return { next, res };
+  };
+
+  test.each([["user", "scs"], ["police", "scs"]])("%s account with role %s is allowed", async (typ, role) => {
+    const { next } = await callAs(typ, role);
+    expect(next).toHaveBeenCalled();
+  });
+
+  test.each([["user", "user"], ["police", "police"]])("%s account with role %s is refused", async (typ, role) => {
+    const { next, res } = await callAs(typ, role);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+});
+
+describe("trip editing", () => {
+  const AuthController = require("../src/controllers/authController");
+
+  const runUpdate = async (req, body) => {
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    const update = jest.spyOn(AuthService, "updateTripPolice").mockResolvedValue({ success: true });
+    await AuthController.updateTripPolice({ ...req, body }, res);
+    return { res, update };
+  };
+  const scs = { accountType: "police", user: { id: "p1", role: "scs" } };
+  const police = { accountType: "police", user: { id: "p2", role: "police" } };
+  const citizen = { accountType: "user", user: { id: "u1", role: "user" } };
+  const edit = { payload: { action: "updateTrip", tId: "T1", data: { vId: 9, dId: 7 } } };
+
+  test("scs in the police table cannot edit a trip it does not own", async () => {
+    const owns = jest.spyOn(AuthService, "userOwnsTrips").mockResolvedValue(false);
+    const { res, update } = await runUpdate(scs, [edit]);
+    expect(owns).toHaveBeenCalledWith("p1", ["T1"]);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("other police can still edit any trip", async () => {
+    const owns = jest.spyOn(AuthService, "userOwnsTrips");
+    const { update } = await runUpdate(police, [edit]);
+    expect(owns).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalled();
+  });
+
+  test("own trip with another user's vehicle is refused", async () => {
+    jest.spyOn(AuthService, "userOwnsTrips").mockResolvedValue(true);
+    jest.spyOn(AuthService, "regIdOf").mockResolvedValue("REG_A");
+    jest.spyOn(db.VehicleStatus, "count").mockResolvedValue(0);
+    jest.spyOn(db.DriverStatus, "count").mockResolvedValue(1);
+    const { res, update } = await runUpdate(citizen, [edit]);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("own trip with own vehicle and driver is saved", async () => {
+    jest.spyOn(AuthService, "userOwnsTrips").mockResolvedValue(true);
+    jest.spyOn(AuthService, "regIdOf").mockResolvedValue("REG_A");
+    const vehicle = jest.spyOn(db.VehicleStatus, "count").mockResolvedValue(1);
+    jest.spyOn(db.DriverStatus, "count").mockResolvedValue(1);
+    const { update } = await runUpdate(citizen, [edit]);
+    expect(vehicle.mock.calls[0][0].where).toEqual({ vId: 9, reg_id: "REG_A" });
+    expect(update).toHaveBeenCalled();
+  });
+});
+
 describe("trip approval", () => {
   test("rejects a status the UI never sends, before touching the DB", async () => {
     const tx = jest.spyOn(db.sequelize, "transaction");

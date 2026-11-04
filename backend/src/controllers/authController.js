@@ -38,10 +38,30 @@ static sendSession(res, { user, tokens }, message, accountType) {
   );
 }
 
-// Citizens may only touch their own trips; police and admin are not limited.
+// Citizens and scs may only touch their own trips; other police and admin are not limited.
+static isTripOwnerOnly(req) {
+  return req.accountType === "user" || req.user.role === "scs";
+}
+
 static async canAccessTrips(req, tIds) {
-  if (req.accountType !== "user") return true;
+  if (!AuthController.isTripOwnerOnly(req)) return true;
   return AuthService.userOwnsTrips(req.user.id, tIds);
+}
+
+// A trip edit may only set a vehicle and driver linked to the same account.
+static async canUseVehiclesAndDrivers(req, items) {
+  if (!AuthController.isTripOwnerOnly(req)) return true;
+
+  for (const item of items) {
+    const { action, data } = item?.payload || {};
+    if (
+      action === "updateTrip" &&
+      !(await AuthService.userOwnsVehicleAndDriver(req.user.id, data?.vId, data?.dId))
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static sendLoginError(res, error) {
@@ -536,7 +556,10 @@ static async updateTripPolice(req, res) {
       ? req.body.map((item) => item?.payload?.tId)
       : [];
 
-    if (!(await AuthController.canAccessTrips(req, tIds))) {
+    if (
+      !(await AuthController.canAccessTrips(req, tIds)) ||
+      !(await AuthController.canUseVehiclesAndDrivers(req, req.body))
+    ) {
       return res.status(403).json(BaseResponseDTO.error("Access denied"));
     }
 

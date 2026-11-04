@@ -113,6 +113,11 @@ const authenticateToken = authenticateWith(
   [ACCOUNT_TYPES.USER, ACCOUNT_TYPES.POLICE],
   (account, type) => type === ACCOUNT_TYPES.USER || account.role === "scs",
 );
+// Special convoy trips are auto-approved, so only scs accounts may create them.
+const authenticateScs = authenticateWith(
+  [ACCOUNT_TYPES.USER, ACCOUNT_TYPES.POLICE],
+  (account) => account.role === "scs",
+);
 const authenticatePoliceToken = authenticate(ACCOUNT_TYPES.POLICE);
 const authenticateAdmin = authenticate(ACCOUNT_TYPES.ADMIN);
 const authenticatePoliceOrAdmin = authenticate(
@@ -128,6 +133,7 @@ const authenticateAny = authenticate(
 module.exports = {
   authenticate,
   authenticateToken,
+  authenticateScs,
   authenticatePoliceToken,
   authenticateAdmin,
   authenticatePoliceOrAdmin,

@@ -337,6 +337,19 @@ static async login(loginData, req) {
     return count === ids.length;
   }
 
+  // True when the vehicle and driver are linked to the account `userId`.
+  // Deleted ones still count, so a trip that already uses them can be edited.
+  static async userOwnsVehicleAndDriver(userId, vId, dId) {
+    const reg_id = await AuthService.regIdOf(userId);
+    if (!reg_id) return false;
+
+    const [vehicles, drivers] = await Promise.all([
+      vId ? db.VehicleStatus.count({ where: { vId, reg_id } }) : 1,
+      dId ? db.DriverStatus.count({ where: { dId, reg_id } }) : 1,
+    ]);
+    return vehicles > 0 && drivers > 0;
+  }
+
   // The user object returned to the frontend, matching each login response.
   static sessionUser(type, account) {
     if (type === ACCOUNT_TYPES.USER) {

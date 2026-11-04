@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
 import { formatDateDDMMYY, formatTimeHHMM } from "@/utils/dateUtils";
 import { sanitizeInput } from "@/utils/inputSanitizer";
+import { isOfficialFormat, MAX_UPLOAD_BYTES } from "@/utils/passengerFormat";
 
 import {
   getDriverList,
@@ -95,7 +96,6 @@ export default function AddTrip() {
   //   documentId: "",
   //   residence: "", //
   // });
-  console.log("User Type:", user?.usertype);
   const [passenger, setPassenger] = useState({
     title: "",
     name: "",
@@ -795,13 +795,7 @@ export default function AddTrip() {
           : returnTripData.Passengers.map(mapPassengerForPayload),
     };
 
-    console.log("FINAL PAYLOAD:", payload);
-    console.log("FORWARD JSON:", formData);
-    console.log("RETURN JSON:", returnTripData);
-
     handleAddTripAPI(payload, accessToken, (response) => {
-      console.log("FULL RESPONSE:", response);
-
       if (response?.success && response?.data?.trip?.tId) {
         const trip = response.data.trip;
         const returnTrip = response.data.returnTrip;
@@ -1118,7 +1112,6 @@ export default function AddTrip() {
 
   useEffect(() => {
     if (location.state) {
-      console.log("Pre-filling form with state:", location.state);
       setFormData((prev) => ({
         ...prev,
         ...location.state,
@@ -1198,11 +1191,43 @@ export default function AddTrip() {
     const file = e.target.files[0];
     if (!file) return;
 
+    const refuseFormat = () => {
+      e.target.value = null;
+      MySwal.fire({
+        icon: "error",
+        title: "Invalid File",
+        text: "This is not the official format. Please download the format from this page and fill it.",
+        confirmButtonText: "OK",
+      });
+    };
+
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      refuseFormat();
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      e.target.value = null;
+      MySwal.fire({
+        icon: "error",
+        title: "File Too Large",
+        text: "The file must not be larger than 2 MB.",
+        confirmButtonText: "OK",
+      });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: "array" });
+
+        if (!isOfficialFormat(workbook)) {
+          refuseFormat();
+          return;
+        }
+
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
@@ -1233,16 +1258,18 @@ export default function AddTrip() {
         const invalidPassengers = [];
 
         for (let p of jsonData) {
-          const isForeigner =
-            (p["IsForeigner"] || "").toString().trim().toLowerCase() === "yes";
+          // Excel can give a number in any column, so read every cell as text
+          const cell = (column) => String(p[column] ?? "").trim();
 
-          const name = (p["PassengerName"] || "").trim();
-          const fatherName = (p["FatherName"] || "").trim();
+          const isForeigner = cell("IsForeigner").toLowerCase() === "yes";
+
+          const name = cell("PassengerName");
+          const fatherName = cell("FatherName");
           const age = Number(p["Age"]);
-          const gender = (p["Gender"] || "").trim();
+          const gender = cell("Gender");
 
-          const phone = (p["Phone"] || "").toString().trim();
-          const residence = (p["Residence"] || "").trim();
+          const phone = cell("Phone");
+          const residence = cell("Residence");
 
           const errors = [];
 
@@ -1261,10 +1288,10 @@ export default function AddTrip() {
 
           if (isForeigner) {
             // Foreigner fields
-            const passportNo = (p["PassportNo"] || "").toString().trim();
-            const nationality = (p["Nationality"] || "").trim();
-            const visaNo = (p["VisaNo"] || "").trim();
-            const lastStayInAndaman = (p["LastStayInAndaman"] || "").trim();
+            const passportNo = cell("PassportNo");
+            const nationality = cell("Nationality");
+            const visaNo = cell("VisaNo");
+            const lastStayInAndaman = cell("LastStayInAndaman");
 
             if (!passportNo) errors.push("PassportNo required");
             if (!nationality) errors.push("Nationality required");
@@ -1294,17 +1321,11 @@ export default function AddTrip() {
             }
           } else {
             // Indian fields
-            const documentType = (p["DocumentType"] || "")
-              .toString()
-              .trim()
-              .toUpperCase();
+            const documentType = cell("DocumentType").toUpperCase();
 
-            const documentId = (p["DocumentId"] || "").toString().trim();
+            const documentId = cell("DocumentId");
 
-            const isIslander =
-              (p["IsIslander"] || "").toString().trim().toLowerCase() === "yes"
-                ? 1
-                : 0;
+            const isIslander = cell("IsIslander").toLowerCase() === "yes" ? 1 : 0;
 
             if (!documentType) errors.push("DocumentType required");
 
@@ -1331,28 +1352,34 @@ export default function AddTrip() {
                 passportNo: "",
                 nationality: "",
                 visaNo: "",
-                lastStayInAndaman: (p["LastStayInAndaman"] || "").trim(),
+                lastStayInAndaman: cell("LastStayInAndaman"),
               });
             }
           }
 
           if (errors.length > 0) {
-            invalidPassengers.push({
-              ...p,
-              errors,
-            });
+            invalidPassengers.push({ row: p.__rowNum__ + 1, errors });
           }
         }
         e.target.value = null;
 
         if (invalidPassengers.length > 0) {
-          console.warn("Invalid rows in uploaded file:", invalidPassengers);
+          // Row numbers and fixed messages only: no passenger data here
+          const details = invalidPassengers
+            .slice(0, 10)
+            .map((r) => `Row ${r.row}: ${r.errors.join(", ")}`)
+            .join("<br/>");
+          const more =
+            invalidPassengers.length > 10
+              ? `<br/>and ${invalidPassengers.length - 10} more rows`
+              : "";
+
           MySwal.fire({
             icon: "warning",
             title: "Invalid Rows Detected",
             html: `
 <b>${invalidPassengers.length}</b> invalid rows skipped.<br/>
-Check console for details.
+${details}${more}
 `,
             confirmButtonText: "OK",
           });
@@ -1397,14 +1424,13 @@ Check console for details.
         MySwal.fire({
           icon: "error",
           title: "File Read Error",
-          text: "Error reading the uploaded file. Please ensure it is a valid Excel or CSV.",
+          text: "Error reading the uploaded file. Please ensure it is a valid Excel file.",
           confirmButtonText: "OK",
         });
       }
     };
     reader.readAsArrayBuffer(file);
   };
-  console.log("userrrrrrrr", user.usertype);
 
   const selectedOriginPlace = locationList.find(
     (place) => String(place.id) === String(formData.origin),
@@ -1919,17 +1945,17 @@ Check console for details.
                   />
                 )}
 
-                {/* Bulk Passenger Upload */}
-                {user?.usertype !== 0 && (
+                {/* Bulk Passenger Upload: government users only */}
+                {user?.usertype === 2 && (
                   <div className="mb-4 rounded-lg border border-dashed border-gray-300 p-4 bg-gray-50">
                     <Label className="font-semibold text-sm">
                       Bulk Passenger Upload
                     </Label>
 
                     <p className="text-xs text-gray-500 mt-1 mb-3">
-                      Download the sample Excel, fill the passenger details, and
-                      upload it here. Imported passengers will be added to the
-                      passenger table.
+                      Download the Excel format, fill the passenger details, and
+                      upload it here. Only this format is accepted. Imported
+                      passengers will be added to the passenger table.
                     </p>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -1938,7 +1964,7 @@ Check console for details.
                         type="button"
                         onClick={() => {
                           const link = document.createElement("a");
-                          link.href = `${window.location.origin}/convoy/sample/Passenger_Upload_Sample.xlsx`;
+                          link.href = `${window.location.origin}/convoy/sample/Passenger_Upload_Sample.xlsx?v=2`;
                           link.download = "Passenger_Upload_Sample.xlsx";
                           document.body.appendChild(link);
                           link.click();
@@ -1961,7 +1987,7 @@ Check console for details.
                       <input
                         id="passengerExcel"
                         type="file"
-                        accept=".xlsx,.xls"
+                        accept=".xlsx"
                         onChange={handleFileUpload}
                         className="hidden"
                       />

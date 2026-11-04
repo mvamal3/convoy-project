@@ -7,6 +7,7 @@ const csrfProtection = require("../middleware/csrfProtection");
 const {
   authenticate,
   authenticateToken,
+  authenticateScs,
   authenticatePoliceToken,
   authenticateAdmin,
   authenticatePoliceOrAdmin,
@@ -125,7 +126,7 @@ router.post("/delete-vehicle", authenticateToken, AuthController.deleteVehicle);
 router.get("/get-vehicle-list", authenticateToken, AuthController.getVehicleListbyRegId);
 
 router.post("/trip-new", authenticateToken, AuthController.newtrip);
-router.post("/spl-trip-new", authenticateToken, AuthController.splnewtrip);
+router.post("/spl-trip-new", authenticateScs, AuthController.splnewtrip);
 router.post("/delete-trip", authenticateToken, AuthController.deletetrip);
 router.get("/get-trip-details", authenticateToken, AuthController.getTripDetailsbyRegId);
 router.post("/get-trip-details-citizen", authenticateToken, AuthController.getTripDetailsbyRegIdCitizen);
