@@ -1,10 +1,5 @@
 class PoliceLoginUserResponseDto {
   constructor(user) {
-    console.log(
-      "Creating PoliceLoginUserResponseDto for user:",
-      JSON.stringify(user, null, 2),
-    );
-
     this.id = user.id;
     this.email = user.email;
 

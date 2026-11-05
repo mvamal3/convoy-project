@@ -338,21 +338,34 @@ const MyTrips = () => {
                         View
                       </Button>
 
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => navigate(`/CitizenEditTrip/${row.t_id}`)}
-                      >
-                        Edit
-                      </Button>
+                      {/* Same rule as the desktop table */}
+                      {(row.date || "").split("T")[0] >= today &&
+                      Number(row.status) === 1 &&
+                      Number(row.verifystatus) === 0 ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              navigate(`/CitizenEditTrip/${row.t_id}`)
+                            }
+                          >
+                            Edit
+                          </Button>
 
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(row.t_id)}
-                      >
-                        Delete
-                      </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(row.t_id)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-500">
+                          Not editable
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))

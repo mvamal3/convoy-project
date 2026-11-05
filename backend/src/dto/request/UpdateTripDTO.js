@@ -1,8 +1,6 @@
 
 class UpdateTripDTO {
   constructor(payload = {}) {
-
-    console.log("UpdateTripDTO payload:", payload);
     this.action = payload.action;
     this.tId = payload.tId;
     this.pId = payload.pId;

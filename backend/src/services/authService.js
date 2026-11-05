@@ -28,6 +28,11 @@ const {
 const config = require("../config/environment");
 const httpError = require("../utils/httpError");
 const { checkPassword } = require("../utils/passwordPolicy");
+
+// Today's date in India as YYYY-MM-DD, whatever the server clock's timezone.
+const todayIST = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+
 const {
   isLocked,
   assertNotLocked,
@@ -1112,6 +1117,16 @@ static async login(loginData, req) {
     });
     let reg_id = regIdObj ? regIdObj.get("reg_id") : null;
 
+    // The vehicle and driver must belong to this account, on the return leg too.
+    const legs = tripData.isReturn
+      ? [tripDTO, tripDTO.returnTripData]
+      : [tripDTO];
+    for (const leg of legs) {
+      if (!(await AuthService.userOwnsVehicleAndDriver(id, leg?.vId, leg?.dId))) {
+        throw httpError("Please select your own vehicle and driver.", 403);
+      }
+    }
+
     const tId = await this.generateUniqueTripId();
 
     // ===== Create forward trip =====
@@ -1309,6 +1324,9 @@ static async login(loginData, req) {
     // ===== GENERATE conveyid =====
     let newConveyId = lastConvey ? lastConvey.conveyid + 1 : baseStart;
 
+    if (baseEnd && newConveyId > baseEnd) {
+      throw httpError("Emergency convoy limit reached for today", 409);
+    }
 
     // ===== INSERT INTO ConveyControl =====
     await db.ConveyControl.create({
@@ -1552,7 +1570,7 @@ static async login(loginData, req) {
     // =========================================
     // TODAY DATE
     // =========================================
-    const todayDate = new Date().toISOString().split("T")[0];
+    const todayDate = todayIST();
 
     // =========================================
     // FILTERED TRIP LIST
@@ -1612,7 +1630,7 @@ static async login(loginData, req) {
       // ===============================
       // TRIP TYPE FILTER
       // ===============================
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayIST();
 
       if (tripData.tripType === "todays") {
         whereClause.date = today;
@@ -1977,9 +1995,7 @@ static async login(loginData, req) {
 
   static async getTripDetailsbydt(param) {
     // ✅ Current Kolkata date
-    const currentDate = new Date().toLocaleDateString("en-CA", {
-      timeZone: "Asia/Kolkata",
-    });
+    const currentDate = todayIST();
 
     // ✅ Base where condition
     const whereConditions = {
@@ -2154,12 +2170,10 @@ static async login(loginData, req) {
   static async tripApproval({
     tId,
     buttonId,
-    convey_id,
-    checkpost_id,
     remarks,
     astatus,
-  }, approveby) {
-    // `approveby` is the signed-in officer's reg_id, never the request body.
+  }, approveby, checkpost_id) {
+    // `approveby` and `checkpost_id` come from the signed-in officer, never the request body.
     // Trip status 2 = approved, 3 = rejected.
     if (![2, 3].includes(Number(buttonId)) || ![0, 1].includes(Number(astatus))) {
       throw httpError("Invalid approval status");
@@ -2175,6 +2189,18 @@ static async login(loginData, req) {
 
       if (!trip) {
         throw httpError("Trip not found", 404);
+      }
+
+      // Special convoys (number 100+) have no running convoy; normal trips need one.
+      let convey_id = trip.convoyTime;
+      if (Number(trip.convoyTime) < 100) {
+        const running = checkpost_id
+          ? await AuthService.getCurrentRunningConvey(checkpost_id)
+          : null;
+        if (!running) {
+          throw httpError("No running convoy found", 409);
+        }
+        convey_id = running.conveyid;
       }
 
       // 1️⃣ Insert approval record
@@ -3301,7 +3327,7 @@ static async registerPolice(registerData) {
     const inputDate =
       typeof payload === "object" && payload?.date
         ? payload.date
-        : new Date().toISOString().split("T")[0];
+        : todayIST();
 
 
     // ✅ Fetch all approved trips for that date from ApproveTrip
@@ -3830,8 +3856,7 @@ static async registerPolice(registerData) {
 
   static async getAllTodayConveyReports(param) {
     try {
-      const today = new Date();
-      const formattedDate = today.toISOString().split("T")[0];
+      const formattedDate = todayIST();
 
       const { Op, fn, col, where } = db.Sequelize;
 
@@ -4003,7 +4028,7 @@ static async registerPolice(registerData) {
       }
 
       // 2. Get today's date in YYYY-MM-DD
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayIST();
 
       // 3. Check if already inserted today (any status)
       const existingConvoy = await db.ConveyControl.findOne({
@@ -4063,7 +4088,7 @@ static async registerPolice(registerData) {
   }
   static async getCurrentRunningConvey(checkpost_id) {
     try {
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const today = todayIST(); // YYYY-MM-DD
 
       const runningConvey = await db.ConveyControl.findOne({
         where: {
@@ -4130,7 +4155,7 @@ static async registerPolice(registerData) {
       }
 
       // 2. Get today's date in YYYY-MM-DD
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayIST();
 
       // 3. Find existing active convey today
       const existingConvoy = await db.ConveyControl.findOne({
@@ -4604,7 +4629,7 @@ static async registerPolice(registerData) {
       }
 
       // ✅ Use frontend value if present, else fallback
-      const today = data.checkoutDate || new Date().toISOString().split("T")[0];
+      const today = data.checkoutDate || todayIST();
 
       const currentTime =
         data.checkoutTime || new Date().toTimeString().split(" ")[0];
@@ -5112,6 +5137,33 @@ static async updateTripPolice(tripDataArray) {
           };
         }
       }
+    }
+
+    // Nobody may edit an approved, rejected or past trip, or move a trip to a past date.
+    const today = todayIST();
+    const lockedTrips = await Trip.count({
+      where: {
+        tId: [...new Set(tripDataArray.map((item) => String(item.payload.tId)))],
+        [Op.or]: [
+          { status: { [Op.ne]: "1" } },
+          { verifiystatus: 3 },
+          { date: { [Op.lt]: today } },
+        ],
+      },
+    });
+    const movesToPastDate = tripDataArray.some(
+      ({ payload }) =>
+        payload.action === "updateTrip" &&
+        payload.data?.date &&
+        String(payload.data.date).slice(0, 10) < today,
+    );
+
+    if (lockedTrips > 0 || movesToPastDate) {
+      return {
+        success: false,
+        message: "Only pending trips dated today or later can be edited",
+        errors: [],
+      };
     }
 
     // 4. Normalize passenger fields from frontend payloads.
@@ -5939,7 +5991,15 @@ static async updateProfile(profileData) {
     if (!reg_id) return false;
     const [updated] = await db.Trip.update(
       { status: 0 },
-      { where: { tId, reg_id, status: { [Op.ne]: 0 } } },
+      // Approved (2) and rejected (status 3 or verifiystatus 3) trips are locked
+      {
+        where: {
+          tId,
+          reg_id,
+          status: { [Op.notIn]: [0, 2, 3] },
+          verifiystatus: { [Op.ne]: 3 },
+        },
+      },
     );
     return updated > 0;
   }
@@ -6083,7 +6143,7 @@ static async updateProfile(profileData) {
       toDate = payload.toDate.split("T")[0];
     } else {
       /* ===== DEFAULT TODAY ===== */
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayIST();
 
       fromDate = today;
       toDate = today;
@@ -6639,7 +6699,7 @@ static async updateProfile(profileData) {
         };
       }
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayIST();
       const currentTime = new Date().toTimeString().split(" ")[0];
 
       const existing = await db.CheckoutControl.findOne({
@@ -6687,7 +6747,7 @@ static async updateProfile(profileData) {
   // services/AuthService.js
   static async getRunningCheckout(checkpostId) {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayIST();
 
       const runningCheckout = await db.CheckoutControl.findOne({
         where: {
@@ -6748,7 +6808,7 @@ static async updateProfile(profileData) {
         };
       }
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayIST();
       const currentTime = new Date().toTimeString().split(" ")[0];
 
       // 2️⃣ Find currently running checkout
@@ -6793,7 +6853,7 @@ static async updateProfile(profileData) {
 
   static async generateCheckoutReport(params) {
     try {
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+      const today = todayIST(); // YYYY-MM-DD
 
       const conveyid = params?.conveyid;
       const checkpostid = params?.checkpostid;
@@ -7248,7 +7308,7 @@ static async updateProfile(profileData) {
       const reportDate =
         selecteddate && /^\d{4}-\d{2}-\d{2}$/.test(selecteddate)
           ? selecteddate
-          : new Date().toISOString().split("T")[0];
+          : todayIST();
 
 
       // 🔹 Helper: origin condition by checkpost

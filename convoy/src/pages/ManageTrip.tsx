@@ -424,7 +424,7 @@ const ManageTrip = () => {
                             View
                           </Button>
 
-                          {currentConfig.showEdit && (
+                          {currentConfig.showEdit && Number(trip.status) !== 2 && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -436,7 +436,7 @@ const ManageTrip = () => {
                             </Button>
                           )}
 
-                          {currentConfig.showDelete && (
+                          {currentConfig.showDelete && Number(trip.status) !== 2 && (
                             <Button
                               size="sm"
                               variant="destructive"
@@ -535,7 +535,7 @@ const ManageTrip = () => {
                                   View
                                 </Button>
 
-                                {currentConfig.showEdit && (
+                                {currentConfig.showEdit && Number(row.status) !== 2 && (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -547,7 +547,7 @@ const ManageTrip = () => {
                                   </Button>
                                 )}
 
-                                {currentConfig.showDelete && (
+                                {currentConfig.showDelete && Number(row.status) !== 2 && (
                                   <Button
                                     size="sm"
                                     variant="destructive"

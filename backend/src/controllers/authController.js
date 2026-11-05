@@ -400,6 +400,7 @@ static async refreshToken(req, res) {
       const result = await AuthService.tripApproval(
         req.body,
         req.user.registration?.reg_id,
+        req.user.registration?.checkpost,
       );
       return res.json(BaseResponseDTO.success(result, "Trip Approved Successfully"));
     } catch (error) {

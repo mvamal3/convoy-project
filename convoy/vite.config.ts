@@ -65,6 +65,11 @@ export default defineConfig(({ mode }) => {
       },
     },
 
+    // Production builds must not print personal data to the browser console.
+    esbuild: {
+      drop: mode === "production" ? ["console", "debugger"] : [],
+    },
+
     define: {
       "process.env": {
         NODE_ENV: JSON.stringify(mode),

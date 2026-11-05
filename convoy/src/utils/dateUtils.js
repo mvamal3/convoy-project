@@ -20,3 +20,7 @@ export const formatTimeHHMM = (dateValue) => {
     hour12: true,
   });
 };
+
+// Today in India as YYYY-MM-DD (toISOString gives yesterday before 05:30 IST).
+export const todayIST = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });

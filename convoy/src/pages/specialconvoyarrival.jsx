@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { todayIST } from "@/utils/dateUtils";
 import { getSpecialConvoyCheckOutTrip } from "@/contexts/GetApi";
 import { updateCheckoutTripAPI } from "@/contexts/PostApi";
 import { toast } from "@/hooks/use-toast";
@@ -271,7 +272,7 @@ const Specialconvoyarrival = () => {
                               onClick={() => {
                                 setSelectedTrip(row);
                                 setCheckoutDate(
-                                  new Date().toISOString().split("T")[0],
+                                  todayIST(),
                                 );
                                 setCheckoutTime(
                                   new Date().toTimeString().slice(0, 5),

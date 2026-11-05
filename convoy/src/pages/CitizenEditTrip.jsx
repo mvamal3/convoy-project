@@ -917,7 +917,7 @@ export default function CitizenEditTrip() {
       MySwal.fire({
         icon: "error",
         title: "Update Failed",
-        text: "An error occurred while updating the trip.",
+        text: error.message || "An error occurred while updating the trip.",
         confirmButtonText: "OK",
       });
     }

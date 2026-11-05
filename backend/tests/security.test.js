@@ -203,6 +203,172 @@ describe("trip editing", () => {
   });
 });
 
+describe("IST date", () => {
+  afterEach(() => jest.useRealTimers());
+
+  test("convoy started at 01:30 IST records the Indian date, not yesterday", async () => {
+    jest.useFakeTimers({ now: new Date("2026-11-04T20:00:00Z"), doNotFake: ["nextTick", "setImmediate"] });
+    jest.spyOn(db.ConveyControl, "findOne").mockResolvedValue(null);
+    const create = jest.spyOn(db.ConveyControl, "create").mockResolvedValue({});
+
+    await AuthService.addConveyControl({ checkpost_id: 1, convey_id: 1 });
+    expect(create.mock.calls[0][0].date).toBe("2026-11-05");
+  });
+});
+
+describe("locked trips", () => {
+  const { Op } = require("sequelize");
+  const message = "Only pending trips dated today or later can be edited";
+  const edit = (data) => [{ payload: { action: "updateTrip", tId: "T1", data } }];
+
+  test("approved, rejected and past trips cannot be edited", async () => {
+    const count = jest.spyOn(db.Trip, "count").mockResolvedValue(1);
+    const tx = jest.spyOn(db.sequelize, "transaction");
+
+    const result = await AuthService.updateTripPolice(edit({ vId: 9 }));
+    expect(result).toMatchObject({ success: false, message });
+
+    const where = count.mock.calls[0][0].where;
+    expect(where.tId).toEqual(["T1"]);
+    expect(where[Op.or][0].status[Op.ne]).toBe("1");
+    expect(where[Op.or][1]).toEqual({ verifiystatus: 3 });
+    expect(where[Op.or][2].date[Op.lt]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(tx).not.toHaveBeenCalled();
+  });
+
+  test("a pending trip cannot be moved to a past date", async () => {
+    jest.spyOn(db.Trip, "count").mockResolvedValue(0);
+    const tx = jest.spyOn(db.sequelize, "transaction");
+
+    const result = await AuthService.updateTripPolice(edit({ date: "2020-01-01" }));
+    expect(result).toMatchObject({ success: false, message });
+    expect(tx).not.toHaveBeenCalled();
+  });
+
+  test("a pending trip dated in the future can be edited", async () => {
+    jest.spyOn(db.Trip, "count").mockResolvedValue(0);
+    const tx = { commit: jest.fn(), rollback: jest.fn(), finished: false };
+    jest.spyOn(db.sequelize, "transaction").mockResolvedValue(tx);
+    const update = jest.spyOn(db.Trip, "update").mockResolvedValue([1]);
+
+    const result = await AuthService.updateTripPolice(edit({ date: "2999-01-01" }));
+    expect(result.success).toBe(true);
+    expect(update).toHaveBeenCalled();
+  });
+
+  test("approved and rejected trips cannot be deleted", async () => {
+    ownerOf("REG_B");
+    const update = jest.spyOn(db.Trip, "update").mockResolvedValue([0]);
+
+    await AuthService.deletetrip("T1", 2);
+    const where = update.mock.calls[0][1].where;
+    expect(where.status[Op.notIn]).toEqual([0, 2, 3]);
+    expect(where.verifiystatus[Op.ne]).toBe(3);
+  });
+});
+
+describe("new trip ownership", () => {
+  const trip = {
+    declarationAccepted: true,
+    vId: 9,
+    dId: 7,
+    origin: 1,
+    destination: 2,
+    date: "2026-11-10",
+    convoyTime: "5",
+    Passengers: [],
+  };
+
+  beforeEach(() => {
+    jest.spyOn(db.Registration, "findOne").mockResolvedValue({ get: () => "REG_A", reg_id: "REG_A" });
+    jest.spyOn(db.DriverStatus, "count").mockResolvedValue(1);
+  });
+
+  test("another user's vehicle is refused", async () => {
+    jest.spyOn(db.VehicleStatus, "count").mockResolvedValue(0);
+    const create = jest.spyOn(db.Trip, "create");
+
+    await expect(AuthService.newtrip(trip, 1)).rejects.toMatchObject({ status: 403, expose: true });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test("another user's vehicle on the return leg is refused", async () => {
+    const vehicles = jest.spyOn(db.VehicleStatus, "count").mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+    const create = jest.spyOn(db.Trip, "create");
+
+    await expect(
+      AuthService.newtrip(
+        { ...trip, isReturn: true, returnDate: "2026-11-11", returnConvoyTime: "6", returnTripData: { vId: 99 } },
+        1,
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(vehicles.mock.calls[1][0].where.vId).toBe(99);
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("emergency convoy limit", () => {
+  const special = (specialType) => ({
+    vId: 9,
+    dId: 7,
+    origin: 1,
+    destination: 2,
+    date: "2026-11-10",
+    convoyTime: "10:00",
+    specialType,
+    Passengers: [],
+  });
+
+  test("199 is the last emergency number", async () => {
+    jest.spyOn(db.Registration, "findOne").mockResolvedValue({ get: () => "REG_A" });
+    jest.spyOn(db.ConveyControl, "findOne").mockResolvedValue({ conveyid: 199 });
+    const create = jest.spyOn(db.ConveyControl, "create");
+
+    await expect(AuthService.splnewtrip(special(100), 1)).rejects.toMatchObject({
+      status: 409,
+      message: "Emergency convoy limit reached for today",
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("trip approval needs a running convoy", () => {
+  const runApproval = async (convoyTime, running) => {
+    const tx = { commit: jest.fn(), rollback: jest.fn() };
+    jest.spyOn(db.sequelize, "transaction").mockResolvedValue(tx);
+    jest.spyOn(db.Trip, "findOne").mockResolvedValue({ convoyTime, update: jest.fn() });
+    const lookup = jest.spyOn(AuthService, "getCurrentRunningConvey").mockResolvedValue(running);
+    const create = jest.spyOn(db.ApproveTrip, "create").mockResolvedValue({});
+    jest.spyOn(db.VerifiedTrip, "create").mockResolvedValue({});
+    return { lookup, create, tx };
+  };
+  const body = { tId: "T1", buttonId: 2, astatus: 1, convey_id: 77, checkpost_id: 8 };
+
+  test("normal trip without a running convoy is refused", async () => {
+    const { create, tx } = await runApproval("5", null);
+    await expect(AuthService.tripApproval(body, "REG_P1", 1)).rejects.toMatchObject({
+      status: 409,
+      message: "No running convoy found",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(tx.rollback).toHaveBeenCalled();
+  });
+
+  test("uses the officer's checkpost and the running convoy, not the request body", async () => {
+    const { lookup, create } = await runApproval("5", { conveyid: 3 });
+    await AuthService.tripApproval(body, "REG_P1", 1);
+    expect(lookup).toHaveBeenCalledWith(1);
+    expect(create.mock.calls[0][0]).toMatchObject({ convey_id: 3, checkpost_id: 1 });
+  });
+
+  test("special convoy does not need a running convoy", async () => {
+    const { lookup, create } = await runApproval(205, null);
+    await AuthService.tripApproval(body, "REG_P1", 1);
+    expect(lookup).not.toHaveBeenCalled();
+    expect(create.mock.calls[0][0].convey_id).toBe(205);
+  });
+});
+
 describe("trip approval", () => {
   test("rejects a status the UI never sends, before touching the DB", async () => {
     const tx = jest.spyOn(db.sequelize, "transaction");

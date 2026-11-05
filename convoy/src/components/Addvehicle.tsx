@@ -96,6 +96,7 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
   const ownershipOptions = user ? getOwnershipOptions(type) : [];
 
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ✅ Helper to update form fields
   const updateField = (field, value) => {
@@ -109,8 +110,10 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isSubmitting) return;
 
     const vehicleNumber = formData.v_number.trim();
     const alphanumericRegex = /^[a-zA-Z0-9]+$/;
@@ -147,10 +150,15 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
     }
 
     // Proceed with API call if all validations pass
-    handleAddVehicleAPI(formData, accessToken, () => {
-      setFormData(INITIAL_FORM_STATE);
-      if (typeof onSuccessAdd === "function") onSuccessAdd();
-    });
+    setIsSubmitting(true);
+    try {
+      await handleAddVehicleAPI(formData, accessToken, () => {
+        setFormData(INITIAL_FORM_STATE);
+        if (typeof onSuccessAdd === "function") onSuccessAdd();
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -296,8 +304,12 @@ export default function AddVehicle({ isOpen, onClose, onSuccessAdd }) {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="w-full sm:w-auto">
-                Save Vehicle Details
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save Vehicle Details"}
               </Button>
             </div>
           </form>

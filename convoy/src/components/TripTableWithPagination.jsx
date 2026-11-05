@@ -93,12 +93,14 @@ const TripTableWithPagination = ({ tripList, serverTime }) => {
                   </button>
                 </td>
                 <td className="border border-gray-300 px-4 py-2 text-sm">
-                  <button
-                    className="text-red-600 hover:text-red-800"
-                    onClick={() => navigate(`/CitizenEditTrip/${trip.tId}`)}
-                  >
-                    Edit
-                  </button>
+                  {Number(trip.status) !== 2 && (
+                    <button
+                      className="text-red-600 hover:text-red-800"
+                      onClick={() => navigate(`/CitizenEditTrip/${trip.tId}`)}
+                    >
+                      Edit
+                    </button>
+                  )}
                 </td>
               </tr>
             ))

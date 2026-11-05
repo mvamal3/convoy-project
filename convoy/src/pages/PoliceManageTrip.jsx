@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { formatDateDDMMYY } from "@/utils/dateUtils";
+import { formatDateDDMMYY, todayIST } from "@/utils/dateUtils";
 
 import {
   getTripListByPoliceId,
@@ -323,7 +323,7 @@ const PoliceManageTrip = () => {
         });
         await fetchRunningConvey();
         fetchTripList();
-        const today = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
+        const today = todayIST(); // Format: YYYY-MM-DD
         const queryParams = new URLSearchParams();
         queryParams.append("date", today);
         queryParams.append("convey", runningConveyId);

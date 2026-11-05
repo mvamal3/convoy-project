@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { getSpReport, getSpTripDetails } from "@/contexts/GetApi";
+import { todayIST } from "@/utils/dateUtils";
 import {
   Route,
   Car,
@@ -100,7 +101,7 @@ const DateNavigator = ({ selectedDate, onChange, onPrevious, onNext }) => (
         <input
           type="date"
           value={selectedDate}
-          max={new Date().toISOString().split("T")[0]} // ✅ BLOCK FUTURE
+          max={todayIST()} // ✅ BLOCK FUTURE
           onChange={onChange}
           className="bg-transparent border-none focus:outline-none text-gray-700 font-medium"
         />
@@ -157,7 +158,7 @@ const CheckpostHeader = ({ name, id, totalConvoys, date }) => (
 const SPDashboard = () => {
   const { user, accessToken } = useAuth();
   console.log("SP Dashboard User:", user);
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayIST();
 
   const [checkpostReports, setCheckpostReports] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -194,7 +195,7 @@ const SPDashboard = () => {
 
   // 📅 Date filter state
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
+    todayIST(),
   );
   useEffect(() => {
     if (!accessToken || !selectedDate) return;

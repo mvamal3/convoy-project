@@ -4,12 +4,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { getConveyWiseReport } from "@/contexts/GetApi";
 import { useNavigate } from "react-router-dom";
+import { todayIST } from "@/utils/dateUtils";
 
 const ConveyWiseReport = () => {
   const { accessToken } = useAuth();
   const [reportData, setReportData] = useState({});
   const [filteredDate, setFilteredDate] = useState(
-    new Date().toISOString().split("T")[0],
+    todayIST(),
   );
 
   const convoyUp = [

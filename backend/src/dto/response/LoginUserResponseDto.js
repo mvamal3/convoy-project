@@ -1,6 +1,5 @@
 class LoginUserResponseDto {
   constructor(user) {
-    console.log("userssssssssssssssss", user.registration);
     this.id = user.id;
     this.email = user.email;
     //this.firstName = user.registration?.firstName || "";

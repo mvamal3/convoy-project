@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getConveyDetails } from "@/contexts/GetApi";
 import { useNavigate } from "react-router-dom";
+import { todayIST } from "@/utils/dateUtils";
 import Swal from "sweetalert2";
 
 const GenerateReport = () => {
@@ -92,7 +93,7 @@ const GenerateReport = () => {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              max={new Date().toISOString().split("T")[0]} // 🔒 restricts to today
+              max={todayIST()} // 🔒 restricts to today
               className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-blue-500"
             />
           </div>
