@@ -22,7 +22,12 @@ const Header: React.FC<HeaderProps> = ({
         {/* 🔹 LEFT */}
         <div className="flex items-center gap-2 sm:gap-4">
           {showMenuButton && (
-            <Button variant="ghost" size="icon" onClick={onMenuToggle}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onMenuToggle}
+              aria-label="Toggle menu"
+            >
               <Menu className="h-5 w-5" />
             </Button>
           )}
@@ -73,6 +78,7 @@ const Header: React.FC<HeaderProps> = ({
               size="icon"
               onClick={logout}
               className="sm:hidden"
+              aria-label="Logout"
             >
               <LogOut className="h-5 w-5" />
             </Button>
