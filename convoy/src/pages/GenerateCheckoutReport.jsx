@@ -189,7 +189,7 @@ const GenerateCheckoutReport = () => {
           </div>
 
           {/* ===== SUMMARY CARDS ===== */}
-          <div className="grid grid-cols-3 gap-4 mb-6 text-sm font-medium">
+          <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-4 mb-6 text-sm font-medium">
             {/* Vehicles */}
             <div className="bg-blue-50 border border-blue-200 p-3 text-center">
               <div className="font-semibold text-blue-900">🚗 Vehicles</div>
@@ -228,6 +228,7 @@ const GenerateCheckoutReport = () => {
           </div>
 
           {/* ===== TABLE ===== */}
+          <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full border border-black border-collapse text-sm">
             <thead className="bg-blue-600 text-white">
               <tr>
@@ -278,6 +279,7 @@ const GenerateCheckoutReport = () => {
               ))}
             </tbody>
           </table>
+          </div>
 
           {/* HASH */}
           <div className="text-xs mt-4">

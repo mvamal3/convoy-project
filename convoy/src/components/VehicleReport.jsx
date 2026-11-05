@@ -181,6 +181,7 @@ const VehicleReport = ({ convoysToShow, specialSummary }) => {
 
       {/* SUMMARY */}
       <div className="border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto print:overflow-visible">
         <table className="w-full text-sm text-center border">
           <thead className="bg-gray-200 font-semibold">
             <tr>
@@ -235,6 +236,7 @@ const VehicleReport = ({ convoysToShow, specialSummary }) => {
             </tr>
           </tbody>
         </table>
+        </div>
 
         <div className="p-3 text-sm bg-gray-50 border-t">
           <strong>Total Passengers:</strong> {totalPassengers}

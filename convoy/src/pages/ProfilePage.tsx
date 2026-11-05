@@ -194,8 +194,8 @@ const ProfilePage = () => {
 
       {/* Edit Modal */}
       {isEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-3xl p-8 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-8 relative">
             <h2 className="text-xl font-semibold mb-4">Edit Profile</h2>
 
             {/* Close Button */}
@@ -209,7 +209,7 @@ const ProfilePage = () => {
 
             {/* Edit Form */}
             <form className="space-y-4" onSubmit={handleUpdateProfile}>
-              <div className="flex space-x-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-gray-600 mb-1">Title</label>
                   <select

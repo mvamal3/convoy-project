@@ -437,7 +437,7 @@ const TripReport = () => {
           </div>
           {/* Total Counts (static dummy data for now) */}
           {!loading && trips.length > 0 && (
-            <div className="grid grid-cols-3 gap-4 mb-4 text-gray-800 font-medium text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-4 mb-4 text-gray-800 font-medium text-sm">
               {/* Total Vehicles */}
               <div className="bg-blue-50 p-2 rounded-lg border border-blue-200 text-center shadow-sm">
                 <div className="flex justify-center items-center gap-2 mb-1">
@@ -510,6 +510,7 @@ const TripReport = () => {
           ) : trips.length === 0 ? (
             <p className="text-center text-gray-500">No trips found.</p>
           ) : (
+            <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full border border-black border-collapse text-sm whitespace-nowrap">
               <thead className="bg-blue-600 text-white">
                 <tr>
@@ -579,6 +580,7 @@ const TripReport = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
           {/* Signature Section */}
           <div className="flex justify-between mt-20 px-12 text-center">

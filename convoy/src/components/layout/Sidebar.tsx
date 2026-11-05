@@ -20,6 +20,7 @@ import {
 
 interface SidebarProps {
   collapsed: boolean;
+  onClose?: () => void;
 }
 
 interface MenuItem {
@@ -30,7 +31,7 @@ interface MenuItem {
   onClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
+const Sidebar: React.FC<SidebarProps> = ({ collapsed, onClose }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
@@ -212,11 +213,23 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
     });
   }, [location.pathname, isMobile]);
 
+  // On phones the menu takes no page space until it is opened
+  if (isMobile && collapsed) return null;
+
   return (
+    <>
+    {isMobile && (
+      <div
+        className="fixed inset-0 z-40 bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+    )}
     <aside
       className={cn(
         "bg-gray-900 text-white min-h-screen transition-all duration-300 flex flex-col",
         finalCollapsed ? "w-16" : "w-64",
+        isMobile && "fixed inset-y-0 left-0 z-50 overflow-y-auto",
       )}
     >
       <nav className="flex-1 px-2 py-4 space-y-1">
@@ -265,6 +278,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               ) : (
                 <Link
                   to={item.path!}
+                  onClick={() => {
+                    if (isMobile) onClose?.();
+                  }}
                   className={cn(
                     "flex items-center px-3 py-2 rounded-md text-sm font-medium",
                     isActive
@@ -304,6 +320,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
                       onClick={() => {
                         if (isMobile) {
                           setOpenSubmenus([]);
+                          onClose?.();
                         }
                       }}
                       className="block px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
@@ -318,6 +335,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         })}
       </nav>
     </aside>
+    </>
   );
 };
 

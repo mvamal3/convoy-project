@@ -647,6 +647,7 @@ const SPDashboard = () => {
           ) : rejectedTrips.length === 0 ? (
             <p>No rejected trips found</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full border border-gray-300 text-sm">
               <thead className="bg-gray-100">
                 <tr>
@@ -700,6 +701,7 @@ const SPDashboard = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -714,6 +716,7 @@ const SPDashboard = () => {
           ) : nonArrivalTrips.length === 0 ? (
             <p>No non-arrival trips found</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full border border-gray-300 text-sm table-fixed">
               <thead className="bg-gray-100">
                 <tr>
@@ -768,6 +771,7 @@ const SPDashboard = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -783,6 +787,7 @@ const SPDashboard = () => {
           ) : issueTrips.length === 0 ? (
             <p>No issue trips found</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full border border-gray-300 text-sm table-fixed">
               <thead className="bg-gray-100">
                 <tr>
@@ -839,6 +844,7 @@ const SPDashboard = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -854,6 +860,7 @@ const SPDashboard = () => {
           ) : arrivalTrips.length === 0 ? (
             <p>No arrival trips found</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full border border-gray-300 text-sm table-fixed">
               <thead className="bg-gray-100">
                 <tr>
@@ -904,6 +911,7 @@ const SPDashboard = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -919,6 +927,7 @@ const SPDashboard = () => {
           ) : departureTrips.length === 0 ? (
             <p>No departure trips found</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full border border-gray-300 text-sm table-fixed">
               <thead className="bg-gray-100">
                 <tr>
@@ -969,6 +978,7 @@ const SPDashboard = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -987,6 +997,7 @@ const SPDashboard = () => {
           ) : totalConvoyTrips.length === 0 ? (
             <p>No convoys found</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full border border-gray-300 text-sm table-fixed">
               <thead className="bg-gray-100">
                 <tr>
@@ -1050,6 +1061,7 @@ const SPDashboard = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>

@@ -191,8 +191,8 @@ const PoliceProfile = () => {
 
       {/* Edit Modal */}
       {isEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 relative">
             <h2 className="text-xl font-semibold mb-4">Edit Police Profile</h2>
 
             <button
@@ -203,7 +203,7 @@ const PoliceProfile = () => {
             </button>
 
             <form className="space-y-4" onSubmit={handleUpdateProfile}>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-gray-600 mb-1">Title</label>
                   <select

@@ -408,7 +408,7 @@ const PoliceManageTrip = () => {
   return (
     <DashboardLayout>
       <div className="space-y-8 px-2 sm:px-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold text-gray-900">
               Today Trip List
@@ -426,7 +426,7 @@ const PoliceManageTrip = () => {
             )}
           </div>
 
-          <div className="flex items-center space-x-8">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-8">
             {!runningConveyId ? (
               <>
                 <select
@@ -449,7 +449,7 @@ const PoliceManageTrip = () => {
                 </select>
                 <Button
                   onClick={handleStartConvoy}
-                  className="ml-8 bg-blue-600 text-white hover:bg-blue-700"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Start Convoy
                 </Button>
@@ -469,8 +469,8 @@ const PoliceManageTrip = () => {
 
         {/* Cancel Trip Modal */}
         {showCancelModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-white rounded-lg shadow-lg p-6 relative w-full max-w-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 relative w-full max-w-md max-h-[90vh] overflow-y-auto">
               <button
                 className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
                 onClick={() => setShowCancelModal(false)}

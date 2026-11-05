@@ -329,8 +329,8 @@ const Specialconvoyarrival = () => {
                 </table>
 
                 {showModal && (
-                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-[350px] shadow-lg">
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-[350px] max-h-[90vh] overflow-y-auto shadow-lg">
                       <h2 className="text-lg font-semibold mb-4">
                         Checkout Details
                       </h2>

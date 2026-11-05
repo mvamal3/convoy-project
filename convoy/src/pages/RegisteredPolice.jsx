@@ -107,12 +107,12 @@ const RegisteredPolice = () => {
   return (
     <DashboardLayout>
       <div className="space-y-8 px-2 sm:px-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-900">
             Registered Police Officers
           </h1>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button
               variant="outline"
               onClick={() => navigate("/FreezPolice")}
@@ -131,7 +131,7 @@ const RegisteredPolice = () => {
           <CardHeader />
           <CardContent>
             {/* Search */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <input
                 type="text"
                 value={searchTerm}
@@ -140,7 +140,7 @@ const RegisteredPolice = () => {
                   setCurrentPage(1);
                 }}
                 placeholder="Search by Name or Employee ID..."
-                className="border px-3 py-2 rounded w-64 text-sm"
+                className="border px-3 py-2 rounded w-full sm:w-64 text-sm"
               />
 
               <select
@@ -349,8 +349,8 @@ const RegisteredPolice = () => {
 
         {/* Edit Modal */}
         {isEditOpen && selectedPolice && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 relative">
               <h2 className="text-xl font-semibold mb-4">Edit Police</h2>
 
               <button
@@ -525,8 +525,8 @@ const RegisteredPolice = () => {
         )}
 
         {isPwdModalOpen && pwdUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-6 relative">
               <h2 className="text-xl font-semibold mb-4">
                 Change Password – {pwdUser.name}
               </h2>

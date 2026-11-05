@@ -272,8 +272,8 @@ const VerifiedTrips = () => {
 
         {/* Cancel Trip Modal */}
         {showCancelModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-white rounded-lg shadow-lg p-6 relative w-full max-w-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 relative w-full max-w-md max-h-[90vh] overflow-y-auto">
               <button
                 className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
                 onClick={() => setShowCancelModal(false)}
