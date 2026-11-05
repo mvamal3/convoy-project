@@ -12,7 +12,11 @@ import {
   Mail,
   MapPin,
 } from "lucide-react";
-export default function HomeFooter() {
+import { landingText } from "@/utils/landingText";
+
+export default function HomeFooter({ lang = "en" }) {
+  const { footer } = landingText[lang];
+
   return (
     <footer className="bg-gray-900 text-white py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,30 +26,27 @@ export default function HomeFooter() {
               <div className="bg-blue-600 text-white p-2 rounded-lg">
                 <span className="font-bold">CMS</span>
               </div>
-              <span className="font-semibold">Convoy Management System</span>
+              <span className="font-semibold">{footer.systemName}</span>
             </div>
-            <p className="text-gray-400">
-              Official Government Platform for Convoy Management and Approval
-              System
-            </p>
+            <p className="text-gray-400">{footer.about}</p>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-4">Quick Links</h3>
+            <h3 className="font-semibold mb-4">{footer.quickLinks}</h3>
             <ul className="space-y-2 text-gray-400">
               <li>
                 <Link to="/" className="hover:text-white">
-                  Home
+                  {footer.home}
                 </Link>
               </li>
               <li>
                 <Link to="/register" className="hover:text-white">
-                  Register
+                  {footer.register}
                 </Link>
               </li>
               <li>
                 <Link to="/login" className="hover:text-white">
-                  Login
+                  {footer.login}
                 </Link>
               </li>
               {/* <li>
@@ -62,7 +63,7 @@ export default function HomeFooter() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-4">Contact</h3>
+            <h3 className="font-semibold mb-4">{footer.contact}</h3>
             <div className="space-y-2 text-gray-400">
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4" />
@@ -86,9 +87,8 @@ export default function HomeFooter() {
 
         <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
           <p>
-            Copyright &copy; 2025 A & N Police. All Right Reserved. <br></br>
-            Designed, Developed, Hosted and Maintained by NIC, Andaman State
-            Unit.
+            {footer.copyright} <br></br>
+            {footer.credit}
           </p>
         </div>
       </div>

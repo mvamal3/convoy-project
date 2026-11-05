@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom"; // ✅ add this
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import bg5 from "@/images/bg5.jpg";
 import bg6 from "@/images/bg6.jpeg";
 
 import HomeFooter from "@/include/HomeFooter";
+import { landingText } from "@/utils/landingText";
 
 import {
   Shield,
@@ -23,6 +25,7 @@ import {
   Mail,
   MapPin,
   AlertTriangle,
+  Languages,
   CameraOff,
   Ban,
   UserX,
@@ -30,10 +33,40 @@ import {
 } from "lucide-react";
 
 const backgroundImages = [bg1, bg2, bg3, bg5, bg6];
+const LANGUAGE_KEY = "landingLanguage";
+const convoyTimes = {
+  jirkatang: ["06:00", "09:00", "12:00", "14:30"],
+  middleStrait: ["06:30", "09:30", "12:30", "15:00"],
+};
 
 const Landing = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const navigate = useNavigate();
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem(LANGUAGE_KEY) === "hi" ? "hi" : "en";
+    } catch {
+      return "en";
+    }
+  });
+  const t = landingText[lang];
+
+  // Screen readers need the page language; every other page is English.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    return () => {
+      document.documentElement.lang = "en";
+    };
+  }, [lang]);
+
+  const changeLanguage = (next) => {
+    setLang(next);
+    try {
+      localStorage.setItem(LANGUAGE_KEY, next);
+    } catch {
+      // Storage blocked: the choice still applies until the page is left.
+    }
+  };
 
   useEffect(() => {
     // ✅ Clear any leftover session storage on landing
@@ -76,10 +109,37 @@ const Landing = () => {
 
   // ...keep your existing return JSX unchanged
 
+  // The UX4G panel sits outside React; a portal keeps its file unchanged and
+  // removes this tile on pages that are not translated.
+  const accessibilityPanel = document.querySelector("#uw-main .uwaw-features");
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {accessibilityPanel &&
+        createPortal(
+          <div className="uwaw-features__item">
+            <button
+              type="button"
+              className="uwaw-features__item__i"
+              lang={lang === "en" ? "hi" : "en"}
+              aria-label={
+                lang === "en" ? "हिंदी में बदलें (Change to Hindi)" : "Change to English"
+              }
+              onClick={() => changeLanguage(lang === "en" ? "hi" : "en")}
+            >
+              <span className="uwaw-features__item__icon">
+                <Languages aria-hidden="true" />
+              </span>
+              <span className="uwaw-features__item__name">
+                {lang === "en" ? "हिंदी" : "English"}
+              </span>
+            </button>
+          </div>,
+          accessibilityPanel,
+        )}
+
       {/* Header */}
-      <HomeHeader />
+      <HomeHeader lang={lang} onLangChange={changeLanguage} />
 
       {/* Hero Section with Sliding Background */}
       <section
@@ -135,41 +195,38 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Rules and Regulations
+              {t.rulesTitle}
             </h2>
-            <p className="text-lg text-gray-600">
-              Ensure respectful and lawful conduct while passing through the
-              Jarawa Tribal Reserve.
-            </p>
+            <p className="text-lg text-gray-600">{t.rulesIntro}</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">
             {/* ✅ DO's */}
             <Card className="p-6 bg-green-50 border border-green-200">
               <div className="text-green-700 text-xl font-semibold mb-4 flex items-center gap-2">
-                <CheckCircle /> Do’s
+                <CheckCircle /> {t.dosTitle}
               </div>
 
               <CardContent className="space-y-3 text-gray-700">
                 <ul className="space-y-3">
                   <li className="flex gap-2">
                     <CarFront className="text-green-600" />
-                    Travel only in convoy & drive carefully.
+                    {t.dos[0]}
                   </li>
 
                   <li className="flex gap-2">
                     <Shield className="text-green-600" />
-                    Enter reserve only via police check posts.
+                    {t.dos[1]}
                   </li>
 
                   <li className="flex gap-2">
                     <CameraOff className="text-green-600" />
-                    Switch off cameras while passing through reserve.
+                    {t.dos[2]}
                   </li>
 
                   <li className="flex gap-2">
                     <Users className="text-green-600" />
-                    Respect tribal community and follow authorities.
+                    {t.dos[3]}
                   </li>
                 </ul>
               </CardContent>
@@ -178,29 +235,29 @@ const Landing = () => {
             {/* ❌ DON'Ts */}
             <Card className="p-6 bg-red-50 border border-red-200">
               <div className="text-red-700 text-xl font-semibold mb-4 flex items-center gap-2">
-                <Ban /> Don’ts
+                <Ban /> {t.dontsTitle}
               </div>
 
               <CardContent className="space-y-3 text-gray-700">
                 <ul className="space-y-3">
                   <li className="flex gap-2">
                     <UserX className="text-red-600" />
-                    Do not interact with or allow Jarawas into vehicles.
+                    {t.donts[0]}
                   </li>
 
                   <li className="flex gap-2">
                     <Ban className="text-red-600" />
-                    Do not offer food, clothes, or any items.
+                    {t.donts[1]}
                   </li>
 
                   <li className="flex gap-2">
                     <CameraOff className="text-red-600" />
-                    No photography or videography.
+                    {t.donts[2]}
                   </li>
 
                   <li className="flex gap-2">
                     <CarFront className="text-red-600" />
-                    Do not stop inside the reserve area.
+                    {t.donts[3]}
                   </li>
                 </ul>
               </CardContent>
@@ -210,11 +267,9 @@ const Landing = () => {
           {/* Convoy Time Heading */}
           <div className="text-center mb-8">
             <h3 className="text-xl font-semibold text-gray-800">
-              Convoy Time Details
+              {t.convoyTitle}
             </h3>
-            <p className="text-sm text-gray-600">
-              Official convoy timings from Jirkatang and Middle Strait
-            </p>
+            <p className="text-sm text-gray-600">{t.convoyIntro}</p>
           </div>
 
           {/* Convoy Time Section */}
@@ -222,23 +277,17 @@ const Landing = () => {
             {/* Jirkatang Convoy Times */}
             <Card className="p-6 bg-blue-50 border border-blue-200">
               <div className="text-blue-700 text-xl font-semibold mb-4">
-                🚍 From Jirkatang
+                🚍 {t.fromJirkatang}
               </div>
 
               <CardContent className="text-gray-700 text-base">
                 <ul className="space-y-2">
-                  <li>
-                    First Convoy – <span className="font-semibold">06:00</span>
-                  </li>
-                  <li>
-                    Second Convoy – <span className="font-semibold">09:00</span>
-                  </li>
-                  <li>
-                    Third Convoy – <span className="font-semibold">12:00</span>
-                  </li>
-                  <li>
-                    Fourth Convoy – <span className="font-semibold">14:30</span>
-                  </li>
+                  {convoyTimes.jirkatang.map((time, i) => (
+                    <li key={time}>
+                      {t.convoyNames[i]} –{" "}
+                      <span className="font-semibold">{time}</span>
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -246,23 +295,17 @@ const Landing = () => {
             {/* Middle Strait Convoy Times */}
             <Card className="p-6 bg-purple-50 border border-purple-200">
               <div className="text-purple-700 text-xl font-semibold mb-4">
-                🚍 From Middle Strait
+                🚍 {t.fromMiddleStrait}
               </div>
 
               <CardContent className="text-gray-700 text-base">
                 <ul className="space-y-2">
-                  <li>
-                    First Convoy – <span className="font-semibold">06:30</span>
-                  </li>
-                  <li>
-                    Second Convoy – <span className="font-semibold">09:30</span>
-                  </li>
-                  <li>
-                    Third Convoy – <span className="font-semibold">12:30</span>
-                  </li>
-                  <li>
-                    Fourth Convoy – <span className="font-semibold">15:00</span>
-                  </li>
+                  {convoyTimes.middleStrait.map((time, i) => (
+                    <li key={time}>
+                      {t.convoyNames[i]} –{" "}
+                      <span className="font-semibold">{time}</span>
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -275,11 +318,9 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Key Features
+              {t.featuresTitle}
             </h2>
-            <p className="text-lg text-gray-600">
-              Everything you need to manage your convoy operations efficiently
-            </p>
+            <p className="text-lg text-gray-600">{t.featuresIntro}</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -289,12 +330,9 @@ const Landing = () => {
                   <Car className="h-8 w-8 text-blue-600" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">
-                  Vehicle Management
+                  {t.features[0][0]}
                 </h3>
-                <p className="text-gray-600">
-                  Register and manage your fleet of vehicles with detailed
-                  documentation
-                </p>
+                <p className="text-gray-600">{t.features[0][1]}</p>
               </CardContent>
             </Card>
 
@@ -303,10 +341,10 @@ const Landing = () => {
                 <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="h-8 w-8 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Driver Registry</h3>
-                <p className="text-gray-600">
-                  Maintain a comprehensive database of qualified drivers
-                </p>
+                <h3 className="text-lg font-semibold mb-2">
+                  {t.features[1][0]}
+                </h3>
+                <p className="text-gray-600">{t.features[1][1]}</p>
               </CardContent>
             </Card>
 
@@ -315,10 +353,10 @@ const Landing = () => {
                 <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="h-8 w-8 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Trip Approval</h3>
-                <p className="text-gray-600">
-                  Streamlined approval process with police verification
-                </p>
+                <h3 className="text-lg font-semibold mb-2">
+                  {t.features[2][0]}
+                </h3>
+                <p className="text-gray-600">{t.features[2][1]}</p>
               </CardContent>
             </Card>
 
@@ -328,11 +366,9 @@ const Landing = () => {
                   <Shield className="h-8 w-8 text-red-600" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">
-                  Secure & Compliant
+                  {t.features[3][0]}
                 </h3>
-                <p className="text-gray-600">
-                  Government-grade security with full regulatory compliance
-                </p>
+                <p className="text-gray-600">{t.features[3][1]}</p>
               </CardContent>
             </Card>
           </div>
@@ -344,28 +380,13 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              How It Works
+              {t.howTitle}
             </h2>
-            <p className="text-lg text-gray-600">
-              Simple steps to get your convoy approved
-            </p>
+            <p className="text-lg text-gray-600">{t.howIntro}</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              [
-                "Register & Setup",
-                "Create your account and add your vehicles and drivers to the system",
-              ],
-              [
-                "Plan Your Trip",
-                "Submit trip details including route, and timeline",
-              ],
-              [
-                "Get Approval",
-                "Police authorities review and approve your convoy request",
-              ],
-            ].map(([title, desc], idx) => (
+            {t.steps.map(([title, desc], idx) => (
               <div key={idx} className="text-center">
                 <div className="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">
                   {idx + 1}
@@ -379,7 +400,7 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <HomeFooter />
+      <HomeFooter lang={lang} />
     </div>
   );
 };

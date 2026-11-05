@@ -2,10 +2,13 @@ import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import emblem from "@/images/ANP-logo_new.png";
+import { landingText } from "@/utils/landingText";
 
-export default function HomeHeader() {
+// Other pages are English only, so the switch shows only when onLangChange is passed.
+export default function HomeHeader({ lang = "en", onLangChange }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { nav } = landingText[lang];
 
   return (
     <header className="bg-white shadow-sm">
@@ -15,6 +18,30 @@ export default function HomeHeader() {
           <span className="text-xs sm:text-sm font-semibold text-blue-900">
             भारत सरकार | Government of India
           </span>
+
+          {onLangChange && (
+            <div role="group" aria-label="Language / भाषा" className="flex gap-1">
+              {[
+                ["en", "English"],
+                ["hi", "हिंदी"],
+              ].map(([code, label]) => (
+                <button
+                  key={code}
+                  type="button"
+                  lang={code}
+                  aria-pressed={lang === code}
+                  onClick={() => onLangChange(code)}
+                  className={`min-h-8 rounded px-2 font-semibold ${
+                    lang === code
+                      ? "bg-blue-900 text-white"
+                      : "bg-white text-blue-900 border border-blue-900"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -51,7 +78,7 @@ export default function HomeHeader() {
         <div className="max-w-7xl mx-auto px-4">
           {/* Mobile Menu Button */}
           <div className="flex justify-between items-center py-3 md:hidden">
-            <span className="font-semibold">Menu</span>
+            <span className="font-semibold">{nav.menu}</span>
             <button onClick={() => setMenuOpen(!menuOpen)}>
               {menuOpen ? <X /> : <Menu />}
             </button>
@@ -64,10 +91,10 @@ export default function HomeHeader() {
             } md:flex md:justify-center md:items-center md:space-x-8 text-sm md:text-base font-semibold pb-4 md:pb-0`}
           >
             {[
-              { to: "/", label: "Home" },
-              { to: "/login", label: "User Login" },
-              { to: "/Register", label: "Register" },
-              { to: "/PoliceLogin", label: "Police Login" },
+              { to: "/", label: nav.home },
+              { to: "/login", label: nav.userLogin },
+              { to: "/Register", label: nav.register },
+              { to: "/PoliceLogin", label: nav.policeLogin },
             ].map(({ to, label }) => (
               <li key={label} className="py-2 md:py-4 text-center">
                 <Link
